@@ -1,3 +1,4 @@
+
 "use client"
 
 import { 
@@ -23,8 +24,11 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 export function AdminSidebar() {
+  const pathname = usePathname();
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
@@ -43,7 +47,7 @@ export function AdminSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Dashboard">
+                <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname === "/super-admin/dashboard"}>
                   <Link href="/super-admin/dashboard">
                     <LayoutDashboard />
                     <span>Dashboard</span>
@@ -51,15 +55,15 @@ export function AdminSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Tenants">
-                  <Link href="/super-admin/dashboard">
+                <SidebarMenuButton asChild tooltip="Tenants" isActive={pathname === "/super-admin/tenants"}>
+                  <Link href="/super-admin/tenants">
                     <Store />
                     <span>Restaurant Tenants</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Directory">
+                <SidebarMenuButton asChild tooltip="Directory" isActive={pathname === "/super-admin/directory"}>
                   <Link href="/super-admin/dashboard">
                     <Users />
                     <span>Global Directory</span>
