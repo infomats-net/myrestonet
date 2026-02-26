@@ -9,7 +9,9 @@ import {
   Sparkles,
   Settings,
   LogOut,
-  ShoppingBag
+  ShoppingBag,
+  ExternalLink,
+  Loader2
 } from "lucide-react"
 import {
   Sidebar,
@@ -25,20 +27,41 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
-import { useAuth } from "@/firebase"
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { signOut } from "firebase/auth"
+import { doc } from "firebase/firestore"
 import { Suspense } from "react"
 
 function SidebarLinks() {
-  const auth = useAuth();
+  const { auth, firestore } = useMemoFirebase(() => {
+    // This is a bit of a hack because we are inside a Suspense and useMemoFirebase 
+    // but the hook itself needs the initialized services. 
+    // We'll rely on the parent provider.
+    return { auth: null, firestore: null };
+  }, []); 
+  
+  // Real implementation starts here
+  const { auth: firebaseAuth, firestore: db } = useAuth && useFirestore ? { auth: useAuth(), firestore: useFirestore() } : { auth: null, firestore: null };
+  const { user: authUser } = useUser();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const impersonateId = searchParams.get('impersonate');
 
+  // Fetch user profile if not impersonating to get their restaurantId
+  const userProfileRef = useMemoFirebase(() => {
+    if (!db || !authUser?.uid || impersonateId) return null;
+    return doc(db, 'users', authUser.uid);
+  }, [db, authUser?.uid, impersonateId]);
+
+  const { data: userProfile } = useDoc(userProfileRef);
+
+  const effectiveRestaurantId = impersonateId || userProfile?.restaurantId;
+
   const handleSignOut = async () => {
+    if (!firebaseAuth) return;
     try {
-      await signOut(auth);
+      await signOut(firebaseAuth);
       router.push("/auth/login");
     } catch (error) {
       console.error("Logout failed:", error);
@@ -116,6 +139,22 @@ function SidebarLinks() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Storefront</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="View Storefront" className="text-primary hover:text-primary hover:bg-primary/5">
+                  <Link href={effectiveRestaurantId ? `/customer/${effectiveRestaurantId}` : "#"} target="_blank">
+                    <ExternalLink />
+                    <span>Public Storefront</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t p-2">
         <SidebarMenu>
@@ -156,7 +195,7 @@ export function RestaurantSidebar() {
           </span>
         </Link>
       </SidebarHeader>
-      <Suspense fallback={<div className="p-4"><div className="h-4 w-full bg-muted animate-pulse rounded" /></div>}>
+      <Suspense fallback={<div className="p-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}>
         <SidebarLinks />
       </Suspense>
     </Sidebar>
