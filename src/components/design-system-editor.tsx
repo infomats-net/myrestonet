@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { 
   Palette, 
   Type, 
@@ -66,6 +67,7 @@ interface DesignSettings {
     contact: { visible: boolean };
     map: { visible: boolean };
   };
+  customCss?: string;
 }
 
 const DEFAULT_SETTINGS: DesignSettings = {
@@ -91,7 +93,8 @@ const DEFAULT_SETTINGS: DesignSettings = {
     testimonials: { visible: true },
     contact: { visible: true },
     map: { visible: true }
-  }
+  },
+  customCss: '/* Enter custom CSS here */\n.hero-title { font-size: 5rem; }'
 };
 
 const THEME_PRESETS = [
@@ -137,6 +140,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
             theme: { ...DEFAULT_SETTINGS.theme, ...data.theme },
             typography: { ...DEFAULT_SETTINGS.typography, ...data.typography },
             sections: { ...DEFAULT_SETTINGS.sections, ...data.sections },
+            customCss: data.customCss ?? DEFAULT_SETTINGS.customCss
           } as DesignSettings);
         }
         setLoading(false);
@@ -364,6 +368,29 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
                 </div>
               </TabsContent>
+
+              <TabsContent value="code" className="space-y-6 mt-0">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase px-1">Custom CSS Overrides</h4>
+                  <Badge variant="outline" className="rounded-full border-sky-200 text-sky-700 font-bold px-3 py-1 bg-sky-50/50">ADVANCED</Badge>
+                </div>
+                
+                <div className="relative group">
+                  <Textarea 
+                    className="min-h-[400px] font-mono text-xs bg-[#0F172A] text-slate-300 border-none rounded-3xl p-6 focus-visible:ring-1 focus-visible:ring-sky-500/50 resize-none selection:bg-sky-500/30"
+                    spellCheck={false}
+                    value={settings.customCss}
+                    onChange={(e) => setSettings({...settings, customCss: e.target.value})}
+                  />
+                  <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Code className="h-4 w-4 text-slate-500" />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-400 italic px-1 leading-relaxed">
+                  Use CSS classes to target specific sections. Changes are applied in the preview and production.
+                </p>
+              </TabsContent>
             </ScrollArea>
           </Tabs>
         </aside>
@@ -411,6 +438,11 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               {/* Dynamic Font Import */}
               <link href={`https://fonts.googleapis.com/css2?family=${settings.typography.fontFamily.replace(' ', '+')}&family=${settings.typography.headingFont.replace(' ', '+')}&display=swap`} rel="stylesheet" />
 
+              {/* Custom CSS Injection for Preview */}
+              {settings.customCss && (
+                <style dangerouslySetInnerHTML={{ __html: settings.customCss }} />
+              )}
+
               <nav className="h-16 flex items-center justify-between px-8 sticky top-0 z-50 backdrop-blur-md" style={{ backgroundColor: `${settings.theme.headerColor}CC` }}>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -424,7 +456,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 <section className="min-h-[300px] flex flex-col items-center justify-center text-center px-8 py-12 relative overflow-hidden">
                   <div className="absolute inset-0 bg-primary/5" />
                   <div className="relative z-10">
-                    <h2 className="text-4xl font-black mb-4 leading-tight" style={{ color: settings.theme.text, fontFamily: settings.typography.headingFont }}>
+                    <h2 className="text-4xl font-black mb-4 leading-tight hero-title" style={{ color: settings.theme.text, fontFamily: settings.typography.headingFont }}>
                       Restaurant Name
                     </h2>
                     <Button 
@@ -441,7 +473,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               )}
 
               {settings.sections.about.visible && (
-                <section className="py-16 px-10">
+                <section className="py-16 px-10 about-section">
                   <h3 className="text-2xl font-black mb-4" style={{ fontFamily: settings.typography.headingFont }}>Our Story</h3>
                   <p className="text-sm opacity-60 leading-relaxed">
                     We believe in serving authentic flavors using only the freshest local ingredients. Experience the art of culinary excellence in a warm and inviting atmosphere.
@@ -450,7 +482,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               )}
 
               {settings.sections.menuList.visible && (
-                <section className="py-16 px-10 bg-slate-50/50">
+                <section className="py-16 px-10 bg-slate-50/50 menu-section">
                   <div className="flex justify-between items-end mb-8">
                     <h3 className="text-2xl font-black" style={{ fontFamily: settings.typography.headingFont }}>Featured Menu</h3>
                     <Button variant="link" className="font-bold uppercase tracking-widest text-[9px]">View All</Button>
@@ -467,8 +499,8 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 </section>
               )}
 
-              <footer className="py-12 text-center opacity-30 border-t">
-                <p className="text-[9px] font-black uppercase tracking-[0.2em]">© 2024 Restaurant Name Global</p>
+              <footer className="py-12 text-center opacity-30 border-t" style={{ backgroundColor: settings.theme.footerColor }}>
+                <p className="text-[9px] font-black uppercase tracking-[0.2em]" style={{ color: settings.theme.text }}>© 2024 Restaurant Name Global</p>
               </footer>
             </div>
           </div>

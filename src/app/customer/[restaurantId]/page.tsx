@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, use as reactUse, useEffect } from 'react';
@@ -116,7 +115,9 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
     '--primary': design?.theme?.primary || '#42668A',
     '--accent': design?.theme?.accent || '#53C683',
     '--background': design?.theme?.background || '#FFFFFF',
+    '--text': design?.theme?.text || '#1A1A1A',
     '--font-family': design?.typography?.fontFamily || 'Inter',
+    '--heading-font': design?.typography?.headingFont || 'Inter',
     '--header-bg': design?.theme?.headerColor || '#FFFFFF',
     '--footer-bg': design?.theme?.footerColor || '#1A1A1A',
   } as React.CSSProperties;
@@ -124,8 +125,11 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   return (
     <div className="min-h-screen bg-background pb-24" style={designStyles}>
       {/* Dynamic Font Import */}
-      {design?.typography?.fontFamily && (
-        <link href={`https://fonts.googleapis.com/css2?family=${design.typography.fontFamily.replace(' ', '+')}:wght@400;700&display=swap`} rel="stylesheet" />
+      <link href={`https://fonts.googleapis.com/css2?family=${designStyles['--font-family']?.toString().replace(' ', '+')}&family=${designStyles['--heading-font']?.toString().replace(' ', '+')}&display=swap`} rel="stylesheet" />
+
+      {/* Custom CSS Injection */}
+      {design?.customCss && (
+        <style dangerouslySetInnerHTML={{ __html: design.customCss }} />
       )}
 
       {/* Hero Section */}
@@ -144,7 +148,7 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
-                <h1 className="text-3xl font-headline font-bold" style={{ color: designStyles['--primary'] as string }}>{restaurant?.name}</h1>
+                <h1 className="text-3xl font-bold hero-title" style={{ color: designStyles['--primary'] as string, fontFamily: designStyles['--heading-font'] as string }}>{restaurant?.name}</h1>
                 <p className="text-muted-foreground text-sm">
                   {Array.isArray(restaurant?.cuisine) ? restaurant.cuisine.join(' • ') : 'International'} • {restaurant?.city}, {restaurant?.country}
                 </p>
@@ -164,8 +168,8 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
 
         {/* About Section */}
         {design?.sections?.about?.visible && (
-          <div className="mb-10 px-4 py-8 bg-white rounded-2xl border shadow-sm text-center">
-            <h2 className="text-xl font-bold mb-4" style={{ color: designStyles['--primary'] as string }}>Our Story</h2>
+          <div className="mb-10 px-4 py-8 bg-white rounded-2xl border shadow-sm text-center about-section">
+            <h2 className="text-xl font-bold mb-4" style={{ color: designStyles['--primary'] as string, fontFamily: designStyles['--heading-font'] as string }}>Our Story</h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl mx-auto">
               {restaurant?.description}
             </p>
@@ -194,8 +198,8 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
         </div>
 
         {/* Menu Items */}
-        <div className="grid gap-6">
-          <h2 className="text-2xl font-bold px-1">{activeMenu?.name || 'Menu Items'}</h2>
+        <div className="grid gap-6 menu-section">
+          <h2 className="text-2xl font-bold px-1" style={{ fontFamily: designStyles['--heading-font'] as string }}>{activeMenu?.name || 'Menu Items'}</h2>
           {loadingItems ? (
             <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin opacity-20" /></div>
           ) : (
@@ -205,7 +209,7 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
                   <div className="flex h-36">
                     <div className="flex-1 p-4 flex flex-col justify-between">
                       <div className="space-y-1">
-                        <h3 className="font-bold text-base leading-tight">{item.name}</h3>
+                        <h3 className="font-bold text-base leading-tight" style={{ fontFamily: designStyles['--heading-font'] as string }}>{item.name}</h3>
                         <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                       </div>
                       <div className="flex items-center justify-between">
