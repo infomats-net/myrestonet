@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,16 +18,22 @@ import {
   ArrowUpRight,
   Save,
   Loader2,
-  Plus
+  Plus,
+  ChevronLeft
 } from 'lucide-react';
-import { MOCK_MENU_ITEMS, MOCK_SALES_DATA } from '@/lib/mock-data';
+import { MOCK_MENU_ITEMS, MOCK_SALES_DATA, MOCK_RESTAURANTS } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/flows/localized-seo-content';
+import Link from 'next/link';
 
-export default function RestaurantAdminDashboard() {
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const impersonateId = searchParams.get('impersonate');
+  const impersonatedRestaurant = impersonateId ? MOCK_RESTAURANTS.find(r => r.id === impersonateId) : null;
+  
   const [activeTab, setActiveTab] = useState('overview');
   const [aiInsights, setAiInsights] = useState<AiSalesInsightsOutput | null>(null);
   const [seoResult, setSeoResult] = useState<LocalizedSeoContentOutput | null>(null);
@@ -34,14 +41,14 @@ export default function RestaurantAdminDashboard() {
   const [loadingSeo, setLoadingSeo] = useState(false);
 
   const [seoForm, setSeoForm] = useState({
-    restaurantName: 'Bella Napoli',
-    cuisineType: 'Italian',
-    location: 'London, UK',
-    description: 'The best authentic Italian pizza and pasta in central London.',
+    restaurantName: impersonatedRestaurant?.name || 'Bella Napoli',
+    cuisineType: impersonatedRestaurant?.cuisineType || 'Italian',
+    location: impersonatedRestaurant?.location || 'London, UK',
+    description: impersonatedRestaurant?.description || 'The best authentic Italian pizza and pasta in central London.',
     menuHighlights: 'Wood-fired Pizza, Fresh Tagliatelle, Tiramisu',
-    websiteUrl: 'https://bellanapoli.example.com',
+    websiteUrl: impersonatedRestaurant?.customDomain ? `https://${impersonatedRestaurant.customDomain}` : 'https://bellanapoli.example.com',
     phoneNumber: '+44 20 7123 4567',
-    address: '123 Pizza St, London, EC1 1BB',
+    address: impersonatedRestaurant?.address || '123 Pizza St, London, EC1 1BB',
     locale: 'en-GB'
   });
 
@@ -74,13 +81,25 @@ export default function RestaurantAdminDashboard() {
 
   return (
     <div className="p-4 md:p-8 space-y-8">
+      {impersonateId && (
+        <Button variant="outline" size="sm" asChild className="mb-2">
+          <Link href="/super-admin/tenants">
+            <ChevronLeft className="mr-2 h-4 w-4" /> Back to Super Admin
+          </Link>
+        </Button>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-headline font-bold text-primary">Bella Napoli</h1>
+            <h1 className="text-3xl font-headline font-bold text-primary">
+              {impersonatedRestaurant?.name || 'Bella Napoli'}
+            </h1>
             <Badge className="bg-accent/20 text-accent border-accent/20">Active Pro</Badge>
           </div>
-          <p className="text-muted-foreground">Admin: gino@example.com • Location: London, UK</p>
+          <p className="text-muted-foreground">
+            {impersonatedRestaurant?.adminEmail || 'Admin: gino@example.com'} • Location: {impersonatedRestaurant?.location || 'London, UK'}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
@@ -92,7 +111,7 @@ export default function RestaurantAdminDashboard() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab}>
+      <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab} value={activeTab}>
         <TabsList className="bg-white border p-1 rounded-xl">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Overview</TabsTrigger>
           <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Menu Management</TabsTrigger>
@@ -410,5 +429,13 @@ export default function RestaurantAdminDashboard() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function RestaurantAdminDashboard() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center p-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
