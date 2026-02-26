@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -19,27 +20,37 @@ import {
   Save,
   Loader2,
   Plus,
-  ChevronLeft
+  ChevronLeft,
+  Info
 } from 'lucide-react';
-import { MOCK_MENU_ITEMS, MOCK_SALES_DATA } from '@/lib/mock-data';
+import { MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/flows/localized-seo-content';
 import Link from 'next/link';
-import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection } from 'firebase/firestore';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
   const impersonateId = searchParams.get('impersonate');
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user: authUser } = useUser();
   
-  // Determine which restaurant to display
-  const effectiveRestaurantId = impersonateId || (user?.role === 'RestaurantAdmin' ? user.restaurantId : null);
+  // 1. Fetch user profile from Firestore to get their restaurantId
+  const userProfileRef = useMemoFirebase(() => {
+    if (!firestore || !authUser?.uid) return null;
+    return doc(firestore, 'users', authUser.uid);
+  }, [firestore, authUser?.uid]);
+  
+  const { data: userProfile, isLoading: loadingProfile } = useDoc(userProfileRef);
 
+  // 2. Determine which restaurant to display
+  const effectiveRestaurantId = impersonateId || (userProfile?.role === 'RestaurantAdmin' ? userProfile.restaurantId : null);
+
+  // 3. Fetch Restaurant Data
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return doc(firestore, 'restaurants', effectiveRestaurantId);
@@ -47,6 +58,18 @@ function DashboardContent() {
 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
   
+  // 4. Fetch Menu Items (Real-time)
+  const menuItemsQuery = useMemoFirebase(() => {
+    if (!firestore || !effectiveRestaurantId) return null;
+    // We assume items are in a top-level collection or subcollection. 
+    // Based on backend.json, they are in /restaurants/{id}/menus/{id}/menuItems
+    // For simplicity in this dashboard view, we'll try to fetch all items for this restaurant
+    // if we had a flat collection, but let's stick to the structure or a common pattern.
+    return collection(firestore, 'restaurants', effectiveRestaurantId, 'menus');
+  }, [firestore, effectiveRestaurantId]);
+
+  const { data: menus, isLoading: loadingMenus } = useCollection(menuItemsQuery);
+
   const [activeTab, setActiveTab] = useState('overview');
   const [aiInsights, setAiInsights] = useState<AiSalesInsightsOutput | null>(null);
   const [seoResult, setSeoResult] = useState<LocalizedSeoContentOutput | null>(null);
@@ -58,7 +81,7 @@ function DashboardContent() {
     cuisineType: '',
     location: '',
     description: '',
-    menuHighlights: 'Wood-fired Pizza, Fresh Tagliatelle, Tiramisu',
+    menuHighlights: 'Chef specials, Seasonal menu',
     websiteUrl: '',
     phoneNumber: '',
     address: '',
@@ -70,7 +93,7 @@ function DashboardContent() {
       setSeoForm({
         restaurantName: restaurant.name || '',
         cuisineType: Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : '',
-        location: `${restaurant.city}, ${restaurant.country}` || '',
+        location: `${restaurant.city || ''}, ${restaurant.country || ''}`,
         description: restaurant.description || '',
         menuHighlights: 'Chef specials, Seasonal menu',
         websiteUrl: restaurant.customDomain ? `https://${restaurant.customDomain}` : '',
@@ -108,12 +131,32 @@ function DashboardContent() {
     }
   };
 
-  if (loadingRes) {
-    return <div className="p-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>;
+  if (loadingProfile || loadingRes) {
+    return (
+      <div className="flex flex-col items-center justify-center p-20 space-y-4">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-muted-foreground animate-pulse font-medium">Synchronizing Secure Session...</p>
+      </div>
+    );
   }
 
-  if (!restaurant && !loadingRes) {
-    return <div className="p-20 text-center">Restaurant not found or insufficient permissions.</div>;
+  if (!restaurant) {
+    return (
+      <div className="p-20 text-center max-w-md mx-auto space-y-6">
+        <div className="bg-destructive/10 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto text-destructive">
+          <Info className="h-10 w-10" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-primary">Access Restriction</h2>
+          <p className="text-muted-foreground">
+            We couldn't link your account to a specific restaurant. Please contact your platform administrator.
+          </p>
+        </div>
+        <Button variant="outline" asChild className="w-full">
+          <Link href="/auth/login">Return to Login</Link>
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -139,11 +182,13 @@ function DashboardContent() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-primary text-primary hover:bg-primary/10">
-            <ShoppingCart className="mr-2 h-4 w-4" /> View Orders
+          <Button variant="outline" className="border-primary text-primary hover:bg-primary/10" asChild>
+            <Link href={`/customer/${restaurant.id}`}>
+              <ShoppingCart className="mr-2 h-4 w-4" /> View Storefront
+            </Link>
           </Button>
           <Button className="bg-primary hover:bg-primary/90">
-            <Settings className="mr-2 h-4 w-4" /> Settings
+            <Settings className="mr-2 h-4 w-4" /> Store Settings
           </Button>
         </div>
       </div>
@@ -151,9 +196,9 @@ function DashboardContent() {
       <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab} value={activeTab}>
         <TabsList className="bg-white border p-1 rounded-xl">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Overview</TabsTrigger>
-          <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Menu Management</TabsTrigger>
-          <TabsTrigger value="seo" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Localized SEO</TabsTrigger>
-          <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">AI Analytics</TabsTrigger>
+          <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Menus</TabsTrigger>
+          <TabsTrigger value="seo" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">SEO Engine</TabsTrigger>
+          <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">AI Insights</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-4">
@@ -240,7 +285,7 @@ function DashboardContent() {
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span>Menu Localization</span>
-                    <Badge variant="outline" className="text-accent border-accent px-3">Complete (EN, IT)</Badge>
+                    <Badge variant="outline" className="text-accent border-accent px-3">Complete (EN)</Badge>
                   </div>
                   <Button variant="outline" className="w-full mt-4" onClick={() => setActiveTab('seo')}>
                     Update SEO Settings
@@ -256,35 +301,47 @@ function DashboardContent() {
             <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div>
                 <CardTitle className="font-headline">Menu Catalog</CardTitle>
-                <CardDescription>Update your items and manage real-time inventory.</CardDescription>
+                <CardDescription>Manage your active menus and digital catalogue.</CardDescription>
               </div>
               <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm w-full md:w-auto">
-                <Plus className="mr-2 h-4 w-4" /> Add Item
+                <Plus className="mr-2 h-4 w-4" /> Create Menu
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4">
-                {MOCK_MENU_ITEMS.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 p-4 border rounded-xl hover:bg-muted/50 transition-colors">
-                    <img src={item.imageUrl} alt={item.name} className="w-20 h-20 rounded-lg object-cover" />
-                    <div className="flex-1">
-                      <h4 className="font-bold text-lg">{item.name}</h4>
-                      <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>
-                      <div className="flex gap-2 mt-1">
-                        <Badge variant="secondary" className="text-xs px-3">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{item.price.toFixed(2)}</Badge>
-                        <Badge variant="outline" className="text-xs px-3">{item.category}</Badge>
+              {loadingMenus ? (
+                <div className="text-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                </div>
+              ) : menus && menus.length > 0 ? (
+                <div className="grid gap-4">
+                  {menus.map((menu) => (
+                    <div key={menu.id} className="flex items-center gap-4 p-4 border rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="bg-primary/10 p-4 rounded-xl">
+                        <Utensils className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-lg">{menu.name}</h4>
+                        <p className="text-sm text-muted-foreground">{menu.description || 'No description provided.'}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant={menu.isActive ? 'default' : 'secondary'}>
+                          {menu.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                        <Button variant="ghost" size="icon">
+                          <ChevronLeft className="h-4 w-4 rotate-180" />
+                        </Button>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase">Inventory</p>
-                      <p className={`text-xl font-bold ${item.inventory < 10 ? 'text-destructive' : 'text-accent'}`}>{item.inventory}</p>
-                    </div>
-                    <Button variant="ghost" size="icon">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 border-2 border-dashed rounded-xl space-y-4">
+                  <p className="text-muted-foreground">You haven't created any menus yet.</p>
+                  <Button variant="outline">
+                    <Plus className="mr-2 h-4 w-4" /> Start Initial Menu
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
