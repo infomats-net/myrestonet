@@ -28,6 +28,8 @@ import { useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface DesignSettings {
   theme: {
@@ -91,12 +93,25 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   useEffect(() => {
     if (!firestore || !restaurantId) return;
 
-    const unsub = onSnapshot(doc(firestore, 'restaurants', restaurantId, 'design', 'settings'), (snap) => {
-      if (snap.exists()) {
-        setSettings(snap.data() as DesignSettings);
+    const docRef = doc(firestore, 'restaurants', restaurantId, 'design', 'settings');
+
+    const unsub = onSnapshot(
+      docRef, 
+      (snap) => {
+        if (snap.exists()) {
+          setSettings(snap.data() as DesignSettings);
+        }
+        setLoading(false);
+      },
+      async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'get',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => unsub();
   }, [firestore, restaurantId]);
@@ -299,7 +314,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
           previewMode === 'desktop' ? "w-full" : previewMode === 'tablet' ? "w-[768px]" : "w-[375px]"
         )}>
           {/* Simulated Storefront */}
-          <div className="h-full overflow-y-auto no-scrollbar" style={{ fontFamily: settings.typography.fontFamily }}>
+          <div className="h-full overflow-y-auto no-scrollbar" style={{ fontFamily: settings.typography.fontFamily, transform: 'scale(3)', transformOrigin: 'top center' }}>
             {/* Nav */}
             <div className="h-16 border-b flex items-center justify-between px-6" style={{ backgroundColor: settings.theme.headerColor }}>
               <div className="h-8 w-32 bg-primary/20 rounded animate-pulse" style={{ backgroundColor: `${settings.theme.primary}20` }} />
