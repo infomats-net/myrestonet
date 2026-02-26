@@ -72,8 +72,9 @@ const formSchema = z.object({
   adminEmail: z.string()
     .email("Invalid email address")
     .refine((email) => {
+      // Simulate checking against existing users/tenants
       return !MOCK_RESTAURANTS.some(r => r.adminEmail.toLowerCase() === email.toLowerCase());
-    }, { message: "This email is already registered to another tenant" }),
+    }, { message: "This email id is already in use" }),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string().min(1, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
