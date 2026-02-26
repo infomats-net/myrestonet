@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { 
   Form,
   FormControl,
@@ -29,7 +33,11 @@ import {
   MapPin,
   Loader2,
   Eye,
-  EyeOff
+  EyeOff,
+  Search,
+  Check,
+  ChevronsUpDown,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
@@ -37,10 +45,11 @@ import { useFirebase } from '@/firebase';
 import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const CUISINE_TYPES = [
-  "Italian", "Japanese", "French", "Mexican", "Indian", "Chinese", "Australian", "Middle Eastern", "American", "Thai", "Greek", "Vegetarian", "Vegan", "Other"
-];
+  "Afghan", "African", "American", "Argentinian", "Asian", "Australian", "Austrian", "Bakery", "Barbecue", "Belgian", "Brazilian", "British", "Burmese", "Cafe", "Cajun", "Caribbean", "Chinese", "Colombian", "Contemporary", "Creole", "Cuban", "Czech", "Danish", "Dessert", "Dim Sum", "Eastern European", "Egyptian", "Ethiopian", "European", "Fast Food", "Filipino", "French", "Fusion", "German", "Greek", "Grill", "Hawaiian", "Healthy", "Hungarian", "Indian", "Indonesian", "International", "Irish", "Italian", "Jamaican", "Japanese", "Jewish", "Korean", "Latin American", "Lebanese", "Malaysian", "Mediterranean", "Mexican", "Middle Eastern", "Modern Australian", "Moroccan", "Nepalese", "North African", "Pakistani", "Persian", "Peruvian", "Pizza", "Polish", "Portuguese", "Pub", "Russian", "Scandinavian", "Seafood", "Singaporean", "South American", "South Indian", "Spanish", "Sri Lankan", "Steakhouse", "Sushi", "Swiss", "Taiwanese", "Tapas", "Thai", "Tibetan", "Turkish", "Vegan", "Vegetarian", "Vietnamese"
+].sort();
 
 const AU_STATES = [
   "NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"
@@ -51,7 +60,7 @@ const formSchema = z.object({
   customDomain: z.string().optional(),
   contactName: z.string().min(2, "Contact name is required"),
   contactNumber: z.string().optional(),
-  cuisine: z.string().min(1, "Please select a cuisine type"),
+  cuisine: z.array(z.string()).min(1, "Please select at least one cuisine type"),
   country: z.string().min(1, "Please select a country"),
   currency: z.string().min(1, "Please select a currency"),
   city: z.string().min(1, "City is required"),
@@ -73,6 +82,8 @@ export default function NewTenantPage() {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [cuisineSearch, setCuisineSearch] = useState("");
+  const [isCuisineOpen, setIsCuisineOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -81,7 +92,7 @@ export default function NewTenantPage() {
       customDomain: "",
       contactName: "",
       contactNumber: "",
-      cuisine: "",
+      cuisine: [],
       country: "Australia",
       currency: "AUD",
       city: "",
@@ -95,6 +106,13 @@ export default function NewTenantPage() {
   });
 
   const watchedCountry = form.watch("country");
+  const selectedCuisines = form.watch("cuisine");
+
+  const filteredCuisines = useMemo(() => {
+    return CUISINE_TYPES.filter(c => 
+      c.toLowerCase().includes(cuisineSearch.toLowerCase())
+    );
+  }, [cuisineSearch]);
 
   useEffect(() => {
     if (watchedCountry) {
@@ -175,6 +193,15 @@ export default function NewTenantPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleCuisine = (cuisine: string) => {
+    const current = form.getValues("cuisine");
+    if (current.includes(cuisine)) {
+      form.setValue("cuisine", current.filter(c => c !== cuisine), { shouldValidate: true });
+    } else {
+      form.setValue("cuisine", [...current, cuisine], { shouldValidate: true });
     }
   };
 
@@ -261,24 +288,90 @@ export default function NewTenantPage() {
                 </FormItem>
               )}
             />
+            
+            {/* Multi-select Searchable Cuisines */}
             <FormField
               control={form.control}
               name="cuisine"
-              render={({ field }) => (
+              render={() => (
                 <FormItem className="md:col-span-2">
                   <FormLabel className="font-bold text-sm text-primary">Cuisine Types</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="h-11 bg-muted/20">
-                        <SelectValue placeholder="Select cuisines" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {CUISINE_TYPES.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={isCuisineOpen} onOpenChange={setIsCuisineOpen}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={isCuisineOpen}
+                          className={cn(
+                            "w-full justify-between h-auto min-h-11 bg-muted/20 text-left font-normal py-2",
+                            selectedCuisines.length === 0 && "text-muted-foreground"
+                          )}
+                        >
+                          <div className="flex flex-wrap gap-1">
+                            {selectedCuisines.length > 0 ? (
+                              selectedCuisines.map((c) => (
+                                <Badge key={c} variant="secondary" className="mr-1 h-6">
+                                  {c}
+                                  <span 
+                                    className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleCuisine(c);
+                                    }}
+                                  >
+                                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                  </span>
+                                </Badge>
+                              ))
+                            ) : (
+                              "Select cuisines..."
+                            )}
+                          </div>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                      <div className="flex items-center border-b px-3">
+                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                        <Input
+                          placeholder="Search cuisines..."
+                          className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                          value={cuisineSearch}
+                          onChange={(e) => setCuisineSearch(e.target.value)}
+                        />
+                      </div>
+                      <ScrollArea className="h-[300px] p-2">
+                        <div className="space-y-1">
+                          {filteredCuisines.length === 0 ? (
+                            <p className="p-4 text-center text-sm text-muted-foreground">No cuisine found.</p>
+                          ) : (
+                            filteredCuisines.map((cuisine) => (
+                              <div
+                                key={cuisine}
+                                className={cn(
+                                  "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
+                                  selectedCuisines.includes(cuisine) && "bg-accent/50"
+                                )}
+                                onClick={() => toggleCuisine(cuisine)}
+                              >
+                                <Checkbox 
+                                  checked={selectedCuisines.includes(cuisine)}
+                                  className="mr-2"
+                                  onCheckedChange={() => toggleCuisine(cuisine)}
+                                />
+                                {cuisine}
+                                {selectedCuisines.includes(cuisine) && (
+                                  <Check className="ml-auto h-4 w-4 opacity-70" />
+                                )}
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}
