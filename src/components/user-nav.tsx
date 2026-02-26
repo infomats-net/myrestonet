@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { 
   User, 
   Settings, 
@@ -21,6 +22,21 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export function UserNav() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="flex items-center gap-4">
+        <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+        <div className="w-10 h-10 rounded-full bg-muted animate-pulse" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-4">
       <Button variant="ghost" size="icon" className="relative text-muted-foreground">

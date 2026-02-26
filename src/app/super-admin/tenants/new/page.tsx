@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -36,7 +35,8 @@ import {
   ChevronsUpDown,
   Check,
   X,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
@@ -72,7 +72,6 @@ const formSchema = z.object({
   adminEmail: z.string()
     .email("Invalid email address")
     .refine((email) => {
-      // Simulate checking against existing users/tenants
       return !MOCK_RESTAURANTS.some(r => r.adminEmail.toLowerCase() === email.toLowerCase());
     }, { message: "This email id is already in use" }),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -85,6 +84,7 @@ const formSchema = z.object({
 export default function NewTenantPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -108,14 +108,18 @@ export default function NewTenantPage() {
   });
 
   const selectedCountry = form.watch("country");
-  const selectedCuisines = form.watch("cuisine");
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     const countryData = WORLD_COUNTRIES.find(c => c.name === selectedCountry);
     if (countryData) {
       form.setValue("currency", countryData.currency);
     }
-  }, [selectedCountry, form]);
+  }, [selectedCountry, form, mounted]);
 
   const filteredCuisines = CUISINES.filter(c => 
     c.toLowerCase().includes(searchQuery.toLowerCase())
@@ -125,6 +129,14 @@ export default function NewTenantPage() {
     console.log("Initializing tenant:", values);
     router.push('/super-admin/tenants');
   };
+
+  if (!mounted) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
@@ -296,7 +308,7 @@ export default function NewTenantPage() {
                                     >
                                       <Checkbox
                                         checked={isSelected}
-                                        onCheckedChange={() => {}} // Handled by div click
+                                        onCheckedChange={() => {}}
                                       />
                                       <span className="text-sm flex-1">{cuisine}</span>
                                       {isSelected && <Check className="h-4 w-4 text-primary" />}
