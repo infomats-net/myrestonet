@@ -43,7 +43,7 @@ function DashboardContent() {
   const impersonateId = searchParams.get('impersonate');
   const initialTab = searchParams.get('tab') || 'overview';
   const firestore = useFirestore();
-  const { user: authUser } = useUser();
+  const { user: authUser, isUserLoading: authLoading } = useUser();
   
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !authUser?.uid) return null;
@@ -143,21 +143,32 @@ function DashboardContent() {
     }
   };
 
-  // Improved loading state: Stay in loading if profile is loading,
-  // OR if we have a restaurant ID and it's currently fetching.
-  const isTrulyLoading = loadingProfile || (!!effectiveRestaurantId && loadingRes && !restaurant);
+  /**
+   * REFINED LOADING LOGIC:
+   * 1. If Firebase Auth is still determining the user state, we are loading.
+   * 2. If we have an authenticated user but their profile is still loading, we are loading.
+   * 3. If we have a profile but we're still waiting to fetch the restaurant data, we are loading.
+   */
+  const isTrulyLoading = authLoading || 
+                         (!!authUser && loadingProfile) || 
+                         (!!effectiveRestaurantId && loadingRes && !restaurant);
 
   if (isTrulyLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-20 space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground animate-pulse font-medium">Synchronizing Secure Session...</p>
+        <div className="relative">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            <ShieldAlert className="h-5 w-5 text-primary/50" />
+          </div>
+        </div>
+        <p className="text-muted-foreground animate-pulse font-medium">Validating Merchant Credentials...</p>
       </div>
     );
   }
 
-  // Only show "Access Restriction" if we are definitely done loading and have no restaurant
-  if (!restaurant && !loadingRes && !loadingProfile) {
+  // Final check: if we are NOT loading anymore, and we still don't have a restaurant, THEN show the restriction error.
+  if (!restaurant && !loadingRes && !loadingProfile && !authLoading) {
     return (
       <div className="p-20 text-center max-w-md mx-auto space-y-6">
         <div className="bg-destructive/10 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto text-destructive">
@@ -166,12 +177,20 @@ function DashboardContent() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-primary">Access Restriction</h2>
           <p className="text-muted-foreground">
-            We couldn't link your account to a specific restaurant. Please contact your platform administrator.
+            We couldn't connect your account to a specific restaurant profile. This usually happens if your subscription is pending or if you haven't been assigned a tenant ID.
+          </p>
+          <p className="text-xs text-muted-foreground/60 italic">
+            Please contact your platform administrator or try logging in again.
           </p>
         </div>
-        <Button variant="outline" asChild className="w-full">
-          <Link href="/auth/login">Return to Login</Link>
-        </Button>
+        <div className="pt-4 space-y-2">
+          <Button variant="outline" asChild className="w-full">
+            <Link href="/auth/login">Return to Login</Link>
+          </Button>
+          <Button variant="ghost" asChild className="w-full text-xs">
+            <Link href="/">Back to Home</Link>
+          </Button>
+        </div>
       </div>
     );
   }
