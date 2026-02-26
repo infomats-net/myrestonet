@@ -1,3 +1,4 @@
+
 "use client"
 
 import { 
@@ -23,13 +24,14 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "@/firebase"
 import { signOut } from "firebase/auth"
 
 export function RestaurantSidebar() {
   const auth = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleSignOut = async () => {
     try {
@@ -58,8 +60,8 @@ export function RestaurantSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Overview">
-                  <Link href="/restaurant-admin/dashboard">
+                <SidebarMenuButton asChild tooltip="Overview" isActive={pathname === "/restaurant-admin/dashboard"}>
+                  <Link href="/restaurant-admin/dashboard?tab=overview">
                     <LayoutDashboard />
                     <span>Overview</span>
                   </Link>
@@ -67,7 +69,7 @@ export function RestaurantSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Orders">
-                  <Link href="/restaurant-admin/dashboard">
+                  <Link href="/restaurant-admin/dashboard?tab=orders">
                     <ShoppingCart />
                     <span>Orders</span>
                   </Link>
@@ -75,7 +77,7 @@ export function RestaurantSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Menu">
-                  <Link href="/restaurant-admin/dashboard">
+                  <Link href="/restaurant-admin/dashboard?tab=menu">
                     <Utensils />
                     <span>Menu Catalog</span>
                   </Link>
@@ -91,7 +93,7 @@ export function RestaurantSidebar() {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="AI Insights">
-                  <Link href="/restaurant-admin/dashboard">
+                  <Link href="/restaurant-admin/dashboard?tab=analytics">
                     <Sparkles className="text-accent" />
                     <span>AI Analytics</span>
                   </Link>
@@ -99,7 +101,7 @@ export function RestaurantSidebar() {
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="SEO">
-                  <Link href="/restaurant-admin/dashboard">
+                  <Link href="/restaurant-admin/dashboard?tab=seo">
                     <Globe />
                     <span>Localized SEO</span>
                   </Link>
@@ -113,7 +115,7 @@ export function RestaurantSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Settings">
-              <Link href="/restaurant-admin/dashboard">
+              <Link href="/restaurant-admin/dashboard?tab=overview">
                 <Settings />
                 <span>Store Settings</span>
               </Link>

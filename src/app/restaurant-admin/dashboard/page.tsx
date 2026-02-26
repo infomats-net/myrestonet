@@ -21,7 +21,9 @@ import {
   Loader2,
   Plus,
   ChevronLeft,
-  Info
+  Info,
+  Package,
+  Calendar
 } from 'lucide-react';
 import { MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
@@ -32,10 +34,12 @@ import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/fl
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
   const impersonateId = searchParams.get('impersonate');
+  const initialTab = searchParams.get('tab') || 'overview';
   const firestore = useFirestore();
   const { user: authUser } = useUser();
   
@@ -58,19 +62,23 @@ function DashboardContent() {
 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
   
-  // 4. Fetch Menu Items (Real-time)
-  const menuItemsQuery = useMemoFirebase(() => {
+  // 4. Fetch Menus (Real-time)
+  const menusQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
-    // We assume items are in a top-level collection or subcollection. 
-    // Based on backend.json, they are in /restaurants/{id}/menus/{id}/menuItems
-    // For simplicity in this dashboard view, we'll try to fetch all items for this restaurant
-    // if we had a flat collection, but let's stick to the structure or a common pattern.
     return collection(firestore, 'restaurants', effectiveRestaurantId, 'menus');
   }, [firestore, effectiveRestaurantId]);
 
-  const { data: menus, isLoading: loadingMenus } = useCollection(menuItemsQuery);
+  const { data: menus, isLoading: loadingMenus } = useCollection(menusQuery);
 
-  const [activeTab, setActiveTab] = useState('overview');
+  // 5. Fetch Orders (Real-time)
+  const ordersQuery = useMemoFirebase(() => {
+    if (!firestore || !effectiveRestaurantId) return null;
+    return collection(firestore, 'restaurants', effectiveRestaurantId, 'orders');
+  }, [firestore, effectiveRestaurantId]);
+
+  const { data: orders, isLoading: loadingOrders } = useCollection(ordersQuery);
+
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [aiInsights, setAiInsights] = useState<AiSalesInsightsOutput | null>(null);
   const [seoResult, setSeoResult] = useState<LocalizedSeoContentOutput | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -87,6 +95,13 @@ function DashboardContent() {
     address: '',
     locale: 'en-GB'
   });
+
+  // Sync tab state with URL search param
+  useEffect(() => {
+    if (initialTab && initialTab !== activeTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   useEffect(() => {
     if (restaurant) {
@@ -194,8 +209,9 @@ function DashboardContent() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab} value={activeTab}>
-        <TabsList className="bg-white border p-1 rounded-xl">
+        <TabsList className="bg-white border p-1 rounded-xl flex overflow-x-auto no-scrollbar">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Overview</TabsTrigger>
+          <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Orders</TabsTrigger>
           <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Menus</TabsTrigger>
           <TabsTrigger value="seo" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">SEO Engine</TabsTrigger>
           <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">AI Insights</TabsTrigger>
@@ -219,8 +235,8 @@ function DashboardContent() {
                 <Clock className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">12</div>
-                <p className="text-xs text-muted-foreground">4 urgent (delayed)</p>
+                <div className="text-2xl font-bold">{orders?.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length || 0}</div>
+                <p className="text-xs text-muted-foreground">Active platform-wide</p>
               </CardContent>
             </Card>
             <Card className="border-none shadow-md">
@@ -294,6 +310,67 @@ function DashboardContent() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="orders" className="space-y-6 pt-4">
+          <Card className="border-none shadow-lg overflow-hidden">
+            <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
+              <div>
+                <CardTitle className="font-headline">Order Management</CardTitle>
+                <CardDescription>Track and update active customer orders.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {loadingOrders ? (
+                <div className="text-center py-20">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                </div>
+              ) : orders && orders.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead>Order ID</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orders.map((order) => (
+                      <TableRow key={order.id}>
+                        <TableCell className="font-mono text-xs">{order.id.slice(-6).toUpperCase()}</TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {new Date(order.orderedAt).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="text-[10px] uppercase">
+                            {order.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">{order.orderType}</TableCell>
+                        <TableCell className="font-bold">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{order.totalAmount.toFixed(2)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm">Update</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-20 border-2 border-dashed rounded-xl space-y-4 m-6">
+                  <div className="bg-primary/5 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
+                    <Package className="h-8 w-8 text-primary/40" />
+                  </div>
+                  <p className="text-muted-foreground">No orders have been placed yet.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="menu" className="space-y-6 pt-4">
