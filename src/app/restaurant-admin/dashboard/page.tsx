@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -24,7 +23,8 @@ import {
   Info,
   Package,
   Calendar,
-  Palette
+  Palette,
+  ShieldAlert
 } from 'lucide-react';
 import { MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
