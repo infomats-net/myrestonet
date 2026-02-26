@@ -1,4 +1,3 @@
-
 "use client"
 
 import { 
@@ -37,7 +36,7 @@ export function AdminSidebar() {
             <ShieldCheck className="h-5 w-5 text-white" />
           </div>
           <span className="font-bold text-lg text-primary truncate group-data-[collapsible=icon]:hidden">
-            DineFlow Super
+            MyRestoNet Super
           </span>
         </Link>
       </SidebarHeader>

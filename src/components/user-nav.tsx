@@ -41,7 +41,7 @@ export function UserNav() {
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-bold leading-none">Admin User</p>
-              <p className="text-xs leading-none text-muted-foreground">admin@dineflow.com</p>
+              <p className="text-xs leading-none text-muted-foreground">admin@myrestonet.com</p>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="my-2" />

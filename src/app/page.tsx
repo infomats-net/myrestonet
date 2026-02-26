@@ -1,4 +1,3 @@
-
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -14,7 +13,7 @@ export default function Home() {
           <div className="bg-primary rounded-lg p-1">
             <ShoppingBag className="h-6 w-6 text-white" />
           </div>
-          <span className="text-xl font-bold font-headline tracking-tight text-primary">DineFlow Global</span>
+          <span className="text-xl font-bold font-headline tracking-tight text-primary">MyRestoNet</span>
         </Link>
         <nav className="ml-auto flex gap-4 sm:gap-6">
           <Link className="text-sm font-medium hover:underline underline-offset-4" href="/auth/login">
@@ -62,7 +61,7 @@ export default function Home() {
                   </div>
                   <CardTitle className="font-headline text-2xl">Super Admin</CardTitle>
                   <CardDescription>
-                    Manage the entire DineFlow platform. Subscriptions, global configs, and restaurant onboarding.
+                    Manage the entire MyRestoNet platform. Subscriptions, global configs, and restaurant onboarding.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-1">
@@ -112,7 +111,7 @@ export default function Home() {
 
       <footer className="border-t py-6 bg-white">
         <div className="container px-4 md:px-6 mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">© 2024 DineFlow Global Inc. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">© 2024 MyRestoNet Global Inc. All rights reserved.</p>
           <nav className="flex gap-4 sm:gap-6">
             <Link className="text-sm text-muted-foreground hover:underline" href="#">Terms of Service</Link>
             <Link className="text-sm text-muted-foreground hover:underline" href="#">Privacy</Link>

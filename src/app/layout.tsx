@@ -1,9 +1,8 @@
-
 import type {Metadata} from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'DineFlow Global | Multi-tenant Restaurant SaaS',
+  title: 'MyRestoNet | Multi-tenant Restaurant SaaS',
   description: 'High-performance global restaurant management platform.',
 };
 

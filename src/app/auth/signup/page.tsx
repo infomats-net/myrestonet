@@ -37,7 +37,7 @@ export default function SignupPage() {
             </div>
           </div>
           <CardTitle className="text-3xl font-headline font-bold text-primary">Platform Registration</CardTitle>
-          <CardDescription>Create your Super Admin account to manage DineFlow Global</CardDescription>
+          <CardDescription>Create your Super Admin account to manage MyRestoNet Global</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
@@ -45,7 +45,7 @@ export default function SignupPage() {
               <Label htmlFor="org">Organization / Platform Name</Label>
               <Input 
                 id="org" 
-                placeholder="DineFlow Global" 
+                placeholder="MyRestoNet Global" 
                 required 
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
@@ -56,7 +56,7 @@ export default function SignupPage() {
               <Input 
                 id="email" 
                 type="email" 
-                placeholder="admin@dineflow.com" 
+                placeholder="admin@myrestonet.com" 
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
