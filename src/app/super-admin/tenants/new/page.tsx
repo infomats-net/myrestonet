@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Form,
   FormControl,
@@ -33,12 +35,23 @@ import Link from 'next/link';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
 import { MOCK_RESTAURANTS } from '@/lib/mock-data';
 
+const CUISINES = [
+  "Afghan", "African", "American", "Arabic", "Argentine", "Armenian", "Asian", "Australian", "Austrian", "Azerbaijani",
+  "Bangladeshi", "Belgian", "Brazilian", "British", "Burmese", "Cajun", "Cambodian", "Caribbean", "Chinese", "Colombian",
+  "Cuban", "Czech", "Danish", "Eastern European", "Egyptian", "Ethiopian", "Filipino", "French", "Georgian", "German",
+  "Greek", "Guatemalan", "Hungarian", "Indian", "Indonesian", "Iranian", "Iraqi", "Irish", "Israeli", "Italian",
+  "Jamaican", "Japanese", "Jordanian", "Kazakh", "Kenyan", "Korean", "Lebanese", "Malaysian", "Mediterranean", "Mexican",
+  "Middle Eastern", "Moroccan", "Nepalese", "Nigerian", "North African", "Norwegian", "Pakistani", "Palestinian", "Persian", "Peruvian",
+  "Polish", "Portuguese", "Russian", "Saudi Arabian", "Scandinavian", "Scottish", "South African", "South American", "Spanish", "Sri Lankan",
+  "Swedish", "Swiss", "Syrian", "Taiwanese", "Thai", "Tibetan", "Turkish", "Ukrainian", "Uzbek", "Vietnamese"
+].sort();
+
 const formSchema = z.object({
   restaurantName: z.string().min(2, "Restaurant name must be at least 2 characters"),
   customDomain: z.string().optional(),
   contactName: z.string().min(2, "Contact name is required"),
   contactNumber: z.string().optional(),
-  cuisine: z.string().min(1, "Please select a cuisine type"),
+  cuisine: z.array(z.string()).min(1, "Please select at least one cuisine type"),
   country: z.string().min(1, "Please select a country"),
   currency: z.string().min(1, "Please select a currency"),
   city: z.string().optional(),
@@ -48,7 +61,6 @@ const formSchema = z.object({
   adminEmail: z.string()
     .email("Invalid email address")
     .refine((email) => {
-      // Simulate uniqueness check against existing mock data
       return !MOCK_RESTAURANTS.some(r => r.adminEmail.toLowerCase() === email.toLowerCase());
     }, { message: "This email is already registered to another tenant" }),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -69,7 +81,7 @@ export default function NewTenantPage() {
       customDomain: "",
       contactName: "",
       contactNumber: "",
-      cuisine: "",
+      cuisine: [],
       country: "Australia",
       currency: "AUD",
       city: "",
@@ -84,7 +96,6 @@ export default function NewTenantPage() {
 
   const selectedCountry = form.watch("country");
 
-  // Automatically update currency when country changes
   useEffect(() => {
     const countryData = WORLD_COUNTRIES.find(c => c.name === selectedCountry);
     if (countryData) {
@@ -190,27 +201,53 @@ export default function NewTenantPage() {
                     </FormItem>
                   )}
                 />
+                
                 <FormField
                   control={form.control}
                   name="cuisine"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Cuisine Types</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select cuisines" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="italian">Italian</SelectItem>
-                          <SelectItem value="japanese">Japanese</SelectItem>
-                          <SelectItem value="french">French</SelectItem>
-                          <SelectItem value="mexican">Mexican</SelectItem>
-                          <SelectItem value="indian">Indian</SelectItem>
-                          <SelectItem value="thai">Thai</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="mb-4">
+                        <FormLabel>Cuisine Types</FormLabel>
+                        <CardDescription>Select all that apply to this restaurant.</CardDescription>
+                      </div>
+                      <ScrollArea className="h-64 rounded-md border p-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {CUISINES.map((cuisine) => (
+                            <FormField
+                              key={cuisine}
+                              control={form.control}
+                              name="cuisine"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={cuisine}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(cuisine)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([...field.value, cuisine])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== cuisine
+                                                )
+                                              )
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="text-sm font-normal cursor-pointer">
+                                      {cuisine}
+                                    </FormLabel>
+                                  </FormItem>
+                                )
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </ScrollArea>
                       <FormMessage />
                     </FormItem>
                   )}
