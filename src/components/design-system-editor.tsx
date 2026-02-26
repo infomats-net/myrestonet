@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Palette, 
   Type, 
@@ -21,7 +22,12 @@ import {
   Tablet,
   Check,
   Sparkles,
-  Loader2
+  Loader2,
+  Code,
+  RefreshCw,
+  X,
+  ChevronRight,
+  User
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -36,6 +42,7 @@ interface DesignSettings {
     secondary: string;
     accent: string;
     background: string;
+    text: string;
     headerColor: string;
     footerColor: string;
   };
@@ -54,10 +61,11 @@ interface DesignSettings {
 
 const DEFAULT_SETTINGS: DesignSettings = {
   theme: {
-    primary: '#42668A',
-    secondary: '#F0F2F4',
-    accent: '#53C683',
+    primary: '#0EA5E9',
+    secondary: '#F0F9FF',
+    accent: '#0284C7',
     background: '#FFFFFF',
+    text: '#0F172A',
     headerColor: '#FFFFFF',
     footerColor: '#1A1A1A'
   },
@@ -75,10 +83,10 @@ const DEFAULT_SETTINGS: DesignSettings = {
 };
 
 const THEME_PRESETS = [
-  { name: 'Default Blue', colors: { primary: '#42668A', accent: '#53C683' } },
-  { name: 'Vibrant Orange', colors: { primary: '#FF5733', accent: '#FFC300' } },
-  { name: 'Midnight', colors: { primary: '#1A1A1A', accent: '#3498DB' } },
-  { name: 'Forest', colors: { primary: '#27AE60', accent: '#F1C40F' } },
+  { name: 'Light', colors: { primary: '#0EA5E9', accent: '#0284C7', background: '#FFFFFF', text: '#0F172A' } },
+  { name: 'Dark', colors: { primary: '#38BDF8', accent: '#0284C7', background: '#0F172A', text: '#F8FAFC' } },
+  { name: 'Modern', colors: { primary: '#10B981', accent: '#059669', background: '#F0FDFA', text: '#064E3B' } },
+  { name: 'Vibrant', colors: { primary: '#F43F5E', accent: '#E11D48', background: '#FFF1F2', text: '#4C0519' } },
 ];
 
 export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
@@ -86,6 +94,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  const [aiPrompt, setAiPrompt] = useState('');
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -134,250 +143,296 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   const applyPreset = (preset: typeof THEME_PRESETS[0]) => {
     setSettings(prev => ({
       ...prev,
-      theme: { ...prev.theme, primary: preset.colors.primary, accent: preset.colors.accent }
+      theme: { 
+        ...prev.theme, 
+        primary: preset.colors.primary, 
+        accent: preset.colors.accent,
+        background: preset.colors.background,
+        text: preset.colors.text
+      }
     }));
   };
 
   if (loading) return <div className="p-20 flex justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="flex flex-col xl:flex-row h-[calc((100vh-140px)*2)] gap-6">
-      {/* Sidebar Controls */}
-      <div className="w-full xl:w-96 space-y-6 overflow-y-auto no-scrollbar pb-10">
-        <Tabs defaultValue="theme" className="w-full">
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="theme"><Palette className="h-4 w-4 mr-2" /> Theme</TabsTrigger>
-            <TabsTrigger value="layout"><Layout className="h-4 w-4 mr-2" /> Layout</TabsTrigger>
-            <TabsTrigger value="fonts"><Type className="h-4 w-4 mr-2" /> Style</TabsTrigger>
-          </TabsList>
+    <div className="flex flex-col h-screen bg-slate-50 overflow-hidden -m-4 md:-m-8">
+      {/* Top Header Bar */}
+      <header className="h-20 bg-white border-b px-8 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="bg-sky-100 p-2.5 rounded-2xl">
+            <Palette className="h-6 w-6 text-sky-600" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 leading-none">Restaurant Front Designer</h1>
+            <p className="text-sm text-slate-500 mt-1">Customize your public restaurant identity.</p>
+          </div>
+        </div>
 
-          <TabsContent value="theme" className="space-y-6 mt-6">
-            <Card className="border-none shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Palette className="h-4 w-4" /> Branding Colors
-                </CardTitle>
-                <CardDescription className="text-xs">Define your restaurant's unique color palette.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold">Primary Color</Label>
-                    <div className="flex gap-2">
-                      <Input type="color" value={settings.theme.primary} onChange={(e) => setSettings({...settings, theme: {...settings.theme, primary: e.target.value}})} className="h-10 w-12 p-1" />
-                      <Input value={settings.theme.primary} onChange={(e) => setSettings({...settings, theme: {...settings.theme, primary: e.target.value}})} className="font-mono text-xs" />
-                    </div>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center bg-sky-50 rounded-full p-1 border border-sky-100">
+            <button 
+              onClick={() => setPreviewMode('desktop')}
+              className={cn("p-2 rounded-full transition-all", previewMode === 'desktop' ? "bg-white text-sky-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
+            >
+              <Monitor className="h-5 w-5" />
+            </button>
+            <button 
+              onClick={() => setPreviewMode('tablet')}
+              className={cn("p-2 rounded-full transition-all", previewMode === 'tablet' ? "bg-white text-sky-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
+            >
+              <Tablet className="h-5 w-5" />
+            </button>
+            <button 
+              onClick={() => setPreviewMode('mobile')}
+              className={cn("p-2 rounded-full transition-all", previewMode === 'mobile' ? "bg-white text-sky-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
+            >
+              <Smartphone className="h-5 w-5" />
+            </button>
+          </div>
+
+          <Button onClick={handleSave} disabled={saving} className="bg-sky-500 hover:bg-sky-600 text-white rounded-2xl h-11 px-6 shadow-lg shadow-sky-500/20 font-bold transition-all transform hover:-translate-y-0.5">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Publish Changes
+          </Button>
+
+          <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center border border-sky-200 text-sky-600 font-bold text-sm">
+            IT
+          </div>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar Controls */}
+        <aside className="w-[420px] bg-white border-r flex flex-col shrink-0">
+          <Tabs defaultValue="theme" className="flex-1 flex flex-col">
+            <div className="px-6 py-4 border-b bg-slate-50/50">
+              <TabsList className="w-full h-12 bg-white border p-1 rounded-2xl shadow-sm">
+                <TabsTrigger value="theme" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><Palette className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="gallery" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><ImageIcon className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="layout" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><Layout className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="fonts" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><Type className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="code" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><Code className="h-4 w-4" /></TabsTrigger>
+              </TabsList>
+            </div>
+
+            <ScrollArea className="flex-1 px-6 py-6">
+              <TabsContent value="theme" className="space-y-10 mt-0">
+                {/* AI Theme Designer */}
+                <div className="p-6 rounded-3xl bg-white border border-sky-100 shadow-sm relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <Sparkles className="h-12 w-12 text-sky-600" />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold">Accent Color</Label>
-                    <div className="flex gap-2">
-                      <Input type="color" value={settings.theme.accent} onChange={(e) => setSettings({...settings, theme: {...settings.theme, accent: e.target.value}})} className="h-10 w-12 p-1" />
-                      <Input value={settings.theme.accent} onChange={(e) => setSettings({...settings, theme: {...settings.theme, accent: e.target.value}})} className="font-mono text-xs" />
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles className="h-4 w-4 text-sky-500" />
+                    <h3 className="text-sm font-bold text-sky-600 tracking-wider uppercase">AI Theme Designer</h3>
+                  </div>
+                  <div className="relative mb-4">
+                    <Textarea 
+                      placeholder="e.g. A rustic Italian trattoria with warm earth tones and elegant typography..." 
+                      className="min-h-[100px] bg-slate-50 border-sky-100 focus-visible:ring-sky-500 rounded-2xl p-4 text-sm placeholder:text-slate-400"
+                      value={aiPrompt}
+                      onChange={(e) => setAiPrompt(e.target.value)}
+                    />
+                  </div>
+                  <Button variant="outline" className="w-full rounded-full h-11 border-sky-200 text-sky-700 hover:bg-sky-50 font-bold gap-2">
+                    <RefreshCw className="h-4 w-4" />
+                    Generate Palette
+                  </Button>
+                </div>
+
+                {/* Color Palette Grid */}
+                <div>
+                  <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 px-1">Color Palette</h4>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-6">
+                    <div className="space-y-2.5">
+                      <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Primary</Label>
+                      <div className="flex gap-2">
+                        <Input type="color" value={settings.theme.primary} onChange={(e) => setSettings({...settings, theme: {...settings.theme, primary: e.target.value}})} className="h-11 w-11 p-1 rounded-lg shrink-0 border-slate-200 cursor-pointer" />
+                        <Input value={settings.theme.primary} onChange={(e) => setSettings({...settings, theme: {...settings.theme, primary: e.target.value}})} className="h-11 rounded-xl bg-slate-50 border-slate-200 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
+                      </div>
+                    </div>
+                    <div className="space-y-2.5">
+                      <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Accent</Label>
+                      <div className="flex gap-2">
+                        <Input type="color" value={settings.theme.accent} onChange={(e) => setSettings({...settings, theme: {...settings.theme, accent: e.target.value}})} className="h-11 w-11 p-1 rounded-lg shrink-0 border-slate-200 cursor-pointer" />
+                        <Input value={settings.theme.accent} onChange={(e) => setSettings({...settings, theme: {...settings.theme, accent: e.target.value}})} className="h-11 rounded-xl bg-slate-50 border-slate-200 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
+                      </div>
+                    </div>
+                    <div className="space-y-2.5">
+                      <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Background</Label>
+                      <div className="flex gap-2">
+                        <Input type="color" value={settings.theme.background} onChange={(e) => setSettings({...settings, theme: {...settings.theme, background: e.target.value}})} className="h-11 w-11 p-1 rounded-lg shrink-0 border-slate-200 cursor-pointer" />
+                        <Input value={settings.theme.background} onChange={(e) => setSettings({...settings, theme: {...settings.theme, background: e.target.value}})} className="h-11 rounded-xl bg-slate-50 border-slate-200 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
+                      </div>
+                    </div>
+                    <div className="space-y-2.5">
+                      <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Text</Label>
+                      <div className="flex gap-2">
+                        <Input type="color" value={settings.theme.text} onChange={(e) => setSettings({...settings, theme: {...settings.theme, text: e.target.value}})} className="h-11 w-11 p-1 rounded-lg shrink-0 border-slate-200 cursor-pointer" />
+                        <Input value={settings.theme.text} onChange={(e) => setSettings({...settings, theme: {...settings.theme, text: e.target.value}})} className="h-11 rounded-xl bg-slate-50 border-slate-200 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
+                      </div>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">Presets</Label>
-                  <div className="grid grid-cols-2 gap-2">
+
+                {/* Template Presets */}
+                <div>
+                  <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 px-1">Template Presets</h4>
+                  <div className="grid grid-cols-2 gap-4">
                     {THEME_PRESETS.map((p) => (
                       <Button 
                         key={p.name} 
                         variant="outline" 
-                        size="sm" 
-                        className="h-8 justify-start text-[10px]"
+                        className="h-14 rounded-2xl bg-sky-50/30 border-sky-100 hover:bg-sky-50 hover:border-sky-200 text-slate-700 font-medium text-sm transition-all"
                         onClick={() => applyPreset(p)}
                       >
-                        <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: p.colors.primary }} />
                         {p.name}
                       </Button>
                     ))}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </TabsContent>
 
-            <Card className="border-none shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold">Navigation Styling</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">Header Background</Label>
-                  <Input type="color" value={settings.theme.headerColor} onChange={(e) => setSettings({...settings, theme: {...settings.theme, headerColor: e.target.value}})} className="h-10" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">Footer Background</Label>
-                  <Input type="color" value={settings.theme.footerColor} onChange={(e) => setSettings({...settings, theme: {...settings.theme, footerColor: e.target.value}})} className="h-10" />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="layout" className="space-y-6 mt-6">
-            <Card className="border-none shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Layout className="h-4 w-4" /> Section Visibility
-                </CardTitle>
-                <CardDescription className="text-xs">Control which components appear on your storefront.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs font-bold">Hero Header</Label>
-                    <p className="text-[10px] text-muted-foreground">The large banner at the top.</p>
-                  </div>
-                  <Switch checked={settings.sections.hero.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, hero: {...settings.sections.hero, visible: v}}})} />
-                </div>
-                <div className="flex items-center justify-between border-t pt-4">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs font-bold">About Section</Label>
-                    <p className="text-[10px] text-muted-foreground">Your story and description.</p>
-                  </div>
-                  <Switch checked={settings.sections.about.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, about: {visible: v}}})} />
-                </div>
-                <div className="flex items-center justify-between border-t pt-4">
-                  <div className="space-y-0.5">
-                    <Label className="text-xs font-bold">Photo Gallery</Label>
-                    <p className="text-[10px] text-muted-foreground">Display your venue and food.</p>
-                  </div>
-                  <Switch checked={settings.sections.gallery.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, gallery: {visible: v}}})} />
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="fonts" className="space-y-6 mt-6">
-            <Card className="border-none shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                  <Type className="h-4 w-4" /> Typography
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">Global Font Family</Label>
-                  <Select value={settings.typography.fontFamily} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, fontFamily: v}})}>
-                    <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Inter">Inter (Sans)</SelectItem>
-                      <SelectItem value="Playfair Display">Playfair (Serif)</SelectItem>
-                      <SelectItem value="Montserrat">Montserrat (Modern)</SelectItem>
-                      <SelectItem value="Roboto">Roboto (Clean)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">Base Font Size</Label>
-                  <Select value={settings.typography.baseSize} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, baseSize: v}})}>
-                    <SelectTrigger className="text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="14px">Small (14px)</SelectItem>
-                      <SelectItem value="16px">Standard (16px)</SelectItem>
-                      <SelectItem value="18px">Large (18px)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        <div className="flex flex-col gap-2 pt-4">
-          <Button onClick={handleSave} disabled={saving} className="w-full h-12 bg-primary shadow-lg">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Publish Design Changes
-          </Button>
-          <Button variant="ghost" onClick={() => setSettings(DEFAULT_SETTINGS)} className="text-xs">
-            <RotateCcw className="mr-2 h-3 w-3" /> Reset to Defaults
-          </Button>
-        </div>
-      </div>
-
-      {/* Preview Pane */}
-      <div className="flex-1 bg-muted/30 rounded-3xl overflow-hidden border-4 border-muted flex flex-col relative group">
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-white/90 backdrop-blur-md px-4 py-2 rounded-full border shadow-2xl flex items-center gap-6 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="flex items-center gap-2 border-r pr-4">
-            <Monitor className={cn("h-5 w-5 cursor-pointer transition-colors", previewMode === 'desktop' ? "text-primary" : "text-muted-foreground")} onClick={() => setPreviewMode('desktop')} />
-            <Tablet className={cn("h-5 w-5 cursor-pointer transition-colors", previewMode === 'tablet' ? "text-primary" : "text-muted-foreground")} onClick={() => setPreviewMode('tablet')} />
-            <Smartphone className={cn("h-5 w-5 cursor-pointer transition-colors", previewMode === 'mobile' ? "text-primary" : "text-muted-foreground")} onClick={() => setPreviewMode('mobile')} />
-          </div>
-          <div className="flex items-center gap-2">
-            <Eye className="h-4 w-4 text-accent" />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Live Editing Mode</span>
-          </div>
-        </div>
-
-        <div className={cn(
-          "flex-1 mx-auto transition-all duration-500 overflow-hidden bg-white shadow-2xl",
-          previewMode === 'desktop' ? "w-full" : previewMode === 'tablet' ? "w-[768px]" : "w-[375px]"
-        )}>
-          {/* Simulated Storefront */}
-          <div className="h-full overflow-y-auto no-scrollbar" style={{ fontFamily: settings.typography.fontFamily }}>
-            {/* Nav */}
-            <div className="h-16 border-b flex items-center justify-between px-6" style={{ backgroundColor: settings.theme.headerColor }}>
-              <div className="h-8 w-32 bg-primary/20 rounded animate-pulse" style={{ backgroundColor: `${settings.theme.primary}20` }} />
-              <div className="flex gap-4">
-                <div className="h-4 w-12 bg-muted rounded" />
-                <div className="h-4 w-12 bg-muted rounded" />
-                <div className="h-4 w-12 bg-muted rounded" />
-              </div>
-            </div>
-
-            {/* Hero */}
-            {settings.sections.hero.visible && (
-              <div className="w-full flex items-center justify-center relative overflow-hidden bg-muted" style={{ height: settings.sections.hero.height }}>
-                <img src={`https://picsum.photos/seed/${restaurantId}/1200/600`} className="absolute inset-0 w-full h-full object-cover opacity-60 brightness-75" />
-                <div className="relative text-center space-y-4">
-                  <h1 className="text-4xl font-bold text-white shadow-sm">Restaurant Name</h1>
-                  <Button className="rounded-full px-8 h-12" style={{ backgroundColor: settings.theme.primary }}>Order Now</Button>
-                </div>
-              </div>
-            )}
-
-            {/* About */}
-            {settings.sections.about.visible && (
-              <div className="p-12 text-center max-w-2xl mx-auto space-y-4">
-                <h2 className="text-3xl font-bold" style={{ color: settings.theme.primary }}>Our Story</h2>
-                <p className="text-muted-foreground leading-relaxed" style={{ fontSize: settings.typography.baseSize }}>
-                  We believe in serving authentic flavors using only the freshest local ingredients. 
-                  Experience the art of culinary excellence in a warm and inviting atmosphere.
-                </p>
-                <div className="w-16 h-1 mx-auto rounded-full" style={{ backgroundColor: settings.theme.accent }} />
-              </div>
-            )}
-
-            {/* Menu Snippet */}
-            <div className="p-12 bg-muted/20">
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-2xl font-bold">Featured Menu</h2>
-                <span className="text-sm font-bold uppercase tracking-widest" style={{ color: settings.theme.accent }}>View All</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                {[1, 2].map(i => (
-                  <Card key={i} className="overflow-hidden border-none shadow-sm">
-                    <div className="h-32 bg-muted">
-                      <img src={`https://picsum.photos/seed/${i + 10}/300/200`} className="w-full h-full object-cover" />
+              <TabsContent value="layout" className="space-y-6 mt-0">
+                <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 px-1">Layout & Sections</h4>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg shadow-sm"><Monitor className="h-4 w-4 text-slate-500" /></div>
+                      <span className="text-sm font-bold text-slate-700">Hero Header</span>
                     </div>
-                    <div className="p-4 space-y-2">
-                      <div className="h-4 w-3/4 bg-muted rounded" />
-                      <div className="h-3 w-1/2 bg-muted rounded" />
-                      <div className="flex justify-between items-center pt-2">
-                        <span className="font-bold" style={{ color: settings.theme.primary }}>$14.00</span>
-                        <div className="h-8 w-8 rounded-full" style={{ backgroundColor: settings.theme.accent }} />
-                      </div>
+                    <Switch checked={settings.sections.hero.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, hero: {...settings.sections.hero, visible: v}}})} />
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg shadow-sm"><ImageIcon className="h-4 w-4 text-slate-500" /></div>
+                      <span className="text-sm font-bold text-slate-700">Gallery</span>
                     </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
+                    <Switch checked={settings.sections.gallery.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, gallery: {visible: v}}})} />
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg shadow-sm"><User className="h-4 w-4 text-slate-500" /></div>
+                      <span className="text-sm font-bold text-slate-700">About Section</span>
+                    </div>
+                    <Switch checked={settings.sections.about.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, about: {visible: v}}})} />
+                  </div>
+                </div>
+              </TabsContent>
 
-            {/* Footer */}
-            <div className="p-12 text-white text-center" style={{ backgroundColor: settings.theme.footerColor }}>
-              <p className="text-xs opacity-50 uppercase tracking-widest font-bold">© 2024 Restaurant Name Global</p>
+              <TabsContent value="fonts" className="space-y-6 mt-0">
+                <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 px-1">Typography</h4>
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Font Family</Label>
+                    <Select value={settings.typography.fontFamily} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, fontFamily: v}})}>
+                      <SelectTrigger className="h-12 rounded-2xl bg-slate-50 border-slate-200"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Inter">Inter (Sans)</SelectItem>
+                        <SelectItem value="Playfair Display">Playfair (Serif)</SelectItem>
+                        <SelectItem value="Montserrat">Montserrat (Modern)</SelectItem>
+                        <SelectItem value="Roboto">Roboto (Clean)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </TabsContent>
+            </ScrollArea>
+          </Tabs>
+        </aside>
+
+        {/* Main Preview Area */}
+        <main className="flex-1 bg-slate-100 flex flex-col items-center justify-center p-12 overflow-hidden">
+          <div className={cn(
+            "relative bg-white shadow-2xl transition-all duration-700 ease-in-out border-[12px] border-slate-900 overflow-hidden flex flex-col",
+            previewMode === 'desktop' ? "w-full max-w-5xl h-[85%]" : previewMode === 'tablet' ? "w-[768px] h-[90%]" : "w-[375px] h-[80%]",
+            "rounded-[40px]"
+          )}>
+            {/* Simulated Storefront Content */}
+            <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth" style={{ 
+              fontFamily: settings.typography.fontFamily,
+              backgroundColor: settings.theme.background,
+              color: settings.theme.text
+            }}>
+              {/* Nav */}
+              <nav className="h-20 flex items-center justify-between px-10 sticky top-0 z-50 backdrop-blur-md" style={{ backgroundColor: `${settings.theme.headerColor}CC` }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center">
+                    <ImageIcon className="h-5 w-5 text-sky-500" />
+                  </div>
+                  <span className="font-bold text-lg tracking-tight">Meze Kebab and Grill</span>
+                </div>
+                <div className="flex gap-8 text-[11px] font-black uppercase tracking-[0.2em] opacity-50">
+                  <span className="cursor-pointer hover:opacity-100">Menu</span>
+                  <span className="cursor-pointer hover:opacity-100">About</span>
+                  <span className="cursor-pointer hover:opacity-100">Contact</span>
+                </div>
+              </nav>
+
+              {/* Hero */}
+              {settings.sections.hero.visible && (
+                <section className="min-h-[500px] flex flex-col items-center justify-center text-center px-10 py-20 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-sky-50 opacity-50" />
+                  <div className="relative z-10 max-w-3xl">
+                    <h2 className="text-6xl font-black mb-6 leading-[1.1]" style={{ color: settings.theme.text }}>
+                      Meze Kebab and Grill
+                    </h2>
+                    <p className="text-xl opacity-70 mb-10 font-medium">
+                      Signature culinary experience.
+                    </p>
+                    <Button 
+                      className="rounded-full h-16 px-12 text-lg font-black shadow-xl transition-all transform hover:scale-105" 
+                      style={{ 
+                        backgroundColor: settings.theme.primary,
+                        color: settings.theme.background 
+                      }}
+                    >
+                      Order Now
+                    </Button>
+                  </div>
+                </section>
+              )}
+
+              {/* About */}
+              {settings.sections.about.visible && (
+                <section className="py-24 px-16 grid grid-cols-2 gap-16 items-center">
+                  <div className="bg-slate-50 rounded-[2.5rem] h-[300px] flex items-center justify-center">
+                    <Layout className="h-16 w-16 text-slate-200" />
+                  </div>
+                  <div className="space-y-6">
+                    <h3 className="text-4xl font-black leading-tight">The Craft Story</h3>
+                    <p className="text-lg opacity-60 leading-relaxed">
+                      Experience a blend of tradition and modern culinary techniques. Every dish is a story of passion and fresh ingredients.
+                    </p>
+                  </div>
+                </section>
+              )}
+
+              {/* Gallery */}
+              {settings.sections.gallery.visible && (
+                <section className="py-24 px-16 bg-slate-50/50">
+                  <div className="grid grid-cols-3 gap-6">
+                    <div className="aspect-square bg-white rounded-3xl" />
+                    <div className="aspect-square bg-white rounded-3xl" />
+                    <div className="aspect-square bg-white rounded-3xl" />
+                  </div>
+                </section>
+              )}
+
+              {/* Footer */}
+              <footer className="py-16 text-center opacity-30 border-t">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]">© 2024 Meze Kebab Global</p>
+              </footer>
             </div>
           </div>
-        </div>
+          
+          {/* Status Indicator */}
+          <div className="mt-8 flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Live Preview Active
+          </div>
+        </main>
       </div>
     </div>
   );
