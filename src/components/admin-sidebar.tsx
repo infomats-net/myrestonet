@@ -8,7 +8,8 @@ import {
   ShieldCheck,
   LogOut,
   Settings,
-  Bell
+  Bell,
+  Activity
 } from "lucide-react"
 import {
   Sidebar,
@@ -86,15 +87,15 @@ export function AdminSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Notifications">
-                  <Link href="/super-admin/dashboard">
+                <SidebarMenuButton asChild tooltip="Notifications" isActive={pathname === "/super-admin/logs"}>
+                  <Link href="/super-admin/logs">
                     <Bell />
                     <span>Alerts & Logs</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Settings">
+                <SidebarMenuButton asChild tooltip="Settings" isActive={pathname === "/super-admin/settings"}>
                   <Link href="/super-admin/dashboard">
                     <Settings />
                     <span>System Settings</span>
