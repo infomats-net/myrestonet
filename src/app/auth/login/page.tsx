@@ -74,7 +74,7 @@ export default function LoginPage() {
               <ShoppingBag className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-headline font-bold">MyRestoNet</CardTitle>
+          <CardTitle className="text-3xl font-headline font-bold text-primary">MyRestoNet</CardTitle>
           <CardDescription>Enter your credentials to access the platform</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
@@ -93,7 +93,7 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link href="#" className="text-xs text-primary hover:underline">Forgot password?</Link>
+                <Link href="/auth/forgot-password" size="sm" className="text-xs text-primary hover:underline">Forgot password?</Link>
               </div>
               <Input 
                 id="password" 
