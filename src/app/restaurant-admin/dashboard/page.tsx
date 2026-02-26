@@ -16,7 +16,8 @@ import {
   Clock,
   ArrowUpRight,
   Save,
-  Loader2
+  Loader2,
+  Plus
 } from 'lucide-react';
 import { MOCK_MENU_ITEMS, MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
