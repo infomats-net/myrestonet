@@ -1,10 +1,7 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    /**
-     * DINEFLOW GLOBAL SECURITY RULES
-     */
 
     function isSignedIn() {
       return request.auth != null;
@@ -12,9 +9,7 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isSignedIn() && (
-        // Check for the explicit marker document
         exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid)) ||
-        // Bootstrap/God Mode for the platform owner email
         request.auth.token.email == "infomats.net@gmail.com"
       );
     }
@@ -23,41 +18,30 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == adminId;
     }
 
-    function isDataCustomer(data) {
-      return isSignedIn() && request.auth.uid == data.customerId;
-    }
-
     function isDataAdmin(data) {
       return isSignedIn() && (request.auth.uid == data.adminUserId || isSuperAdmin());
     }
 
-    // --- GLOBAL SUPER ADMIN OVERRIDE (GOD MODE) ---
-    // This allows Super Admins to bypass all other rules for any document in the database.
     match /{document=**} {
       allow read, write: if isSuperAdmin();
     }
 
-    // --- SPECIFIC COLLECTION RULES (For non-SuperAdmins) ---
-
     match /users/{userId} {
       allow get: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
       allow list: if isSuperAdmin();
-      allow create: if isSignedIn(); // Allow initial profile creation
+      allow create: if isSignedIn();
       allow update: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
-      allow delete: if isSuperAdmin();
-    }
-
-    match /superAdmins/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSuperAdmin();
-      allow create: if isSignedIn() && (request.auth.uid == userId || isSuperAdmin());
-      allow update, delete: if isSuperAdmin();
     }
 
     match /restaurants/{restaurantId} {
-      allow get, list: if true; // Publicly viewable for customers
+      allow get, list: if true;
       allow create: if isSuperAdmin();
       allow update, delete: if isSuperAdmin() || (resource != null && isDataAdmin(resource.data));
+
+      match /design/{designId} {
+        allow get: if true;
+        allow write: if isSuperAdmin() || isRestaurantAdmin(get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.adminUserId);
+      }
 
       match /menus/{menuId} {
         allow get, list: if true;
@@ -70,24 +54,10 @@ service cloud.firestore {
       }
 
       match /orders/{orderId} {
-        allow get: if isDataCustomer(resource.data) || isDataAdmin(resource.data) || isSuperAdmin();
+        allow get: if isSignedIn();
         allow list: if isSignedIn();
         allow create: if isSignedIn();
-        allow update: if isDataCustomer(resource.data) || isDataAdmin(resource.data) || isSuperAdmin();
-        allow delete: if isSuperAdmin();
-      }
-
-      match /paymentTransactions/{paymentTransactionId} {
-        allow get: if isDataCustomer(resource.data) || isDataAdmin(resource.data) || isSuperAdmin();
-        allow list: if isSuperAdmin();
-        allow create: if isSignedIn();
-        allow update, delete: if isSuperAdmin();
-      }
-
-      match /subscriptions/{subscriptionId} {
-        allow get: if isSuperAdmin() || isDataAdmin(resource.data);
-        allow list: if isSuperAdmin();
-        allow create, update, delete: if isSuperAdmin();
+        allow update: if isSignedIn();
       }
     }
   }

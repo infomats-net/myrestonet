@@ -24,7 +24,14 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   }, [firestore, restaurantId]);
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
 
-  // 2. Fetch Active Menus for this restaurant
+  // 2. Fetch Design Data
+  const designRef = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return doc(firestore, 'restaurants', restaurantId, 'design', 'settings');
+  }, [firestore, restaurantId]);
+  const { data: design } = useDoc(designRef);
+
+  // 3. Fetch Active Menus for this restaurant
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return query(
@@ -36,14 +43,12 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
 
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
-  // Set default active menu once menus load
   useEffect(() => {
     if (menus && menus.length > 0 && !activeMenuId) {
       setActiveMenuId(menus[0].id);
     }
   }, [menus, activeMenuId]);
 
-  // 3. Fetch Items for the currently selected active menu
   const itemsQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId || !activeMenuId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'menus', activeMenuId, 'menuItems');
@@ -96,228 +101,180 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
         </div>
         <div className="space-y-2">
           <h1 className="text-2xl font-bold">Restaurant Not Found</h1>
-          <p className="text-muted-foreground max-w-xs">We couldn't find the restaurant you're looking for. It may have moved or closed.</p>
+          <p className="text-muted-foreground max-w-xs">We couldn't find the restaurant you're looking for.</p>
         </div>
-        <Button asChild>
-          <Link href="/">Back to Home</Link>
-        </Button>
+        <Button asChild><Link href="/">Back to Home</Link></Button>
       </div>
     );
   }
 
-  const currencySymbol = restaurant?.baseCurrency === 'GBP' ? '£' : (restaurant?.baseCurrency === 'USD' ? '$' : (restaurant?.baseCurrency === 'AUD' ? '$' : restaurant?.baseCurrency || '£'));
+  const currencySymbol = restaurant?.baseCurrency === 'GBP' ? '£' : '$';
   const activeMenu = menus?.find(m => m.id === activeMenuId);
 
-  return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Top Navigation Overlay */}
-      <div className="fixed top-0 left-0 right-0 z-50 p-4 pointer-events-none">
-        <Button variant="ghost" size="icon" asChild className="pointer-events-auto text-white bg-black/20 hover:bg-black/40 rounded-full">
-          <Link href="/"><ChevronLeft className="h-6 w-6" /></Link>
-        </Button>
-      </div>
+  // Dynamic Styles from Design Config
+  const designStyles = {
+    '--primary': design?.theme?.primary || '#42668A',
+    '--accent': design?.theme?.accent || '#53C683',
+    '--background': design?.theme?.background || '#FFFFFF',
+    '--font-family': design?.typography?.fontFamily || 'Inter',
+    '--header-bg': design?.theme?.headerColor || '#FFFFFF',
+    '--footer-bg': design?.theme?.footerColor || '#1A1A1A',
+  } as React.CSSProperties;
 
-      {/* Hero Header */}
-      <div className="relative h-48 md:h-64 overflow-hidden bg-primary/20">
-        <img 
-          src={`https://picsum.photos/seed/${restaurantId}/1200/600`}
-          alt="Restaurant Cover" 
-          className="w-full h-full object-cover brightness-75"
-          data-ai-hint="restaurant interior"
-        />
-      </div>
+  return (
+    <div className="min-h-screen bg-background pb-24" style={designStyles}>
+      {/* Dynamic Font Import */}
+      {design?.typography?.fontFamily && (
+        <link href={`https://fonts.googleapis.com/css2?family=${design.typography.fontFamily.replace(' ', '+')}:wght@400;700&display=swap`} rel="stylesheet" />
+      )}
+
+      {/* Hero Section */}
+      {design?.sections?.hero?.visible !== false && (
+        <div className="relative h-48 md:h-64 overflow-hidden bg-primary/20">
+          <img 
+            src={`https://picsum.photos/seed/${restaurantId}/1200/600`}
+            alt="Restaurant Cover" 
+            className="w-full h-full object-cover brightness-75"
+          />
+        </div>
+      )}
 
       <div className="container max-w-4xl mx-auto px-4 -mt-12 relative z-10">
         <Card className="border-none shadow-xl mb-6">
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
-                <h1 className="text-3xl font-headline font-bold text-primary">{restaurant?.name}</h1>
-                <p className="text-muted-foreground">
-                  {Array.isArray(restaurant?.cuisine) ? restaurant.cuisine.join(' • ') : restaurant?.cuisineType || 'International'} • {restaurant?.city}, {restaurant?.country}
+                <h1 className="text-3xl font-headline font-bold" style={{ color: designStyles['--primary'] as string }}>{restaurant?.name}</h1>
+                <p className="text-muted-foreground text-sm">
+                  {Array.isArray(restaurant?.cuisine) ? restaurant.cuisine.join(' • ') : 'International'} • {restaurant?.city}, {restaurant?.country}
                 </p>
                 <div className="flex flex-wrap items-center gap-4 text-sm mt-3">
-                  <span className="flex items-center text-accent font-bold"><Star className="h-4 w-4 fill-current mr-1" /> 4.9 (Live)</span>
+                  <span className="flex items-center font-bold" style={{ color: designStyles['--accent'] as string }}><Star className="h-4 w-4 fill-current mr-1" /> 4.9 (Live)</span>
                   <span className="flex items-center text-muted-foreground"><Clock className="h-4 w-4 mr-1" /> 20-30 min</span>
                   <span className="flex items-center text-muted-foreground"><MapPin className="h-4 w-4 mr-1" /> {restaurant?.address}</span>
                 </div>
               </div>
               <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 hidden sm:block">
                 <p className="text-xs uppercase text-muted-foreground font-bold">Store Status</p>
-                <p className="text-sm font-semibold text-accent">Open for Orders</p>
+                <p className="text-sm font-semibold" style={{ color: designStyles['--accent'] as string }}>Open for Orders</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Categories / Menus Navigation Bar */}
+        {/* About Section */}
+        {design?.sections?.about?.visible && (
+          <div className="mb-10 px-4 py-8 bg-white rounded-2xl border shadow-sm text-center">
+            <h2 className="text-xl font-bold mb-4" style={{ color: designStyles['--primary'] as string }}>Our Story</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl mx-auto">
+              {restaurant?.description}
+            </p>
+          </div>
+        )}
+
+        {/* Categories Bar */}
         <div className="sticky top-0 bg-background/80 backdrop-blur-md z-40 -mx-4 px-4 py-4 border-b mb-6">
           <div className="flex gap-2 overflow-x-auto no-scrollbar max-w-4xl mx-auto">
-            {menus && menus.length > 0 ? menus.map((m: any) => (
+            {menus?.map((m: any) => (
               <button
                 key={m.id}
                 onClick={() => setActiveMenuId(m.id)}
                 className={cn(
                   "whitespace-nowrap px-6 py-2 rounded-full text-sm font-bold transition-all",
                   activeMenuId === m.id 
-                    ? "bg-primary text-white shadow-md shadow-primary/20" 
+                    ? "text-white shadow-md" 
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
+                style={activeMenuId === m.id ? { backgroundColor: designStyles['--primary'] as string } : {}}
               >
                 {m.name}
               </button>
-            )) : (
-              <Badge variant="outline" className="whitespace-nowrap px-4 py-1.5 opacity-50">
-                No active menus
-              </Badge>
-            )}
+            ))}
           </div>
         </div>
 
-        {/* Menu Grid */}
+        {/* Menu Items */}
         <div className="grid gap-6">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-2xl font-bold font-headline">
-              {activeMenu?.name || 'Menu Items'}
-            </h2>
-            {activeMenu?.description && (
-              <p className="text-xs text-muted-foreground italic max-w-[50%] text-right">{activeMenu.description}</p>
-            )}
-          </div>
-          
+          <h2 className="text-2xl font-bold px-1">{activeMenu?.name || 'Menu Items'}</h2>
           {loadingItems ? (
-            <div className="flex justify-center py-20">
-              <Loader2 className="h-10 w-10 animate-spin text-primary/30" />
-            </div>
-          ) : items && items.length > 0 ? (
+            <div className="flex justify-center py-20"><Loader2 className="h-10 w-10 animate-spin opacity-20" /></div>
+          ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {items.map((item: any) => (
-                <Card key={item.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow group h-full">
-                  <div className="flex h-full">
+              {items?.map((item: any) => (
+                <Card key={item.id} className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow group">
+                  <div className="flex h-36">
                     <div className="flex-1 p-4 flex flex-col justify-between">
                       <div className="space-y-1">
-                        <h3 className="font-bold text-lg leading-tight">{item.name}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">{item.description}</p>
+                        <h3 className="font-bold text-base leading-tight">{item.name}</h3>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                       </div>
-                      <div className="flex items-center justify-between mt-4">
-                        <span className="text-lg font-bold text-primary">{currencySymbol}{item.price.toFixed(2)}</span>
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold" style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{item.price.toFixed(2)}</span>
                         <Button 
                           size="sm" 
-                          className="bg-primary hover:bg-primary/90 rounded-full h-10 w-10 p-0 shadow-lg shadow-primary/20" 
+                          className="rounded-full h-8 w-8 p-0" 
                           onClick={() => addToCart(item)}
-                          disabled={item.isAvailable === false}
+                          style={{ backgroundColor: designStyles['--primary'] as string }}
                         >
-                          <Plus className="h-5 w-5" />
+                          <Plus className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
-                    <div className="w-28 sm:w-36 h-full overflow-hidden relative bg-muted shrink-0">
-                      {item.imageUrl ? (
-                        <img 
-                          src={item.imageUrl} 
-                          alt={item.name} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <UtensilsCrossed className="h-8 w-8 text-muted-foreground/20" />
-                        </div>
-                      )}
-                      {item.isAvailable === false && (
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center p-2">
-                          <Badge variant="destructive" className="text-[10px] uppercase">Sold Out</Badge>
-                        </div>
-                      )}
+                    <div className="w-28 h-full relative bg-muted">
+                      <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/200/200`} className="w-full h-full object-cover" />
+                      {!item.isAvailable && <div className="absolute inset-0 bg-black/60 flex items-center justify-center"><Badge variant="destructive">Sold Out</Badge></div>}
                     </div>
                   </div>
                 </Card>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-20 border-2 border-dashed rounded-3xl space-y-4">
-              <div className="bg-muted p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
-                <UtensilsCrossed className="h-8 w-8 text-muted-foreground/30" />
-              </div>
-              <p className="text-muted-foreground">This section is currently being updated. Check back soon!</p>
-            </div>
           )}
         </div>
       </div>
 
-      {/* Floating Cart Button */}
+      {/* Floating Cart */}
       {cartCount > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-50">
           <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
             <SheetTrigger asChild>
-              <Button size="lg" className="w-full shadow-2xl bg-primary text-white h-16 text-lg font-bold flex justify-between px-8 rounded-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 px-2.5 py-1 rounded-lg text-sm">{cartCount}</div>
-                  <span>Review Order</span>
-                </div>
+              <Button className="w-full shadow-2xl h-16 text-lg font-bold flex justify-between px-8 rounded-2xl" style={{ backgroundColor: designStyles['--primary'] as string }}>
+                <span className="bg-white/20 px-2 py-1 rounded-lg text-sm">{cartCount}</span>
+                <span>Review Order</span>
                 <span>{currencySymbol}{cartTotal.toFixed(2)}</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="bottom" className="h-[85vh] rounded-t-[2.5rem] border-none">
-              <SheetHeader className="mb-6">
-                <SheetTitle className="text-2xl font-headline font-bold text-center">Your Order</SheetTitle>
-              </SheetHeader>
-              <div className="py-2 space-y-6 overflow-y-auto max-h-[55vh] no-scrollbar">
-                {cart.length === 0 ? (
-                  <div className="text-center py-20 text-muted-foreground flex flex-col items-center gap-4">
-                    <ShoppingBag className="h-12 w-12 opacity-20" />
-                    <span>Your cart is empty</span>
-                  </div>
-                ) : (
-                  cart.map((entry) => (
-                    <div key={entry.item.id} className="flex justify-between items-center bg-muted/30 p-3 rounded-2xl">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-muted flex-shrink-0">
-                          <img 
-                            src={entry.item.imageUrl || `https://picsum.photos/seed/${entry.item.id}/100/100`} 
-                            className="w-full h-full object-cover" 
-                          />
-                        </div>
-                        <div>
-                          <p className="font-bold text-sm leading-tight">{entry.item.name}</p>
-                          <p className="text-xs text-muted-foreground mt-1">{currencySymbol}{entry.item.price.toFixed(2)} each</p>
-                        </div>
+            <SheetContent side="bottom" className="h-[80vh] rounded-t-[2rem]">
+              <SheetHeader><SheetTitle>Your Order</SheetTitle></SheetHeader>
+              <div className="py-6 space-y-4 overflow-y-auto max-h-[50vh]">
+                {cart.map((entry) => (
+                  <div key={entry.item.id} className="flex justify-between items-center p-3 bg-muted/20 rounded-xl">
+                    <div className="flex gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-muted overflow-hidden">
+                        <img src={entry.item.imageUrl || `https://picsum.photos/seed/${entry.item.id}/100/100`} className="w-full h-full object-cover" />
                       </div>
-                      <div className="flex items-center gap-3 bg-white p-1 rounded-full border shadow-sm">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => updateQty(entry.item.id, -1)}>
-                          <Minus className="h-4 w-4" />
-                        </Button>
-                        <span className="w-4 text-center font-bold text-sm">{entry.qty}</span>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => updateQty(entry.item.id, 1)}>
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      <div><p className="font-bold text-sm">{entry.item.name}</p><p className="text-xs opacity-60">{currencySymbol}{entry.item.price}</p></div>
                     </div>
-                  ))
-                )}
+                    <div className="flex items-center gap-3">
+                      <Button variant="outline" size="icon" className="h-7 w-7 rounded-full" onClick={() => updateQty(entry.item.id, -1)}><Minus className="h-3 w-3" /></Button>
+                      <span className="text-sm font-bold">{entry.qty}</span>
+                      <Button variant="outline" size="icon" className="h-7 w-7 rounded-full" onClick={() => updateQty(entry.item.id, 1)}><Plus className="h-3 w-3" /></Button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <SheetFooter className="absolute bottom-0 left-0 w-full p-6 bg-white border-t space-y-4 rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.05)]">
-                <div className="space-y-2 w-full">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span className="font-semibold">{currencySymbol}{cartTotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Delivery / Service</span>
-                    <span className="font-bold text-accent">FREE</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-2 border-t mt-2">
-                    <span className="text-lg font-bold">Total</span>
-                    <span className="text-2xl font-bold text-primary">{currencySymbol}{cartTotal.toFixed(2)}</span>
-                  </div>
-                </div>
-                <Button className="w-full h-16 text-lg font-bold bg-primary rounded-2xl shadow-xl shadow-primary/20" disabled={cartCount === 0}>
-                  Proceed to Checkout
-                </Button>
+              <SheetFooter className="absolute bottom-0 left-0 w-full p-6 border-t bg-white">
+                <div className="flex justify-between w-full mb-4 font-bold text-lg"><span>Total</span><span>{currencySymbol}{cartTotal.toFixed(2)}</span></div>
+                <Button className="w-full h-14 text-lg font-bold rounded-xl" style={{ backgroundColor: designStyles['--primary'] as string }}>Place Order</Button>
               </SheetFooter>
             </SheetContent>
           </Sheet>
         </div>
       )}
+
+      {/* Footer Section */}
+      <footer className="mt-20 py-10 text-center border-t" style={{ backgroundColor: designStyles['--footer-bg'] as string }}>
+        <p className="text-xs font-bold uppercase tracking-widest text-white/50">© 2024 {restaurant?.name} Global</p>
+      </footer>
     </div>
   );
 }

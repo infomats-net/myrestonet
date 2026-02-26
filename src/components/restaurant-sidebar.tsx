@@ -11,7 +11,8 @@ import {
   LogOut,
   ShoppingBag,
   ExternalLink,
-  Loader2
+  Loader2,
+  Palette
 } from "lucide-react"
 import {
   Sidebar,
@@ -33,35 +34,24 @@ import { doc } from "firebase/firestore"
 import { Suspense } from "react"
 
 function SidebarLinks() {
-  const { auth, firestore } = useMemoFirebase(() => {
-    // This is a bit of a hack because we are inside a Suspense and useMemoFirebase 
-    // but the hook itself needs the initialized services. 
-    // We'll rely on the parent provider.
-    return { auth: null, firestore: null };
-  }, []); 
-  
-  // Real implementation starts here
-  const { auth: firebaseAuth, firestore: db } = useAuth && useFirestore ? { auth: useAuth(), firestore: useFirestore() } : { auth: null, firestore: null };
+  const auth = useAuth();
+  const db = useFirestore();
   const { user: authUser } = useUser();
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const impersonateId = searchParams.get('impersonate');
 
-  // Fetch user profile if not impersonating to get their restaurantId
   const userProfileRef = useMemoFirebase(() => {
     if (!db || !authUser?.uid || impersonateId) return null;
     return doc(db, 'users', authUser.uid);
   }, [db, authUser?.uid, impersonateId]);
 
   const { data: userProfile } = useDoc(userProfileRef);
-
   const effectiveRestaurantId = impersonateId || userProfile?.restaurantId;
 
   const handleSignOut = async () => {
-    if (!firebaseAuth) return;
     try {
-      await signOut(firebaseAuth);
+      await signOut(auth);
       router.push("/auth/login");
     } catch (error) {
       console.error("Logout failed:", error);
@@ -71,14 +61,13 @@ function SidebarLinks() {
   const getHref = (tab: string) => {
     const params = new URLSearchParams();
     params.set('tab', tab);
-    if (impersonateId) {
-      params.set('impersonate', impersonateId);
-    }
+    if (impersonateId) params.set('impersonate', impersonateId);
     return `/restaurant-admin/dashboard?${params.toString()}`;
   };
 
   const isTabActive = (tab: string) => {
-    return searchParams.get('tab') === tab || (tab === 'overview' && !searchParams.get('tab'));
+    const currentTab = searchParams.get('tab') || 'overview';
+    return currentTab === tab;
   };
 
   return (
@@ -117,14 +106,14 @@ function SidebarLinks() {
         </SidebarGroup>
         
         <SidebarGroup>
-          <SidebarGroupLabel>Growth Tools</SidebarGroupLabel>
+          <SidebarGroupLabel>Brand & Customization</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="AI Insights" isActive={isTabActive('analytics')}>
-                  <Link href={getHref('analytics')}>
-                    <Sparkles className="text-accent" />
-                    <span>AI Analytics</span>
+                <SidebarMenuButton asChild tooltip="Design" isActive={isTabActive('design')}>
+                  <Link href={getHref('design')}>
+                    <Palette className="text-accent" />
+                    <span>Design Management</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -133,6 +122,14 @@ function SidebarLinks() {
                   <Link href={getHref('seo')}>
                     <Globe />
                     <span>Localized SEO</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="AI Insights" isActive={isTabActive('analytics')}>
+                  <Link href={getHref('analytics')}>
+                    <Sparkles className="text-accent" />
+                    <span>AI Analytics</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -145,7 +142,7 @@ function SidebarLinks() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="View Storefront" className="text-primary hover:text-primary hover:bg-primary/5">
+                <SidebarMenuButton asChild tooltip="View Storefront" className="text-primary hover:bg-primary/5">
                   <Link href={effectiveRestaurantId ? `/customer/${effectiveRestaurantId}` : "#"} target="_blank">
                     <ExternalLink />
                     <span>Public Storefront</span>
@@ -170,7 +167,7 @@ function SidebarLinks() {
             <SidebarMenuButton 
               tooltip="Sign Out" 
               onClick={handleSignOut}
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="text-destructive hover:bg-destructive/10"
             >
               <LogOut />
               <span>Sign Out</span>

@@ -23,7 +23,8 @@ import {
   ChevronLeft,
   Info,
   Package,
-  Calendar
+  Calendar,
+  Palette
 } from 'lucide-react';
 import { MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
@@ -35,6 +36,7 @@ import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection } from 'firebase/firestore';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DesignSystemEditor } from '@/components/design-system-editor';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -43,18 +45,14 @@ function DashboardContent() {
   const firestore = useFirestore();
   const { user: authUser } = useUser();
   
-  // 1. Fetch user profile from Firestore to get their restaurantId
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !authUser?.uid) return null;
     return doc(firestore, 'users', authUser.uid);
   }, [firestore, authUser?.uid]);
   
   const { data: userProfile, isLoading: loadingProfile } = useDoc(userProfileRef);
-
-  // 2. Determine which restaurant to display
   const effectiveRestaurantId = impersonateId || (userProfile?.role === 'RestaurantAdmin' ? userProfile.restaurantId : null);
 
-  // 3. Fetch Restaurant Data
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return doc(firestore, 'restaurants', effectiveRestaurantId);
@@ -62,7 +60,6 @@ function DashboardContent() {
 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
   
-  // 4. Fetch Menus (Real-time)
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return collection(firestore, 'restaurants', effectiveRestaurantId, 'menus');
@@ -70,7 +67,6 @@ function DashboardContent() {
 
   const { data: menus, isLoading: loadingMenus } = useCollection(menusQuery);
 
-  // 5. Fetch Orders (Real-time)
   const ordersQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return collection(firestore, 'restaurants', effectiveRestaurantId, 'orders');
@@ -96,7 +92,6 @@ function DashboardContent() {
     locale: 'en-GB'
   });
 
-  // Sync tab state with URL search param
   useEffect(() => {
     if (initialTab && initialTab !== activeTab) {
       setActiveTab(initialTab);
@@ -192,13 +187,13 @@ function DashboardContent() {
             </h1>
             <Badge className="bg-accent/20 text-accent border-accent/20">Active Pro</Badge>
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             {restaurant?.contactEmail} • Location: {restaurant?.city}, {restaurant?.country}
           </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="border-primary text-primary hover:bg-primary/10" asChild>
-            <Link href={`/customer/${restaurant.id}`}>
+            <Link href={`/customer/${restaurant.id}`} target="_blank">
               <ShoppingCart className="mr-2 h-4 w-4" /> View Storefront
             </Link>
           </Button>
@@ -209,12 +204,15 @@ function DashboardContent() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab} value={activeTab}>
-        <TabsList className="bg-white border p-1 rounded-xl flex overflow-x-auto no-scrollbar">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Overview</TabsTrigger>
-          <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Orders</TabsTrigger>
-          <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">Menus</TabsTrigger>
-          <TabsTrigger value="seo" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">SEO Engine</TabsTrigger>
-          <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">AI Insights</TabsTrigger>
+        <TabsList className="bg-white border p-1 rounded-xl flex overflow-x-auto no-scrollbar h-auto w-full md:w-auto">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Overview</TabsTrigger>
+          <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Orders</TabsTrigger>
+          <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Menus</TabsTrigger>
+          <TabsTrigger value="design" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2">
+            <Palette className="h-4 w-4" /> Design System
+          </TabsTrigger>
+          <TabsTrigger value="seo" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">SEO Engine</TabsTrigger>
+          <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">AI Insights</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-4">
@@ -286,30 +284,23 @@ function DashboardContent() {
             <Card className="border-none shadow-lg">
               <CardHeader>
                 <CardTitle className="font-headline text-xl flex items-center gap-2">
-                  <Globe className="h-5 w-5 text-primary" /> Local SEO Health
+                  <Palette className="h-5 w-5 text-primary" /> Storefront Design
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center text-sm">
-                    <span>Google Maps Status</span>
-                    <Badge variant="outline" className="text-accent border-accent px-3">Optimized</Badge>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span>Schema.org Markup</span>
-                    <Badge variant="outline" className="text-destructive border-destructive px-3">Outdated</Badge>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span>Menu Localization</span>
-                    <Badge variant="outline" className="text-accent border-accent px-3">Complete (EN)</Badge>
-                  </div>
-                  <Button variant="outline" className="w-full mt-4" onClick={() => setActiveTab('seo')}>
-                    Update SEO Settings
+                  <p className="text-sm text-muted-foreground">Customize your website's theme, colors, and layout in our drag-and-drop editor.</p>
+                  <Button variant="outline" className="w-full" onClick={() => setActiveTab('design')}>
+                    Open Design Management
                   </Button>
                 </div>
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="design" className="pt-4">
+          <DesignSystemEditor restaurantId={effectiveRestaurantId!} />
         </TabsContent>
 
         <TabsContent value="orders" className="space-y-6 pt-4">
