@@ -28,7 +28,11 @@ import {
   RefreshCw,
   X,
   ChevronRight,
-  User
+  User,
+  UtensilsCrossed,
+  MessageSquare,
+  Phone,
+  MapPin
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -56,8 +60,11 @@ interface DesignSettings {
   sections: {
     hero: { visible: boolean; height: string };
     about: { visible: boolean };
+    menuList: { visible: boolean };
     gallery: { visible: boolean };
-    reviews: { visible: boolean };
+    testimonials: { visible: boolean };
+    contact: { visible: boolean };
+    map: { visible: boolean };
   };
 }
 
@@ -79,8 +86,11 @@ const DEFAULT_SETTINGS: DesignSettings = {
   sections: {
     hero: { visible: true, height: '400px' },
     about: { visible: true },
+    menuList: { visible: true },
     gallery: { visible: true },
-    reviews: { visible: true }
+    testimonials: { visible: true },
+    contact: { visible: true },
+    map: { visible: true }
   }
 };
 
@@ -111,7 +121,15 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
       docRef, 
       (snap) => {
         if (snap.exists()) {
-          setSettings(snap.data() as DesignSettings);
+          const data = snap.data();
+          // Merge with defaults to handle new section properties
+          setSettings({
+            ...DEFAULT_SETTINGS,
+            ...data,
+            theme: { ...DEFAULT_SETTINGS.theme, ...data.theme },
+            typography: { ...DEFAULT_SETTINGS.typography, ...data.typography },
+            sections: { ...DEFAULT_SETTINGS.sections, ...data.sections },
+          } as DesignSettings);
         }
         setLoading(false);
       },
@@ -183,7 +201,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   if (loading) return <div className="p-20 flex justify-center h-full"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] bg-slate-50 overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
+    <div className="flex flex-col h-full bg-slate-50 overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar Controls */}
         <aside className="w-[420px] bg-white border-r flex flex-col shrink-0">
@@ -201,22 +219,22 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
             <ScrollArea className="flex-1 px-6 py-6">
               <TabsContent value="theme" className="space-y-10 mt-0 pb-10">
                 {/* AI Theme Designer */}
-                <div className="p-6 rounded-[2rem] bg-sky-50/50 border border-sky-100/50 shadow-sm relative overflow-hidden group">
+                <div className="p-6 rounded-3xl bg-white border border-sky-100 shadow-sm relative overflow-hidden group">
                   <div className="flex items-center gap-2 mb-4">
                     <Sparkles className="h-4 w-4 text-sky-500" />
                     <h3 className="text-sm font-bold text-sky-600 tracking-wider uppercase">AI Theme Designer</h3>
                   </div>
-                  <div className="bg-white rounded-[1.5rem] border border-sky-100 p-2 mb-4 overflow-hidden shadow-sm">
+                  <div className="bg-sky-50 rounded-2xl border border-sky-100 p-2 mb-4 overflow-hidden shadow-sm">
                     <Textarea 
                       placeholder="e.g. A rustic Italian trattoria with warm earth tones and elegant typography..." 
-                      className="min-h-[100px] border-none focus-visible:ring-0 shadow-none text-sm placeholder:text-slate-400 p-3"
+                      className="min-h-[100px] border-none focus-visible:ring-0 shadow-none text-sm placeholder:text-slate-400 p-3 bg-transparent"
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
                     />
                   </div>
                   <Button 
                     variant="outline" 
-                    className="w-full rounded-full h-11 border-sky-200 text-sky-700 hover:bg-white bg-white font-bold gap-2 shadow-sm"
+                    className="w-full rounded-full h-11 border-sky-200 text-sky-700 hover:bg-sky-50 bg-white font-bold gap-2 shadow-sm"
                     onClick={handleAiGenerate}
                     disabled={generatingAi}
                   >
@@ -280,13 +298,27 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
               <TabsContent value="layout" className="space-y-6 mt-0">
                 <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 px-1">Layout & Sections</h4>
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-3">
                       <div className="bg-white p-2 rounded-lg shadow-sm"><Monitor className="h-4 w-4 text-slate-500" /></div>
                       <span className="text-sm font-bold text-slate-700">Hero Header</span>
                     </div>
                     <Switch checked={settings.sections.hero.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, hero: {...settings.sections.hero, visible: v}}})} />
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg shadow-sm"><User className="h-4 w-4 text-slate-500" /></div>
+                      <span className="text-sm font-bold text-slate-700">About Section</span>
+                    </div>
+                    <Switch checked={settings.sections.about.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, about: {visible: v}}})} />
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg shadow-sm"><UtensilsCrossed className="h-4 w-4 text-slate-500" /></div>
+                      <span className="text-sm font-bold text-slate-700">Menu List</span>
+                    </div>
+                    <Switch checked={settings.sections.menuList.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, menuList: {visible: v}}})} />
                   </div>
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-3">
@@ -297,10 +329,24 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg shadow-sm"><User className="h-4 w-4 text-slate-500" /></div>
-                      <span className="text-sm font-bold text-slate-700">About Section</span>
+                      <div className="bg-white p-2 rounded-lg shadow-sm"><MessageSquare className="h-4 w-4 text-slate-500" /></div>
+                      <span className="text-sm font-bold text-slate-700">Testimonials</span>
                     </div>
-                    <Switch checked={settings.sections.about.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, about: {visible: v}}})} />
+                    <Switch checked={settings.sections.testimonials.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, testimonials: {visible: v}}})} />
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg shadow-sm"><Phone className="h-4 w-4 text-slate-500" /></div>
+                      <span className="text-sm font-bold text-slate-700">Contact</span>
+                    </div>
+                    <Switch checked={settings.sections.contact.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, contact: {visible: v}}})} />
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg shadow-sm"><MapPin className="h-4 w-4 text-slate-500" /></div>
+                      <span className="text-sm font-bold text-slate-700">Map</span>
+                    </div>
+                    <Switch checked={settings.sections.map.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, map: {visible: v}}})} />
                   </div>
                 </div>
               </TabsContent>
@@ -404,28 +450,30 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 </section>
               )}
 
-              <section className="py-16 px-10 bg-slate-50/50">
-                <div className="flex justify-between items-end mb-8">
-                  <h3 className="text-2xl font-black">Featured Menu</h3>
-                  <Button variant="link" className="font-bold uppercase tracking-widest text-[9px]">View All</Button>
-                </div>
-                <div className="grid grid-cols-1 gap-4">
-                  <div className="p-4 bg-white rounded-2xl shadow-sm flex gap-4 items-center">
-                    <div className="w-16 h-16 bg-slate-100 rounded-xl shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-sm">Signature Dish</h4>
-                      <p className="text-xs opacity-50">$14.00</p>
+              {settings.sections.menuList.visible && (
+                <section className="py-16 px-10 bg-slate-50/50">
+                  <div className="flex justify-between items-end mb-8">
+                    <h3 className="text-2xl font-black">Featured Menu</h3>
+                    <Button variant="link" className="font-bold uppercase tracking-widest text-[9px]">View All</Button>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="p-4 bg-white rounded-2xl shadow-sm flex gap-4 items-center">
+                      <div className="w-16 h-16 bg-slate-100 rounded-xl shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-sm">Signature Dish</h4>
+                        <p className="text-xs opacity-50">$14.00</p>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-white rounded-2xl shadow-sm flex gap-4 items-center">
+                      <div className="w-16 h-16 bg-slate-100 rounded-xl shrink-0" />
+                      <div>
+                        <h4 className="font-bold text-sm">Chef Special</h4>
+                        <p className="text-xs opacity-50">$14.00</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="p-4 bg-white rounded-2xl shadow-sm flex gap-4 items-center">
-                    <div className="w-16 h-16 bg-slate-100 rounded-xl shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-sm">Chef Special</h4>
-                      <p className="text-xs opacity-50">$14.00</p>
-                    </div>
-                  </div>
-                </div>
-              </section>
+                </section>
+              )}
 
               <footer className="py-12 text-center opacity-30 border-t">
                 <p className="text-[9px] font-black uppercase tracking-[0.2em]">© 2024 Restaurant Name Global</p>
