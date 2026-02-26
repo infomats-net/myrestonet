@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   Palette, 
   Type, 
@@ -197,7 +198,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
           </Button>
 
           <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center border border-sky-200 text-sky-600 font-bold text-sm">
-            IT
+            {restaurantId.slice(0, 2).toUpperCase()}
           </div>
         </div>
       </header>
@@ -361,7 +362,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center">
                     <ImageIcon className="h-5 w-5 text-sky-500" />
                   </div>
-                  <span className="font-bold text-lg tracking-tight">Meze Kebab and Grill</span>
+                  <span className="font-bold text-lg tracking-tight">Restaurant Name</span>
                 </div>
                 <div className="flex gap-8 text-[11px] font-black uppercase tracking-[0.2em] opacity-50">
                   <span className="cursor-pointer hover:opacity-100">Menu</span>
@@ -376,7 +377,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   <div className="absolute inset-0 bg-sky-50 opacity-50" />
                   <div className="relative z-10 max-w-3xl">
                     <h2 className="text-6xl font-black mb-6 leading-[1.1]" style={{ color: settings.theme.text }}>
-                      Meze Kebab and Grill
+                      Restaurant Name
                     </h2>
                     <p className="text-xl opacity-70 mb-10 font-medium">
                       Signature culinary experience.
@@ -401,28 +402,41 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                     <Layout className="h-16 w-16 text-slate-200" />
                   </div>
                   <div className="space-y-6">
-                    <h3 className="text-4xl font-black leading-tight">The Craft Story</h3>
+                    <h3 className="text-4xl font-black leading-tight">Our Story</h3>
                     <p className="text-lg opacity-60 leading-relaxed">
-                      Experience a blend of tradition and modern culinary techniques. Every dish is a story of passion and fresh ingredients.
+                      We believe in serving authentic flavors using only the freshest local ingredients. Experience the art of culinary excellence in a warm and inviting atmosphere.
                     </p>
                   </div>
                 </section>
               )}
 
-              {/* Gallery */}
-              {settings.sections.gallery.visible && (
-                <section className="py-24 px-16 bg-slate-50/50">
-                  <div className="grid grid-cols-3 gap-6">
-                    <div className="aspect-square bg-white rounded-3xl" />
-                    <div className="aspect-square bg-white rounded-3xl" />
-                    <div className="aspect-square bg-white rounded-3xl" />
+              {/* Featured Menu Preview */}
+              <section className="py-24 px-16 bg-slate-50/50">
+                <div className="flex justify-between items-end mb-12">
+                  <h3 className="text-4xl font-black">Featured Menu</h3>
+                  <Button variant="link" className="font-bold uppercase tracking-widest text-[11px]">View All</Button>
+                </div>
+                <div className="grid grid-cols-2 gap-8">
+                  <div className="p-6 bg-white rounded-[2rem] shadow-sm flex gap-6 items-center">
+                    <div className="w-24 h-24 bg-slate-100 rounded-2xl shrink-0" />
+                    <div className="flex-1">
+                      <h4 className="font-bold">Signature Dish</h4>
+                      <p className="text-sm opacity-50">$14.00</p>
+                    </div>
                   </div>
-                </section>
-              )}
+                  <div className="p-6 bg-white rounded-[2rem] shadow-sm flex gap-6 items-center">
+                    <div className="w-24 h-24 bg-slate-100 rounded-2xl shrink-0" />
+                    <div className="flex-1">
+                      <h4 className="font-bold">Chef Special</h4>
+                      <p className="text-sm opacity-50">$14.00</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
 
               {/* Footer */}
               <footer className="py-16 text-center opacity-30 border-t">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em]">© 2024 Meze Kebab Global</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]">© 2024 Restaurant Name Global</p>
               </footer>
             </div>
           </div>
