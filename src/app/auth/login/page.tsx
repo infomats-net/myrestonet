@@ -43,11 +43,10 @@ export default function LoginPage() {
         } else if (role === 'RestaurantAdmin') {
           router.push('/restaurant-admin/dashboard');
         } else {
-          // Default to customer view for others
           router.push(`/customer/${userData.restaurantId || 'demo'}`);
         }
       } else {
-        // Fallback if profile doesn't exist yet
+        // Fallback for first-time login/manual provisioning
         router.push('/super-admin/dashboard');
       }
 
@@ -75,8 +74,8 @@ export default function LoginPage() {
               <ShoppingBag className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-headline font-bold">Welcome Back</CardTitle>
-          <CardDescription>Enter your credentials to access your portal</CardDescription>
+          <CardTitle className="text-3xl font-headline font-bold">MyRestoNet</CardTitle>
+          <CardDescription>Enter your credentials to access the platform</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
@@ -109,10 +108,6 @@ export default function LoginPage() {
             <Button className="w-full text-lg h-12" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
             </Button>
-            <div className="text-center text-sm">
-              Don&apos;t have an account?{" "}
-              <Link href="/auth/signup" className="text-primary font-semibold hover:underline">Sign up</Link>
-            </div>
           </CardFooter>
         </form>
       </Card>

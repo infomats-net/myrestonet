@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { LayoutDashboard, Store, Users, ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
@@ -7,7 +6,6 @@ import { LayoutDashboard, Store, Users, ShoppingBag, ArrowRight, ShieldCheck } f
 export default function Home() {
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Navigation */}
       <header className="px-4 lg:px-6 h-16 flex items-center border-b bg-white">
         <Link className="flex items-center justify-center gap-2" href="/">
           <div className="bg-primary rounded-lg p-1">
@@ -19,14 +17,10 @@ export default function Home() {
           <Link className="text-sm font-medium hover:underline underline-offset-4" href="/auth/login">
             Login
           </Link>
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/auth/signup">
-            Super Admin Signup
-          </Link>
         </nav>
       </header>
 
       <main className="flex-1">
-        {/* Hero Section */}
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-primary text-white">
           <div className="container px-4 md:px-6 mx-auto">
             <div className="flex flex-col items-center space-y-4 text-center">
@@ -40,17 +34,13 @@ export default function Home() {
               </div>
               <div className="space-x-4">
                 <Button size="lg" variant="secondary" asChild>
-                  <Link href="/auth/signup">Get Started as Super Admin</Link>
-                </Button>
-                <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground" asChild>
-                  <Link href="/customer/rest-1">View Demo Menu <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                  <Link href="/auth/login">Access Your Portal</Link>
                 </Button>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Persona Entry Points */}
         <section className="w-full py-12 md:py-24 lg:py-32 bg-background">
           <div className="container px-4 md:px-6 mx-auto">
             <div className="grid gap-8 lg:grid-cols-3">
@@ -100,7 +90,7 @@ export default function Home() {
                 </CardHeader>
                 <CardContent className="flex-1">
                   <Button variant="ghost" className="w-full mt-auto" asChild>
-                    <Link href="/customer/rest-1">Try Ordering App</Link>
+                    <Link href="/customer/demo">Try Ordering App</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -112,10 +102,6 @@ export default function Home() {
       <footer className="border-t py-6 bg-white">
         <div className="container px-4 md:px-6 mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">© 2024 MyRestoNet Global Inc. All rights reserved.</p>
-          <nav className="flex gap-4 sm:gap-6">
-            <Link className="text-sm text-muted-foreground hover:underline" href="#">Terms of Service</Link>
-            <Link className="text-sm text-muted-foreground hover:underline" href="#">Privacy</Link>
-          </nav>
         </div>
       </footer>
     </div>
