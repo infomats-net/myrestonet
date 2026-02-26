@@ -8,23 +8,79 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Loader2, ShieldCheck } from 'lucide-react';
+import { useFirebase } from '@/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
   const [orgName, setOrgName] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { auth, firestore } = useFirebase();
+  const { toast } = useToast();
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth || !firestore) return;
+    
     setLoading(true);
     
-    // Simulating signup and routing to the super admin dashboard
-    setTimeout(() => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create user profile in Firestore
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userData = {
+        id: user.uid,
+        email: email,
+        name: fullName || orgName,
+        role: 'SuperAdmin',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      setDoc(userDocRef, userData)
+        .catch(async (error) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'create',
+            requestResourceData: userData
+          }));
+        });
+
+      // Create superAdmin marker
+      const adminMarkerRef = doc(firestore, 'superAdmins', user.uid);
+      setDoc(adminMarkerRef, { id: user.uid })
+        .catch(async (error) => {
+           errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: adminMarkerRef.path,
+            operation: 'create',
+            requestResourceData: { id: user.uid }
+          }));
+        });
+
+      toast({
+        title: "Account created",
+        description: "Welcome to MyRestoNet Global.",
+      });
+
       router.push('/super-admin/dashboard');
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Signup failed",
+        description: error.message || "An error occurred during registration.",
+      });
+    } finally {
       setLoading(false);
-    }, 1200);
+    }
   };
 
   return (
@@ -41,6 +97,16 @@ export default function SignupPage() {
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input 
+                id="fullName" 
+                placeholder="Jane Doe" 
+                required 
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="org">Organization / Platform Name</Label>
               <Input 

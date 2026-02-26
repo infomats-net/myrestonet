@@ -8,28 +8,62 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { ShoppingBag, Loader2 } from 'lucide-react';
+import { useFirebase } from '@/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { auth, firestore } = useFirebase();
+  const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!auth || !firestore) return;
+
     setLoading(true);
     
-    // Simulating authentication routing based on role
-    setTimeout(() => {
-      if (email.includes('super')) {
-        router.push('/super-admin/dashboard');
-      } else if (email.includes('rest')) {
-        router.push('/restaurant-admin/dashboard');
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Fetch user role from Firestore
+      const userDoc = await getDoc(doc(firestore, 'users', user.uid));
+      
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const role = userData.role;
+
+        if (role === 'SuperAdmin') {
+          router.push('/super-admin/dashboard');
+        } else if (role === 'RestaurantAdmin') {
+          router.push('/restaurant-admin/dashboard');
+        } else {
+          // Default to customer view for others
+          router.push(`/customer/${userData.restaurantId || 'demo'}`);
+        }
       } else {
-        router.push('/customer/rest-1');
+        // Fallback if profile doesn't exist yet
+        router.push('/super-admin/dashboard');
       }
+
+      toast({
+        title: "Welcome back",
+        description: "Successfully signed in.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: "Invalid email or password.",
+      });
+    } finally {
       setLoading(false);
-    }, 800);
+    }
   };
 
   return (
