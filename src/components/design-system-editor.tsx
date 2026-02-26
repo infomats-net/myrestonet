@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -142,7 +141,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   if (loading) return <div className="p-20 flex justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="flex flex-col xl:flex-row h-[calc(100vh-140px)] gap-6">
+    <div className="flex flex-col xl:flex-row h-[calc((100vh-140px)*2)] gap-6">
       {/* Sidebar Controls */}
       <div className="w-full xl:w-96 space-y-6 overflow-y-auto no-scrollbar pb-10">
         <Tabs defaultValue="theme" className="w-full">
