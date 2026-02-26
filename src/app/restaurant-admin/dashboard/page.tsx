@@ -1,8 +1,7 @@
-
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -33,7 +32,6 @@ export default function RestaurantAdminDashboard() {
   const [loadingAi, setLoadingAi] = useState(false);
   const [loadingSeo, setLoadingSeo] = useState(false);
 
-  // Form states for SEO
   const [seoForm, setSeoForm] = useState({
     restaurantName: 'Bella Napoli',
     cuisineType: 'Italian',
@@ -74,7 +72,7 @@ export default function RestaurantAdminDashboard() {
   };
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto bg-background min-h-screen">
+    <div className="p-4 md:p-8 space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -101,9 +99,9 @@ export default function RestaurantAdminDashboard() {
           <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6">AI Analytics</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className="space-y-6 pt-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-md">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Daily Sales</CardTitle>
                 <TrendingUp className="h-4 w-4 text-accent" />
@@ -113,7 +111,7 @@ export default function RestaurantAdminDashboard() {
                 <p className="text-xs text-muted-foreground">+8.2% from yesterday</p>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-md">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Open Orders</CardTitle>
                 <Clock className="h-4 w-4 text-primary" />
@@ -123,7 +121,7 @@ export default function RestaurantAdminDashboard() {
                 <p className="text-xs text-muted-foreground">4 urgent (delayed)</p>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-sm">
+            <Card className="border-none shadow-md">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Avg. Prep Time</CardTitle>
                 <Utensils className="h-4 w-4 text-muted-foreground" />
@@ -136,7 +134,7 @@ export default function RestaurantAdminDashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="border-none shadow-md">
+            <Card className="border-none shadow-lg">
               <CardHeader>
                 <CardTitle className="font-headline text-xl flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" /> AI Insights Preview
@@ -152,7 +150,7 @@ export default function RestaurantAdminDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <div className="p-4 bg-accent-soft rounded-lg">
+                    <div className="p-4 bg-accent-soft rounded-lg border border-accent/10">
                       <p className="text-sm italic">"{aiInsights.overallPerformanceSummary}"</p>
                     </div>
                     <div>
@@ -167,7 +165,7 @@ export default function RestaurantAdminDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-md">
+            <Card className="border-none shadow-lg">
               <CardHeader>
                 <CardTitle className="font-headline text-xl flex items-center gap-2">
                   <Globe className="h-5 w-5 text-primary" /> Local SEO Health
@@ -177,15 +175,15 @@ export default function RestaurantAdminDashboard() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center text-sm">
                     <span>Google Maps Status</span>
-                    <Badge variant="outline" className="text-accent border-accent">Optimized</Badge>
+                    <Badge variant="outline" className="text-accent border-accent px-3">Optimized</Badge>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span>Schema.org Markup</span>
-                    <Badge variant="outline" className="text-destructive border-destructive">Outdated</Badge>
+                    <Badge variant="outline" className="text-destructive border-destructive px-3">Outdated</Badge>
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span>Menu Localization</span>
-                    <Badge variant="outline" className="text-accent border-accent">Complete (EN, IT)</Badge>
+                    <Badge variant="outline" className="text-accent border-accent px-3">Complete (EN, IT)</Badge>
                   </div>
                   <Button variant="outline" className="w-full mt-4" onClick={() => setActiveTab('seo')}>
                     Update SEO Settings
@@ -196,14 +194,14 @@ export default function RestaurantAdminDashboard() {
           </div>
         </TabsContent>
 
-        <TabsContent value="menu" className="space-y-6">
-          <Card className="border-none shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between">
+        <TabsContent value="menu" className="space-y-6 pt-4">
+          <Card className="border-none shadow-lg">
+            <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div>
                 <CardTitle className="font-headline">Menu Catalog</CardTitle>
                 <CardDescription>Update your items and manage real-time inventory.</CardDescription>
               </div>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm w-full md:w-auto">
                 <Plus className="mr-2 h-4 w-4" /> Add Item
               </Button>
             </CardHeader>
@@ -216,8 +214,8 @@ export default function RestaurantAdminDashboard() {
                       <h4 className="font-bold text-lg">{item.name}</h4>
                       <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>
                       <div className="flex gap-2 mt-1">
-                        <Badge variant="secondary" className="text-xs">£{item.price.toFixed(2)}</Badge>
-                        <Badge variant="outline" className="text-xs">{item.category}</Badge>
+                        <Badge variant="secondary" className="text-xs px-3">£{item.price.toFixed(2)}</Badge>
+                        <Badge variant="outline" className="text-xs px-3">{item.category}</Badge>
                       </div>
                     </div>
                     <div className="text-right">
@@ -234,9 +232,9 @@ export default function RestaurantAdminDashboard() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="seo" className="space-y-6">
+        <TabsContent value="seo" className="space-y-6 pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="border-none shadow-md">
+            <Card className="border-none shadow-lg">
               <CardHeader>
                 <CardTitle className="font-headline">Restaurant Details for SEO</CardTitle>
                 <CardDescription>Fill out your restaurant profile to generate optimized SEO tags.</CardDescription>
@@ -254,19 +252,19 @@ export default function RestaurantAdminDashboard() {
                 </div>
                 <div className="space-y-2">
                   <Label>Description</Label>
-                  <Textarea value={seoForm.description} onChange={(e) => setSeoForm({...seoForm, description: e.target.value})} />
+                  <Textarea value={seoForm.description} onChange={(e) => setSeoForm({...seoForm, description: e.target.value})} className="min-h-[100px]" />
                 </div>
                 <div className="space-y-2">
                   <Label>Address</Label>
                   <Input value={seoForm.address} onChange={(e) => setSeoForm({...seoForm, address: e.target.value})} />
                 </div>
-                <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" onClick={generateSeo} disabled={loadingSeo}>
+                <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm" onClick={generateSeo} disabled={loadingSeo}>
                   {loadingSeo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generate SEO Strategy"}
                 </Button>
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-md h-fit">
+            <Card className="border-none shadow-lg h-fit">
               <CardHeader>
                 <CardTitle className="font-headline flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-accent" /> AI Generated SEO Package
@@ -281,19 +279,19 @@ export default function RestaurantAdminDashboard() {
                   <div className="space-y-4">
                     <div className="space-y-1">
                       <Label className="text-xs uppercase text-muted-foreground">Meta Title</Label>
-                      <div className="p-2 bg-muted rounded border text-sm font-medium">{seoResult.metaTitle}</div>
+                      <div className="p-3 bg-muted/50 rounded border text-sm font-medium">{seoResult.metaTitle}</div>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs uppercase text-muted-foreground">Meta Description</Label>
-                      <div className="p-2 bg-muted rounded border text-sm">{seoResult.metaDescription}</div>
+                      <div className="p-3 bg-muted/50 rounded border text-sm">{seoResult.metaDescription}</div>
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs uppercase text-muted-foreground">Schema.org JSON-LD</Label>
-                      <div className="p-2 bg-muted rounded border text-[10px] font-mono whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">
+                      <div className="p-3 bg-muted/50 rounded border text-[10px] font-mono whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">
                         {seoResult.schemaMarkup}
                       </div>
                     </div>
-                    <Button className="w-full mt-4 bg-primary">
+                    <Button className="w-full mt-4 bg-primary shadow-sm">
                       <Save className="mr-2 h-4 w-4" /> Apply Global Meta Tags
                     </Button>
                   </div>
@@ -303,28 +301,30 @@ export default function RestaurantAdminDashboard() {
           </div>
         </TabsContent>
 
-        <TabsContent value="analytics" className="space-y-6">
+        <TabsContent value="analytics" className="space-y-6 pt-4">
           {!aiInsights ? (
-            <Card className="border-none shadow-md text-center py-20">
+            <Card className="border-none shadow-lg text-center py-20">
               <CardContent className="space-y-4">
-                <BarChart3 className="h-12 w-12 text-primary mx-auto opacity-20" />
+                <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
+                  <BarChart3 className="h-10 w-10 text-primary opacity-40" />
+                </div>
                 <h3 className="text-xl font-bold">Comprehensive Sales Intelligence</h3>
                 <p className="text-muted-foreground max-w-md mx-auto">
                   Run our AI auditor to identify trends, underperforming menu items, and peak revenue windows.
                 </p>
-                <Button onClick={generateInsights} disabled={loadingAi}>
+                <Button onClick={generateInsights} disabled={loadingAi} className="bg-primary shadow-md">
                   {loadingAi ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Run Deep Analysis"}
                 </Button>
               </CardContent>
             </Card>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-2 border-none shadow-md">
+              <Card className="lg:col-span-2 border-none shadow-lg">
                 <CardHeader>
                   <CardTitle className="font-headline">Performance Trend Analysis</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <p className="text-xs uppercase text-muted-foreground">Total Revenue</p>
                       <p className="text-2xl font-bold">£{aiInsights.keyPerformanceIndicators.totalRevenue.toLocaleString()}</p>
@@ -340,11 +340,13 @@ export default function RestaurantAdminDashboard() {
                   </div>
                   
                   <div>
-                    <h4 className="font-bold mb-4">Detected Trends</h4>
+                    <h4 className="font-bold mb-4 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-accent" /> Detected Trends
+                    </h4>
                     <div className="space-y-2">
                       {aiInsights.performanceTrends.map((trend, i) => (
-                        <div key={i} className="flex items-start gap-2 text-sm p-3 bg-white border rounded-lg">
-                          <TrendingUp className="h-4 w-4 text-accent mt-0.5" />
+                        <div key={i} className="flex items-start gap-2 text-sm p-3 bg-white border rounded-lg shadow-sm">
+                          <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
                           <span>{trend}</span>
                         </div>
                       ))}
@@ -352,11 +354,13 @@ export default function RestaurantAdminDashboard() {
                   </div>
 
                   <div>
-                    <h4 className="font-bold mb-4">Strategic Recommendations</h4>
+                    <h4 className="font-bold mb-4 flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-accent" /> Strategic Recommendations
+                    </h4>
                     <div className="space-y-2">
                       {aiInsights.actionableRecommendations.map((rec, i) => (
                         <div key={i} className="flex items-start gap-2 text-sm p-3 bg-accent/5 border border-accent/20 rounded-lg">
-                          <Sparkles className="h-4 w-4 text-accent mt-0.5" />
+                          <Sparkles className="h-4 w-4 text-accent mt-0.5 shrink-0" />
                           <span className="font-medium">{rec}</span>
                         </div>
                       ))}
@@ -366,13 +370,13 @@ export default function RestaurantAdminDashboard() {
               </Card>
 
               <div className="space-y-6">
-                <Card className="border-none shadow-md">
+                <Card className="border-none shadow-lg">
                   <CardHeader>
                     <CardTitle className="font-headline text-lg">Top Performers</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {aiInsights.bestSellingItems.map((item, i) => (
-                      <div key={i} className="flex justify-between items-center border-b pb-2 last:border-0 last:pb-0">
+                      <div key={i} className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0">
                         <div>
                           <p className="font-semibold text-sm">{item.itemName}</p>
                           <p className="text-xs text-muted-foreground">{item.totalQuantitySold} sold</p>
@@ -383,14 +387,16 @@ export default function RestaurantAdminDashboard() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-none shadow-md bg-primary text-white">
+                <Card className="border-none shadow-lg bg-primary text-white">
                   <CardHeader>
-                    <CardTitle className="font-headline text-lg">Promotional Strategy</CardTitle>
+                    <CardTitle className="font-headline text-lg flex items-center gap-2">
+                      <Sparkles className="h-5 w-5 text-accent" /> Promotional Strategy
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <ul className="space-y-3">
+                    <ul className="space-y-4">
                       {aiInsights.promotionalStrategies.slice(0, 3).map((strat, i) => (
-                        <li key={i} className="text-sm border-l-2 border-accent pl-3 italic">
+                        <li key={i} className="text-sm border-l-2 border-accent pl-4 italic leading-relaxed">
                           "{strat}"
                         </li>
                       ))}

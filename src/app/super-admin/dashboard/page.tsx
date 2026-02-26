@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -14,7 +13,6 @@ import {
   Plus, 
   Search, 
   MoreHorizontal, 
-  ExternalLink,
   ShieldAlert
 } from 'lucide-react';
 import { MOCK_RESTAURANTS, Restaurant } from '@/lib/mock-data';
@@ -32,7 +30,7 @@ export default function SuperAdminDashboard() {
   );
 
   return (
-    <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
+    <div className="p-4 md:p-8 space-y-8">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-headline font-bold text-primary">Global Overview</h1>
@@ -40,7 +38,7 @@ export default function SuperAdminDashboard() {
         </div>
         <Dialog>
           <DialogTrigger asChild>
-            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm">
               <Plus className="mr-2 h-4 w-4" /> Create Restaurant
             </Button>
           </DialogTrigger>
@@ -66,7 +64,7 @@ export default function SuperAdminDashboard() {
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="tier" className="text-right">Tier</Label>
-                <select id="tier" className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <select id="tier" className="col-span-3 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none">
                   <option>Basic</option>
                   <option>Pro</option>
                   <option>Enterprise</option>
@@ -81,7 +79,7 @@ export default function SuperAdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="border-none shadow-sm">
+        <Card className="border-none shadow-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
             <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -91,7 +89,7 @@ export default function SuperAdminDashboard() {
             <p className="text-xs text-accent font-semibold">+12.5% from last month</p>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-sm">
+        <Card className="border-none shadow-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Active Restaurants</CardTitle>
             <Store className="h-4 w-4 text-muted-foreground" />
@@ -101,7 +99,7 @@ export default function SuperAdminDashboard() {
             <p className="text-xs text-accent font-semibold">+4 new this week</p>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-sm">
+        <Card className="border-none shadow-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
@@ -111,7 +109,7 @@ export default function SuperAdminDashboard() {
             <p className="text-xs text-muted-foreground">Active platform-wide</p>
           </CardContent>
         </Card>
-        <Card className="border-none shadow-sm">
+        <Card className="border-none shadow-md">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -123,17 +121,17 @@ export default function SuperAdminDashboard() {
         </Card>
       </div>
 
-      <Card className="border-none shadow-md overflow-hidden">
-        <CardHeader className="bg-white border-b flex flex-row items-center justify-between">
+      <Card className="border-none shadow-xl overflow-hidden">
+        <CardHeader className="bg-white border-b flex flex-col md:flex-row items-center justify-between gap-4 py-6">
           <div>
             <CardTitle className="font-headline">Restaurant Tenants</CardTitle>
             <CardDescription>Manage restaurant isolation and role-based access.</CardDescription>
           </div>
-          <div className="relative w-72">
+          <div className="relative w-full md:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="Filter by name or email..." 
-              className="pl-9"
+              className="pl-9 shadow-sm"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -141,23 +139,23 @@ export default function SuperAdminDashboard() {
         </CardHeader>
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent bg-muted/50">
-              <TableHead>Restaurant Name</TableHead>
-              <TableHead>Admin Email</TableHead>
-              <TableHead>Location</TableHead>
-              <TableHead>Tier</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+            <TableRow className="hover:bg-transparent bg-muted/30">
+              <TableHead className="font-bold">Restaurant Name</TableHead>
+              <TableHead className="font-bold">Admin Email</TableHead>
+              <TableHead className="font-bold">Location</TableHead>
+              <TableHead className="font-bold">Tier</TableHead>
+              <TableHead className="font-bold">Status</TableHead>
+              <TableHead className="text-right font-bold">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredRestaurants.map((res) => (
-              <TableRow key={res.id}>
+              <TableRow key={res.id} className="hover:bg-accent/5">
                 <TableCell className="font-medium">{res.name}</TableCell>
                 <TableCell>{res.adminEmail}</TableCell>
                 <TableCell>{res.location}</TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="capitalize">{res.subscriptionTier}</Badge>
+                  <Badge variant="outline" className="capitalize px-3">{res.subscriptionTier}</Badge>
                 </TableCell>
                 <TableCell>
                   <Badge className={res.status === 'active' ? 'bg-accent/20 text-accent border-accent/20' : 'bg-destructive/10 text-destructive border-destructive/10'}>
@@ -165,7 +163,7 @@ export default function SuperAdminDashboard() {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right space-x-2">
-                  <Button size="sm" variant="ghost" className="text-primary" onClick={() => window.open(`/restaurant-admin/dashboard?impersonate=${res.id}`)}>
+                  <Button size="sm" variant="ghost" className="text-primary hover:bg-primary/10" onClick={() => window.open(`/restaurant-admin/dashboard?impersonate=${res.id}`)}>
                     <ShieldAlert className="h-4 w-4 mr-1" /> Impersonate
                   </Button>
                   <Button size="icon" variant="ghost">
