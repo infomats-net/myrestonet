@@ -66,14 +66,26 @@ export default function NewTenantPage() {
       customDomain: "",
       contactName: "",
       contactNumber: "",
-      country: "United Kingdom",
-      currency: "GBP",
+      country: "Australia",
+      currency: "AUD",
       address: "",
       adminEmail: "",
       password: "",
       confirmPassword: "",
     },
   });
+
+  // Watch country changes to auto-update currency
+  const watchedCountry = form.watch("country");
+
+  useEffect(() => {
+    if (watchedCountry) {
+      const countryData = WORLD_COUNTRIES.find(c => c.name === watchedCountry);
+      if (countryData) {
+        form.setValue("currency", countryData.currency);
+      }
+    }
+  }, [watchedCountry, form]);
 
   useEffect(() => {
     setMounted(true);
@@ -95,8 +107,7 @@ export default function NewTenantPage() {
         return;
       }
 
-      // 2. Create Restaurant Admin User in Firebase Auth (Note: Admin might need special logic to not logout super admin)
-      // For MVP, we proceed with creation. In real SaaS, this would be a server-side task.
+      // 2. Create Restaurant Admin User in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, values.adminEmail, values.password);
       const adminUid = userCredential.user.uid;
 
@@ -115,6 +126,8 @@ export default function NewTenantPage() {
         adminUserId: adminUid,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        customDomain: values.customDomain || null,
+        country: values.country
       };
 
       await setDoc(restaurantRef, restaurantData);
@@ -236,7 +249,7 @@ export default function NewTenantPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Currency</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
                         {WORLD_CURRENCIES.map((curr) => (<SelectItem key={curr.code} value={curr.code}>{curr.code}</SelectItem>))}
