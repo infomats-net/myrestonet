@@ -1,0 +1,594 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the DineFlow Global platform, including customers, restaurant administrators, and super administrators. Links to Firebase Authentication for credentials.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address, used for login and notifications.",
+          "format": "email"
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user within the platform (e.g., 'SuperAdmin', 'RestaurantAdmin', 'Customer')."
+        },
+        "restaurantId": {
+          "type": "string",
+          "description": "Reference to the Restaurant this user is an admin for. This field is only applicable and required for users with the 'RestaurantAdmin' role. (Relationship: Restaurant 1:1 User for RestaurantAdmin role)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user account was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "name",
+        "role",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Restaurant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Restaurant",
+      "type": "object",
+      "description": "Represents a restaurant managed on the DineFlow Global platform, including its details, localization, and SEO settings.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Restaurant entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The official name of the restaurant."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the restaurant."
+        },
+        "address": {
+          "type": "string",
+          "description": "The physical address of the restaurant."
+        },
+        "contactEmail": {
+          "type": "string",
+          "description": "The primary contact email for the restaurant.",
+          "format": "email"
+        },
+        "contactPhone": {
+          "type": "string",
+          "description": "The primary contact phone number for the restaurant."
+        },
+        "baseLanguage": {
+          "type": "string",
+          "description": "The primary language used for the restaurant's operations and content (e.g., 'en', 'fr')."
+        },
+        "baseCurrency": {
+          "type": "string",
+          "description": "The primary currency used for pricing and transactions (e.g., 'USD', 'EUR')."
+        },
+        "seoMetaTags": {
+          "type": "string",
+          "description": "JSON string or similar representation for dynamic meta tags to enhance local SEO."
+        },
+        "seoSchemaMarkup": {
+          "type": "string",
+          "description": "JSON string or similar representation for schema.org 'LocalBusiness' markup to enhance local SEO."
+        },
+        "localizedUrlSlugs": {
+          "type": "array",
+          "description": "An array of localized URL slugs for the restaurant (e.g., '/uk/london/pizzeria').",
+          "items": {
+            "type": "string"
+          }
+        },
+        "adminUserId": {
+          "type": "string",
+          "description": "Reference to the User who is the primary administrator for this restaurant. (Relationship: Restaurant 1:1 User)"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the restaurant was onboarded to the platform.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the restaurant details were last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "address",
+        "contactEmail",
+        "baseLanguage",
+        "baseCurrency",
+        "adminUserId",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Menu": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Menu",
+      "type": "object",
+      "description": "Represents a menu offered by a restaurant, containing a collection of menu items.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Menu entity."
+        },
+        "restaurantId": {
+          "type": "string",
+          "description": "Reference to the Restaurant this menu belongs to. (Relationship: Restaurant 1:N Menu)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the menu (e.g., 'Lunch Menu', 'Dinner Menu', 'Drinks')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the menu."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates if the menu is currently active and visible to customers."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the menu was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the menu was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "restaurantId",
+        "name",
+        "isActive",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "MenuItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MenuItem",
+      "type": "object",
+      "description": "Represents an individual food or drink item available on a restaurant's menu.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MenuItem entity."
+        },
+        "menuId": {
+          "type": "string",
+          "description": "Reference to the Menu this item belongs to. (Relationship: Menu 1:N MenuItem)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the menu item."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the menu item, including ingredients."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the menu item."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the menu item's price (e.g., 'USD', 'EUR'). Defaults to restaurant's base currency."
+        },
+        "inventoryLevel": {
+          "type": "number",
+          "description": "The current stock level for this menu item, for real-time inventory management."
+        },
+        "category": {
+          "type": "string",
+          "description": "The category the item belongs to (e.g., 'Appetizer', 'Main Course', 'Dessert')."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL to an image of the menu item.",
+          "format": "uri"
+        },
+        "isAvailable": {
+          "type": "boolean",
+          "description": "Indicates if the menu item is currently available for order."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the menu item was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the menu item was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "menuId",
+        "name",
+        "price",
+        "currency",
+        "inventoryLevel",
+        "isAvailable",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Order",
+      "type": "object",
+      "description": "Represents a customer's order placed at a specific restaurant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Order entity."
+        },
+        "restaurantId": {
+          "type": "string",
+          "description": "Reference to the Restaurant where the order was placed. (Relationship: Restaurant 1:N Order)"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the User who placed the order. (Relationship: User 1:N Order)"
+        },
+        "orderItems": {
+          "type": "array",
+          "description": "An array of items included in the order, capturing their state at the time of order.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total amount of the order, including taxes and fees."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the total order amount."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the order (e.g., 'Pending', 'Confirmed', 'Preparing', 'ReadyForPickup', 'Delivered', 'Cancelled')."
+        },
+        "orderType": {
+          "type": "string",
+          "description": "The type of order (e.g., 'Pickup', 'Delivery', 'DineIn')."
+        },
+        "deliveryAddress": {
+          "type": "string",
+          "description": "The delivery address for the order, if applicable."
+        },
+        "paymentTransactionId": {
+          "type": "string",
+          "description": "Reference to the PaymentTransaction associated with this order. (Relationship: Order 1:1 PaymentTransaction)"
+        },
+        "orderedAt": {
+          "type": "string",
+          "description": "Timestamp when the order was placed.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the order status was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "restaurantId",
+        "customerId",
+        "orderItems",
+        "totalAmount",
+        "currency",
+        "status",
+        "orderType",
+        "paymentTransactionId",
+        "orderedAt",
+        "updatedAt"
+      ]
+    },
+    "PaymentTransaction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PaymentTransaction",
+      "type": "object",
+      "description": "Records details of a payment transaction processed via Stripe Connect for an order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PaymentTransaction entity."
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Reference to the Order associated with this payment. (Relationship: Order 1:1 PaymentTransaction)"
+        },
+        "stripeChargeId": {
+          "type": "string",
+          "description": "The unique ID provided by Stripe for this charge."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount processed in the transaction."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The currency of the transaction amount."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the payment transaction (e.g., 'succeeded', 'failed', 'pending', 'refunded')."
+        },
+        "processedAt": {
+          "type": "string",
+          "description": "Timestamp when the payment transaction was processed.",
+          "format": "date-time"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the User (customer) who made the payment. (Relationship: User 1:N PaymentTransaction)"
+        }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "stripeChargeId",
+        "amount",
+        "currency",
+        "status",
+        "processedAt",
+        "customerId"
+      ]
+    },
+    "Subscription": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Subscription",
+      "type": "object",
+      "description": "Manages the subscription status and plan details for each restaurant on the platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Subscription entity."
+        },
+        "restaurantId": {
+          "type": "string",
+          "description": "Reference to the Restaurant associated with this subscription. (Relationship: Restaurant 1:1 Subscription)"
+        },
+        "planType": {
+          "type": "string",
+          "description": "The type of subscription plan (e.g., 'Basic', 'Standard', 'Premium')."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The date when the subscription became active.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The date when the subscription is set to expire.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the subscription (e.g., 'Active', 'Expired', 'Cancelled', 'Trial')."
+        },
+        "stripeSubscriptionId": {
+          "type": "string",
+          "description": "The unique ID provided by Stripe for this subscription."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the subscription record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the subscription record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "restaurantId",
+        "planType",
+        "startDate",
+        "endDate",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profiles, roles, and associated restaurant IDs (for Restaurant Admins). The document ID (`userId`) matches Firebase Authentication's UID. Includes 'role' field and, for Restaurant Admins, 'restaurantId' for direct authorization checks.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/superAdmins/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "A marker collection to quickly identify Super Administrator users. The existence of a document with the user's UID in this collection signifies Super Admin privileges, enabling efficient DBAC checks without custom claims.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the Super Administrator user, corresponding to Firebase Authentication UID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}",
+        "definition": {
+          "entityName": "Restaurant",
+          "schema": {
+            "$ref": "#/backend/entities/Restaurant"
+          },
+          "description": "Top-level collection for all restaurant-specific data. Each document represents a restaurant and includes 'adminUserId' for ownership and authorization. Subcollections below this path will inherit the 'restaurantId' context.",
+          "params": [
+            {
+              "name": "restaurantId",
+              "description": "The unique identifier of the restaurant."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/menus/{menuId}",
+        "definition": {
+          "entityName": "Menu",
+          "schema": {
+            "$ref": "#/backend/entities/Menu"
+          },
+          "description": "Stores menus belonging to a specific restaurant. Includes denormalized 'restaurantId' and 'adminUserId' (from the parent Restaurant document) for authorization independence and QAP compliance.",
+          "params": [
+            {
+              "name": "restaurantId",
+              "description": "The unique identifier of the parent restaurant."
+            },
+            {
+              "name": "menuId",
+              "description": "The unique identifier of the menu."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/menus/{menuId}/menuItems/{menuItemId}",
+        "definition": {
+          "entityName": "MenuItem",
+          "schema": {
+            "$ref": "#/backend/entities/MenuItem"
+          },
+          "description": "Stores individual menu items belonging to a specific menu within a restaurant. Includes denormalized 'restaurantId', 'menuId', and 'adminUserId' for authorization independence and QAP compliance.",
+          "params": [
+            {
+              "name": "restaurantId",
+              "description": "The unique identifier of the parent restaurant."
+            },
+            {
+              "name": "menuId",
+              "description": "The unique identifier of the parent menu."
+            },
+            {
+              "name": "menuItemId",
+              "description": "The unique identifier of the menu item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Stores customer orders placed at a specific restaurant. Includes denormalized 'restaurantId', 'adminUserId' (from the parent Restaurant document), and 'customerId' for robust authorization checks by both restaurant admins and customers, ensuring QAP compliance.",
+          "params": [
+            {
+              "name": "restaurantId",
+              "description": "The unique identifier of the restaurant where the order was placed."
+            },
+            {
+              "name": "orderId",
+              "description": "The unique identifier of the order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/paymentTransactions/{paymentTransactionId}",
+        "definition": {
+          "entityName": "PaymentTransaction",
+          "schema": {
+            "$ref": "#/backend/entities/PaymentTransaction"
+          },
+          "description": "Records payment transactions for orders placed at a restaurant. Includes denormalized 'restaurantId', 'adminUserId' (from the parent Restaurant document), 'orderId', and 'customerId' for authorization independence and QAP compliance.",
+          "params": [
+            {
+              "name": "restaurantId",
+              "description": "The unique identifier of the restaurant associated with the payment."
+            },
+            {
+              "name": "paymentTransactionId",
+              "description": "The unique identifier of the payment transaction."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/subscriptions/{subscriptionId}",
+        "definition": {
+          "entityName": "Subscription",
+          "schema": {
+            "$ref": "#/backend/entities/Subscription"
+          },
+          "description": "Manages subscription details for a specific restaurant. The 'subscriptionId' often matches the 'restaurantId' due to a 1:1 relationship. Includes denormalized 'restaurantId' and 'adminUserId' for authorization independence and QAP compliance.",
+          "params": [
+            {
+              "name": "restaurantId",
+              "description": "The unique identifier of the restaurant associated with the subscription."
+            },
+            {
+              "name": "subscriptionId",
+              "description": "The unique identifier of the subscription, ideally matching the restaurantId."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure prioritizes security, scalability, and debuggability, strictly adhering to the core design principles and mandates. The multi-tenant nature of the 'DineFlow Global' platform is addressed by employing a 'Shared Database, Isolated Data' model, with `/restaurants/{restaurantId}` as the primary segregation point for all restaurant-specific data.\n\n**Authorization Independence (CRITICAL):** To eliminate the need for `get()` calls in security rules and enable atomic operations, authorization context is extensively denormalized. For all documents residing under a specific restaurant (e.g., `Menu`, `MenuItem`, `Order`, `PaymentTransaction`, `Subscription`), the `adminUserId` (which identifies the restaurant's primary administrator) is denormalized directly into each document. This means a rule for a `menu` item can directly check `resource.data.adminUserId == request.auth.uid` without needing to fetch the parent `Restaurant` document, thereby making rules robust and efficient. Furthermore, customer-specific orders and payment transactions also include `customerId` for direct ownership checks.\n\n**DBAC (No Custom Claims):** User roles are stored explicitly in the database. The `/users/{userId}` collection holds each user's profile, including their `role` (e.g., 'Customer', 'RestaurantAdmin', 'SuperAdmin'). For `RestaurantAdmin` users, their associated `restaurantId` is also stored directly within their user document. To facilitate high-performance, clear authorization for Super Administrators, a separate top-level collection, `/superAdmins/{userId}`, is used. The mere existence of a document with `request.auth.uid` as its ID in this collection grants Super Admin privileges, adhering to the 'Existence over Content' principle for global roles. This avoids `get()` calls on the `users` collection to determine if a user is a Super Admin for every privileged action.\n\n**QAPs (Rules are not Filters):** Secure `list` operations are supported by structural segregation and denormalization. For instance, a Restaurant Admin can only list menus, menu items, orders, or subscriptions from `/restaurants/{restaurantId}/...` where `restaurantId` matches the ID they manage (verified by the denormalized `adminUserId`). Similarly, a customer can list their own orders from `/restaurants/{restaurantId}/orders/{orderId}` by querying `customerId == request.auth.uid`. The path structure itself, combined with denormalized fields, ensures that queries inherently return only authorized data, rather than requiring security rules to filter results post-query (which is not how Firestore rules work).\n\n**Structural Segregation:** Data with different security postures or ownership models are placed in separate collections. `/users/{userId}` for individual user profiles, `/superAdmins/{userId}` for Super Admin markers, and `/restaurants/{restaurantId}` for all restaurant-specific, multi-tenant data. Subcollections within `/restaurants/{restaurantId}` (e.g., `menus`, `orders`) further segregate data while inheriting the `restaurantId` context.\n\n**Data Clarity:** Path wildcards are descriptive (`{restaurantId}`, `{userId}`). Entity schemas are used consistently. The `status` field in entities like `Order` and `Subscription` explicitly models the state."
+  }
+}

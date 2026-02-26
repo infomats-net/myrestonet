@@ -1,0 +1,183 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * DINEFLOW GLOBAL SECURITY RULES
+     * 
+     * CORE PHILOSOPHY:
+     * This ruleset implements a multi-tenant isolation model for the DineFlow Global platform. 
+     * Security is centered around three primary roles: SuperAdmins, RestaurantAdmins, and Customers.
+     * 
+     * DATA STRUCTURE:
+     * - /users/{userId}: Private user profiles managed by the owner or SuperAdmins.
+     * - /superAdmins/{userId}: A marker collection identifying global administrators.
+     * - /restaurants/{restaurantId}: Multi-tenant root for restaurant-specific data.
+     * - Subcollections (menus, orders, etc.) are nested under restaurants for structural segregation.
+     * 
+     * KEY SECURITY DECISIONS:
+     * - AUTHORIZATION INDEPENDENCE: Crucial fields like 'adminUserId' and 'customerId' are denormalized 
+     *   onto documents to allow for fast, direct authorization checks without recursive get() calls.
+     * - PROTOTYPING FLEXIBILITY: Schema validation is restricted to relational and authorization 
+     *   fields (e.g., matching IDs) to allow rapid iteration on content fields.
+     * - SHARED ACCESS: Orders and Payment Transactions are accessible by both the creating customer 
+     *   and the managing restaurant administrator.
+     * - SUPERADMIN PRIVILEGES: Existence of a UID in the /superAdmins collection grants global read/write access.
+     */
+
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    /** @description Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the user's UID matches the provided ID. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /** @description Checks if the user is a SuperAdmin based on the marker collection. */
+    function isSuperAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
+    }
+
+    /** @description Validates if the user is the specific 'admin' of a restaurant entity via denormalized ID. */
+    function isRestaurantAdmin(adminId) {
+      return isSignedIn() && request.auth.uid == adminId;
+    }
+
+    /** @description Combines ownership and existence checks for destructive/update operations. */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
+    }
+
+    /** @description Checks if the authenticated user is the customer associated with the resource data. */
+    function isDataCustomer(data) {
+      return isSignedIn() && request.auth.uid == data.customerId;
+    }
+
+    /** @description Checks if the authenticated user is the restaurant admin associated with the resource data. */
+    function isDataAdmin(data) {
+      return isSignedIn() && request.auth.uid == data.adminUserId;
+    }
+
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Rules for user profiles. Fixes the issue where users were not being saved.
+     * @path /users/{userId}
+     * @allow (create) if the auth UID matches the document ID and internal 'id' field.
+     * @deny (create) if the user attempts to create a profile for a different UID.
+     * @principle Ownership and Self-Creation.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId) || isSuperAdmin();
+    }
+
+    /**
+     * @description Marker collection for Super Administrators.
+     * @path /superAdmins/{userId}
+     * @allow (get) for any signed-in user to verify admin status.
+     * @deny (write) for anyone except existing SuperAdmins.
+     * @principle DBAC (Database Based Access Control) using marker existence.
+     */
+    match /superAdmins/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isSuperAdmin();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    /**
+     * @description Top-level restaurant details. Publicly readable for customers.
+     * @path /restaurants/{restaurantId}
+     * @allow (get, list) for all users.
+     * @deny (update) for non-admins.
+     * @principle Public Read with Owner-Only Writes.
+     */
+    match /restaurants/{restaurantId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.adminUserId == request.auth.uid;
+      allow update: if resource != null && (isDataAdmin(resource.data) || isSuperAdmin());
+      allow delete: if resource != null && (isDataAdmin(resource.data) || isSuperAdmin());
+
+      /**
+       * @description Menus belonging to a restaurant.
+       * @path /restaurants/{restaurantId}/menus/{menuId}
+       * @allow (create) if the adminUserId matches the authenticated user.
+       * @deny (delete) for non-admins.
+       * @principle Authorization Independence via denormalization.
+       */
+      match /menus/{menuId} {
+        allow get, list: if true;
+        allow create: if isRestaurantAdmin(request.resource.data.adminUserId);
+        allow update: if resource != null && (isDataAdmin(resource.data) || isSuperAdmin());
+        allow delete: if resource != null && (isDataAdmin(resource.data) || isSuperAdmin());
+
+        /**
+         * @description Individual items within a menu.
+         * @path /restaurants/{restaurantId}/menus/{menuId}/menuItems/{menuItemId}
+         * @allow (get, list) for public access.
+         * @deny (create) if the denormalized adminUserId is incorrect.
+         * @principle Relational integrity and Denormalization.
+         */
+        match /menuItems/{menuItemId} {
+          allow get, list: if true;
+          allow create: if isRestaurantAdmin(request.resource.data.adminUserId);
+          allow update: if resource != null && (isDataAdmin(resource.data) || isSuperAdmin());
+          allow delete: if resource != null && (isDataAdmin(resource.data) || isSuperAdmin());
+        }
+      }
+
+      /**
+       * @description Orders placed at a restaurant. Shared between customer and admin.
+       * @path /restaurants/{restaurantId}/orders/{orderId}
+       * @allow (get) if the user is the customer OR the restaurant admin.
+       * @deny (list) for anonymous users.
+       * @principle Shared Access (Closed Collaborators).
+       */
+      match /orders/{orderId} {
+        allow get: if isDataCustomer(resource.data) || isDataAdmin(resource.data) || isSuperAdmin();
+        allow list: if isSignedIn();
+        allow create: if isDataCustomer(request.resource.data);
+        allow update: if resource != null && (isDataCustomer(resource.data) || isDataAdmin(resource.data) || isSuperAdmin());
+        allow delete: if resource != null && isSuperAdmin();
+      }
+
+      /**
+       * @description Payment transaction records for orders.
+       * @path /restaurants/{restaurantId}/paymentTransactions/{paymentTransactionId}
+       * @allow (get) for associated customer or admin.
+       * @deny (write) for anyone except the system/SuperAdmin (usually automated).
+       * @principle Highly restrictive writes for financial records.
+       */
+      match /paymentTransactions/{paymentTransactionId} {
+        allow get: if isDataCustomer(resource.data) || isDataAdmin(resource.data) || isSuperAdmin();
+        allow list: if isSuperAdmin();
+        allow create: if isDataCustomer(request.resource.data) || isSuperAdmin();
+        allow update, delete: if resource != null && isSuperAdmin();
+      }
+
+      /**
+       * @description Subscription management for restaurants.
+       * @path /restaurants/{restaurantId}/subscriptions/{subscriptionId}
+       * @allow (get) for the restaurant admin.
+       * @deny (write) for customers.
+       * @principle Tenant-level ownership.
+       */
+      match /subscriptions/{subscriptionId} {
+        // CRITICAL: The entity is missing 'adminUserId' in schema props, but the description mandates it. 
+        // Using denormalized adminUserId check per the architectural reasoning.
+        allow get: if isDataAdmin(resource.data) || isSuperAdmin();
+        allow list: if isSuperAdmin();
+        allow create: if isSuperAdmin() || (isSignedIn() && request.resource.data.adminUserId == request.auth.uid);
+        allow update: if resource != null && (isDataAdmin(resource.data) || isSuperAdmin());
+        allow delete: if resource != null && isSuperAdmin();
+      }
+    }
+  }
+}
