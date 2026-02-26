@@ -1,6 +1,7 @@
 
 "use client";
 
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,13 +21,23 @@ import {
   MapPin
 } from 'lucide-react';
 import Link from 'next/link';
+import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
 
 export default function NewTenantPage() {
   const router = useRouter();
+  const [selectedCountry, setSelectedCountry] = useState('Australia');
+  const [selectedCurrency, setSelectedCurrency] = useState('AUD');
+
+  // Automatically update currency when country changes
+  useEffect(() => {
+    const countryData = WORLD_COUNTRIES.find(c => c.name === selectedCountry);
+    if (countryData) {
+      setSelectedCurrency(countryData.currency);
+    }
+  }, [selectedCountry]);
 
   const handleInitialize = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, logic to save the new tenant would go here
     router.push('/super-admin/tenants');
   };
 
@@ -97,6 +108,8 @@ export default function NewTenantPage() {
                     <SelectItem value="japanese">Japanese</SelectItem>
                     <SelectItem value="french">French</SelectItem>
                     <SelectItem value="mexican">Mexican</SelectItem>
+                    <SelectItem value="indian">Indian</SelectItem>
+                    <SelectItem value="thai">Thai</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -120,27 +133,31 @@ export default function NewTenantPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="country">Country</Label>
-                <Select defaultValue="australia">
+                <Select value={selectedCountry} onValueChange={setSelectedCountry}>
                   <SelectTrigger id="country">
                     <SelectValue placeholder="Select country" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="australia">Australia</SelectItem>
-                    <SelectItem value="uk">United Kingdom</SelectItem>
-                    <SelectItem value="usa">USA</SelectItem>
+                    {WORLD_COUNTRIES.map((c) => (
+                      <SelectItem key={c.code} value={c.name}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="currency">Payment Currency</Label>
-                <Select defaultValue="aud">
+                <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
                   <SelectTrigger id="currency">
                     <SelectValue placeholder="Select currency" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="aud">Australian Dollar ($)</SelectItem>
-                    <SelectItem value="gbp">British Pound (£)</SelectItem>
-                    <SelectItem value="usd">US Dollar ($)</SelectItem>
+                    {WORLD_CURRENCIES.map((curr) => (
+                      <SelectItem key={curr.code} value={curr.code}>
+                        {curr.code} ({curr.symbol})
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -150,16 +167,7 @@ export default function NewTenantPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="state">State / Province</Label>
-                <Select defaultValue="nsw">
-                  <SelectTrigger id="state">
-                    <SelectValue placeholder="Select state" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="nsw">NSW</SelectItem>
-                    <SelectItem value="vic">VIC</SelectItem>
-                    <SelectItem value="qld">QLD</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input id="state" placeholder="NSW" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="postcode">Post Code</Label>
@@ -191,7 +199,7 @@ export default function NewTenantPage() {
                 <Label htmlFor="admin-email">Admin Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input id="admin-email" type="email" className="pl-9" placeholder="itwiz@hotmail.com" required />
+                  <Input id="admin-email" type="email" className="pl-9" placeholder="admin@example.com" required />
                 </div>
               </div>
               <div className="space-y-2">
@@ -199,7 +207,6 @@ export default function NewTenantPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input id="password" type="password" className="pl-9 pr-9" placeholder="••••••••" required />
-                  <Eye className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" />
                 </div>
               </div>
               <div className="space-y-2">
