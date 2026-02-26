@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Badge } from '@/components/ui/badge';
 import { 
   Form,
   FormControl,
@@ -29,11 +31,16 @@ import {
   Lock, 
   ChevronLeft,
   Store,
-  MapPin
+  MapPin,
+  Search,
+  ChevronsUpDown,
+  Check,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
 import { MOCK_RESTAURANTS } from '@/lib/mock-data';
+import { cn } from '@/lib/utils';
 
 const CUISINES = [
   "Afghan", "African", "American", "Arabic", "Argentine", "Armenian", "Asian", "Australian", "Austrian", "Azerbaijani",
@@ -72,6 +79,7 @@ const formSchema = z.object({
 
 export default function NewTenantPage() {
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -95,6 +103,7 @@ export default function NewTenantPage() {
   });
 
   const selectedCountry = form.watch("country");
+  const selectedCuisines = form.watch("cuisine");
 
   useEffect(() => {
     const countryData = WORLD_COUNTRIES.find(c => c.name === selectedCountry);
@@ -102,6 +111,10 @@ export default function NewTenantPage() {
       form.setValue("currency", countryData.currency);
     }
   }, [selectedCountry, form]);
+
+  const filteredCuisines = CUISINES.filter(c => 
+    c.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     console.log("Initializing tenant:", values);
@@ -205,49 +218,85 @@ export default function NewTenantPage() {
                 <FormField
                   control={form.control}
                   name="cuisine"
-                  render={() => (
+                  render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <div className="mb-4">
-                        <FormLabel>Cuisine Types</FormLabel>
-                        <CardDescription>Select all that apply to this restaurant.</CardDescription>
-                      </div>
-                      <ScrollArea className="h-64 rounded-md border p-4">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                          {CUISINES.map((cuisine) => (
-                            <FormField
-                              key={cuisine}
-                              control={form.control}
-                              name="cuisine"
-                              render={({ field }) => {
-                                return (
-                                  <FormItem
-                                    key={cuisine}
-                                    className="flex flex-row items-start space-x-3 space-y-0"
-                                  >
-                                    <FormControl>
-                                      <Checkbox
-                                        checked={field.value?.includes(cuisine)}
-                                        onCheckedChange={(checked) => {
-                                          return checked
-                                            ? field.onChange([...field.value, cuisine])
-                                            : field.onChange(
-                                                field.value?.filter(
-                                                  (value) => value !== cuisine
-                                                )
-                                              )
-                                        }}
-                                      />
-                                    </FormControl>
-                                    <FormLabel className="text-sm font-normal cursor-pointer">
-                                      {cuisine}
-                                    </FormLabel>
-                                  </FormItem>
-                                )
-                              }}
+                      <FormLabel>Cuisine Types</FormLabel>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {field.value.map((c) => (
+                          <Badge key={c} variant="secondary" className="pl-2 pr-1 py-1 gap-1">
+                            {c}
+                            <X 
+                              className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                              onClick={() => field.onChange(field.value.filter(v => v !== c))}
                             />
-                          ))}
-                        </div>
-                      </ScrollArea>
+                          </Badge>
+                        ))}
+                      </div>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between",
+                                !field.value?.length && "text-muted-foreground"
+                              )}
+                            >
+                              {field.value?.length > 0
+                                ? `${field.value.length} cuisines selected`
+                                : "Search and select cuisines..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl border-none" align="start">
+                          <div className="p-3 border-b bg-muted/20">
+                            <div className="relative">
+                              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input 
+                                placeholder="Filter cuisines..." 
+                                className="pl-9 h-9"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <ScrollArea className="h-[300px]">
+                            <div className="p-2 space-y-1">
+                              {filteredCuisines.length === 0 ? (
+                                <p className="text-center py-6 text-sm text-muted-foreground">No cuisine found.</p>
+                              ) : (
+                                filteredCuisines.map((cuisine) => {
+                                  const isSelected = field.value?.includes(cuisine);
+                                  return (
+                                    <div 
+                                      key={cuisine} 
+                                      className={cn(
+                                        "flex items-center space-x-3 px-3 py-2 rounded-md transition-colors cursor-pointer hover:bg-accent",
+                                        isSelected && "bg-primary/5"
+                                      )}
+                                      onClick={() => {
+                                        const newValue = isSelected
+                                          ? field.value?.filter((v) => v !== cuisine)
+                                          : [...(field.value || []), cuisine];
+                                        field.onChange(newValue);
+                                      }}
+                                    >
+                                      <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() => {}} // Handled by div click
+                                      />
+                                      <span className="text-sm flex-1">{cuisine}</span>
+                                      {isSelected && <Check className="h-4 w-4 text-primary" />}
+                                    </div>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </ScrollArea>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
