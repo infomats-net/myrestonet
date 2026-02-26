@@ -102,6 +102,15 @@ const THEME_PRESETS = [
   { name: 'Minimalist', colors: { primary: '#27272A', accent: '#71717A', background: '#FAFAFA', text: '#09090B' } },
 ];
 
+const FONT_OPTIONS = [
+  { name: 'Inter (Sans)', value: 'Inter' },
+  { name: 'Playfair Display (Serif)', value: 'Playfair Display' },
+  { name: 'Montserrat (Modern)', value: 'Montserrat' },
+  { name: 'Roboto (Clean)', value: 'Roboto' },
+  { name: 'Poppins (Soft)', value: 'Poppins' },
+  { name: 'Lora (Classic)', value: 'Lora' },
+];
+
 export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   const [settings, setSettings] = useState<DesignSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -122,7 +131,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
       (snap) => {
         if (snap.exists()) {
           const data = snap.data();
-          // Merge with defaults to handle new section properties
           setSettings({
             ...DEFAULT_SETTINGS,
             ...data,
@@ -218,7 +226,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
             <ScrollArea className="flex-1 px-6 py-6">
               <TabsContent value="theme" className="space-y-10 mt-0 pb-10">
-                {/* AI Theme Designer */}
                 <div className="p-6 rounded-3xl bg-white border border-sky-100 shadow-sm relative overflow-hidden group">
                   <div className="flex items-center gap-2 mb-4">
                     <Sparkles className="h-4 w-4 text-sky-500" />
@@ -243,7 +250,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </Button>
                 </div>
 
-                {/* Color Palette Grid */}
                 <div>
                   <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 px-1">Color Palette</h4>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-6">
@@ -278,7 +284,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
                 </div>
 
-                {/* Template Presets */}
                 <div>
                   <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 px-1">Template Presets</h4>
                   <div className="grid grid-cols-2 gap-4">
@@ -299,70 +304,61 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               <TabsContent value="layout" className="space-y-6 mt-0">
                 <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 px-1">Layout & Sections</h4>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg shadow-sm"><Monitor className="h-4 w-4 text-slate-500" /></div>
-                      <span className="text-sm font-bold text-slate-700">Hero Header</span>
+                  {[
+                    { id: 'hero', label: 'Hero Header', icon: Monitor, visibilityKey: 'hero' },
+                    { id: 'about', label: 'About Section', icon: User, visibilityKey: 'about' },
+                    { id: 'menuList', label: 'Menu List', icon: UtensilsCrossed, visibilityKey: 'menuList' },
+                    { id: 'gallery', label: 'Gallery', icon: ImageIcon, visibilityKey: 'gallery' },
+                    { id: 'testimonials', label: 'Testimonials', icon: MessageSquare, visibilityKey: 'testimonials' },
+                    { id: 'contact', label: 'Contact', icon: Phone, visibilityKey: 'contact' },
+                    { id: 'map', label: 'Map', icon: MapPin, visibilityKey: 'map' },
+                  ].map((section) => (
+                    <div key={section.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-lg shadow-sm"><section.icon className="h-4 w-4 text-slate-500" /></div>
+                        <span className="text-sm font-bold text-slate-700">{section.label}</span>
+                      </div>
+                      <Switch 
+                        checked={(settings.sections as any)[section.visibilityKey].visible} 
+                        onCheckedChange={(v) => setSettings({
+                          ...settings, 
+                          sections: {
+                            ...settings.sections, 
+                            [section.visibilityKey]: {
+                              ...(settings.sections as any)[section.visibilityKey],
+                              visible: v
+                            }
+                          }
+                        })} 
+                      />
                     </div>
-                    <Switch checked={settings.sections.hero.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, hero: {...settings.sections.hero, visible: v}}})} />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg shadow-sm"><User className="h-4 w-4 text-slate-500" /></div>
-                      <span className="text-sm font-bold text-slate-700">About Section</span>
-                    </div>
-                    <Switch checked={settings.sections.about.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, about: {visible: v}}})} />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg shadow-sm"><UtensilsCrossed className="h-4 w-4 text-slate-500" /></div>
-                      <span className="text-sm font-bold text-slate-700">Menu List</span>
-                    </div>
-                    <Switch checked={settings.sections.menuList.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, menuList: {visible: v}}})} />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg shadow-sm"><ImageIcon className="h-4 w-4 text-slate-500" /></div>
-                      <span className="text-sm font-bold text-slate-700">Gallery</span>
-                    </div>
-                    <Switch checked={settings.sections.gallery.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, gallery: {visible: v}}})} />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg shadow-sm"><MessageSquare className="h-4 w-4 text-slate-500" /></div>
-                      <span className="text-sm font-bold text-slate-700">Testimonials</span>
-                    </div>
-                    <Switch checked={settings.sections.testimonials.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, testimonials: {visible: v}}})} />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg shadow-sm"><Phone className="h-4 w-4 text-slate-500" /></div>
-                      <span className="text-sm font-bold text-slate-700">Contact</span>
-                    </div>
-                    <Switch checked={settings.sections.contact.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, contact: {visible: v}}})} />
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg shadow-sm"><MapPin className="h-4 w-4 text-slate-500" /></div>
-                      <span className="text-sm font-bold text-slate-700">Map</span>
-                    </div>
-                    <Switch checked={settings.sections.map.visible} onCheckedChange={(v) => setSettings({...settings, sections: {...settings.sections, map: {visible: v}}})} />
-                  </div>
+                  ))}
                 </div>
               </TabsContent>
 
               <TabsContent value="fonts" className="space-y-6 mt-0">
                 <h4 className="text-[11px] font-black text-slate-400 tracking-[0.2em] uppercase mb-6 px-1">Typography</h4>
-                <div className="space-y-6">
+                <div className="space-y-8">
                   <div className="space-y-2">
-                    <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Font Family</Label>
-                    <Select value={settings.typography.fontFamily} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, fontFamily: v}})}>
-                      <SelectTrigger className="h-12 rounded-2xl bg-slate-50 border-slate-200"><SelectValue /></SelectTrigger>
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1 tracking-wider">Heading Typography</Label>
+                    <Select value={settings.typography.headingFont} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, headingFont: v}})}>
+                      <SelectTrigger className="h-12 rounded-2xl bg-slate-50 border-slate-200 focus:ring-sky-500"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Inter">Inter (Sans)</SelectItem>
-                        <SelectItem value="Playfair Display">Playfair (Serif)</SelectItem>
-                        <SelectItem value="Montserrat">Montserrat (Modern)</SelectItem>
-                        <SelectItem value="Roboto">Roboto (Clean)</SelectItem>
+                        {FONT_OPTIONS.map(font => (
+                          <SelectItem key={font.value} value={font.value}>{font.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1 tracking-wider">Body Typography</Label>
+                    <Select value={settings.typography.fontFamily} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, fontFamily: v}})}>
+                      <SelectTrigger className="h-12 rounded-2xl bg-slate-50 border-slate-200 focus:ring-sky-500"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {FONT_OPTIONS.map(font => (
+                          <SelectItem key={font.value} value={font.value}>{font.name}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -412,12 +408,15 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               backgroundColor: settings.theme.background,
               color: settings.theme.text
             }}>
+              {/* Dynamic Font Import */}
+              <link href={`https://fonts.googleapis.com/css2?family=${settings.typography.fontFamily.replace(' ', '+')}&family=${settings.typography.headingFont.replace(' ', '+')}&display=swap`} rel="stylesheet" />
+
               <nav className="h-16 flex items-center justify-between px-8 sticky top-0 z-50 backdrop-blur-md" style={{ backgroundColor: `${settings.theme.headerColor}CC` }}>
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                     <ImageIcon className="h-4 w-4 text-primary" />
                   </div>
-                  <span className="font-bold text-base tracking-tight">Restaurant Name</span>
+                  <span className="font-bold text-base tracking-tight" style={{ fontFamily: settings.typography.headingFont }}>Restaurant Name</span>
                 </div>
               </nav>
 
@@ -425,7 +424,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 <section className="min-h-[300px] flex flex-col items-center justify-center text-center px-8 py-12 relative overflow-hidden">
                   <div className="absolute inset-0 bg-primary/5" />
                   <div className="relative z-10">
-                    <h2 className="text-4xl font-black mb-4 leading-tight" style={{ color: settings.theme.text }}>
+                    <h2 className="text-4xl font-black mb-4 leading-tight" style={{ color: settings.theme.text, fontFamily: settings.typography.headingFont }}>
                       Restaurant Name
                     </h2>
                     <Button 
@@ -443,7 +442,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
               {settings.sections.about.visible && (
                 <section className="py-16 px-10">
-                  <h3 className="text-2xl font-black mb-4">Our Story</h3>
+                  <h3 className="text-2xl font-black mb-4" style={{ fontFamily: settings.typography.headingFont }}>Our Story</h3>
                   <p className="text-sm opacity-60 leading-relaxed">
                     We believe in serving authentic flavors using only the freshest local ingredients. Experience the art of culinary excellence in a warm and inviting atmosphere.
                   </p>
@@ -453,21 +452,14 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               {settings.sections.menuList.visible && (
                 <section className="py-16 px-10 bg-slate-50/50">
                   <div className="flex justify-between items-end mb-8">
-                    <h3 className="text-2xl font-black">Featured Menu</h3>
+                    <h3 className="text-2xl font-black" style={{ fontFamily: settings.typography.headingFont }}>Featured Menu</h3>
                     <Button variant="link" className="font-bold uppercase tracking-widest text-[9px]">View All</Button>
                   </div>
                   <div className="grid grid-cols-1 gap-4">
                     <div className="p-4 bg-white rounded-2xl shadow-sm flex gap-4 items-center">
                       <div className="w-16 h-16 bg-slate-100 rounded-xl shrink-0" />
                       <div>
-                        <h4 className="font-bold text-sm">Signature Dish</h4>
-                        <p className="text-xs opacity-50">$14.00</p>
-                      </div>
-                    </div>
-                    <div className="p-4 bg-white rounded-2xl shadow-sm flex gap-4 items-center">
-                      <div className="w-16 h-16 bg-slate-100 rounded-xl shrink-0" />
-                      <div>
-                        <h4 className="font-bold text-sm">Chef Special</h4>
+                        <h4 className="font-bold text-sm" style={{ fontFamily: settings.typography.headingFont }}>Signature Dish</h4>
                         <p className="text-xs opacity-50">$14.00</p>
                       </div>
                     </div>
