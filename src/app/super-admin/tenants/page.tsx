@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -12,14 +11,15 @@ import {
   MoreHorizontal, 
   ShieldAlert,
   Store,
-  Globe
+  Globe,
+  Mail
 } from 'lucide-react';
 import { MOCK_RESTAURANTS, Restaurant } from '@/lib/mock-data';
 import { Input } from '@/components/ui/input';
 import Link from 'next/link';
 
 export default function TenantsPage() {
-  const [restaurants, setRestaurants] = useState<Restaurant[]>(MOCK_RESTAURANTS);
+  const [restaurants] = useState<Restaurant[]>(MOCK_RESTAURANTS);
   const [search, setSearch] = useState('');
 
   const filteredRestaurants = restaurants.filter(r => 
@@ -55,7 +55,7 @@ export default function TenantsPage() {
               placeholder="Filter by name or email..." 
               className="pl-9 shadow-sm"
               value={search}
-              onChange={(e) => setSearch(e.setSearch(e.target.value))}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
         </CardHeader>
@@ -71,43 +71,66 @@ export default function TenantsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRestaurants.map((res) => (
-              <TableRow key={res.id} className="hover:bg-accent/5">
-                <TableCell className="font-medium">
-                  <div>
-                    <p className="font-bold">{res.name}</p>
-                    <p className="text-xs text-muted-foreground">{res.location}</p>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {res.customDomain ? (
-                    <div className="flex items-center gap-1.5 text-primary text-sm font-medium">
-                      <Globe className="h-3 w-3" />
-                      {res.customDomain}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-muted-foreground italic">No custom domain</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-sm">{res.adminEmail}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="capitalize px-3">{res.subscriptionTier}</Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge className={res.status === 'active' ? 'bg-accent/20 text-accent border-accent/20' : 'bg-destructive/10 text-destructive border-destructive/10'}>
-                    {res.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right space-x-2">
-                  <Button size="sm" variant="ghost" className="text-primary hover:bg-primary/10" onClick={() => window.open(`/restaurant-admin/dashboard?impersonate=${res.id}`)}>
-                    <ShieldAlert className="h-4 w-4 mr-1" /> Impersonate
-                  </Button>
-                  <Button size="icon" variant="ghost">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
+            {filteredRestaurants.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  No restaurants found.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredRestaurants.map((res) => (
+                <TableRow key={res.id} className="hover:bg-accent/5">
+                  <TableCell className="font-medium">
+                    <div>
+                      <p className="font-bold">{res.name}</p>
+                      <p className="text-xs text-muted-foreground">{res.location}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {res.customDomain ? (
+                      <div className="flex items-center gap-1.5 text-primary text-sm font-medium">
+                        <Globe className="h-3 w-3" />
+                        {res.customDomain}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">No custom domain</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">{res.adminEmail}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="capitalize px-3">{res.subscriptionTier}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={res.status === 'active' ? 'bg-accent/20 text-accent border-accent/20' : 'bg-destructive/10 text-destructive border-destructive/10'}>
+                      {res.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right space-x-1">
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="text-primary hover:bg-primary/10" 
+                      asChild
+                    >
+                      <a href={`mailto:${res.adminEmail}`}>
+                        <Mail className="h-4 w-4 mr-1" /> Email
+                      </a>
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="text-primary hover:bg-primary/10" 
+                      onClick={() => window.open(`/restaurant-admin/dashboard?impersonate=${res.id}`)}
+                    >
+                      <ShieldAlert className="h-4 w-4 mr-1" /> Impersonate
+                    </Button>
+                    <Button size="icon" variant="ghost">
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </Card>
