@@ -42,8 +42,10 @@ import {
 import Link from 'next/link';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
 import { useFirebase } from '@/firebase';
-import { collection, doc, setDoc, getDocs, query, where } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { firebaseConfig } from '@/firebase/config';
+import { initializeApp, deleteApp, getApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { collection, doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -131,20 +133,18 @@ export default function NewTenantPage() {
     if (!firestore || !auth) return;
     setLoading(true);
 
+    let secondaryApp;
     try {
-      const usersRef = collection(firestore, 'users');
-      const q = query(usersRef, where("email", "==", values.adminEmail));
-      const querySnapshot = await getDocs(q);
+      // Create user using a secondary app to avoid signing out the current Super Admin
+      const secondaryAppName = `tenant-creation-${Date.now()}`;
+      secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+      const secondaryAuth = getAuth(secondaryApp);
       
-      if (!querySnapshot.empty) {
-        form.setError("adminEmail", { message: "This email id is already in use" });
-        setLoading(false);
-        return;
-      }
-
-      const userCredential = await createUserWithEmailAndPassword(auth, values.adminEmail, values.password);
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, values.adminEmail, values.password);
       const adminUid = userCredential.user.uid;
 
+      // Now create the restaurant and user profile using the MAIN firestore instance
+      // We are still logged in as Super Admin here.
       const restaurantRef = doc(collection(firestore, 'restaurants'));
       const restaurantId = restaurantRef.id;
 
@@ -179,6 +179,10 @@ export default function NewTenantPage() {
         updatedAt: new Date().toISOString(),
       });
 
+      // Sign out the secondary auth session and delete the secondary app
+      await signOut(secondaryAuth);
+      await deleteApp(secondaryApp);
+
       toast({
         title: "Restaurant Initialized",
         description: `${values.restaurantName} has been onboarded successfully.`,
@@ -186,10 +190,18 @@ export default function NewTenantPage() {
 
       router.push('/super-admin/tenants');
     } catch (error: any) {
+      if (secondaryApp) await deleteApp(secondaryApp);
+      
+      let errorMsg = error.message || "Failed to create restaurant tenant.";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMsg = "This email is already registered to another user.";
+        form.setError("adminEmail", { message: errorMsg });
+      }
+
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to create restaurant tenant.",
+        title: "Initialization Failed",
+        description: errorMsg,
       });
     } finally {
       setLoading(false);
@@ -289,7 +301,6 @@ export default function NewTenantPage() {
               )}
             />
             
-            {/* Multi-select Searchable Cuisines */}
             <FormField
               control={form.control}
               name="cuisine"
@@ -420,9 +431,8 @@ export default function NewTenantPage() {
                       </FormControl>
                       <SelectContent>
                         {WORLD_CURRENCIES.map((curr) => {
-                          const label = `${WORLD_COUNTRIES.find(c => c.currency === curr.code)?.currency || curr.code} (${curr.symbol})`;
                           return (
-                            <SelectItem key={curr.code} value={curr.code}>{label}</SelectItem>
+                            <SelectItem key={curr.code} value={curr.code}>{curr.code} ({curr.symbol})</SelectItem>
                           )
                         })}
                       </SelectContent>
@@ -516,7 +526,7 @@ export default function NewTenantPage() {
                     <FormControl>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input className="h-11 pl-10 bg-muted/20" placeholder="itwiz@hotmail.com" {...field} />
+                        <Input className="h-11 pl-10 bg-muted/20" placeholder="admin@restaurant.com" {...field} />
                       </div>
                     </FormControl>
                     <FormMessage />
