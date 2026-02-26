@@ -1,3 +1,46 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "restaurant-1",
+      "description": "Modern Italian Pizzeria Interior",
+      "imageUrl": "https://images.unsplash.com/photo-1722587539644-03164d2d327b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxpdGFsaWFuJTIwcmVzdGF1cmFudCUyMGludGVyaW9yfGVufDB8fHx8MTc3MjExOTY4MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "italian restaurant interior"
+    },
+    {
+      "id": "restaurant-2",
+      "description": "Japanese Sushi Bar",
+      "imageUrl": "https://images.unsplash.com/photo-1651977560780-9dd0a6071db6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxzdXNoaSUyMGJhciUyMGludGVyaW9yfGVufDB8fHx8MTc3MjExOTY4MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sushi bar interior"
+    },
+    {
+      "id": "restaurant-3",
+      "description": "Cozy French Bistro",
+      "imageUrl": "https://images.unsplash.com/photo-1708920325933-c31731ceebfe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxiaXN0cm8lMjBjYWZlJTIwaW50ZXJpb3J8ZW58MHx8fHwxNzcyMTE5NjgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "bistro cafe interior"
+    },
+    {
+      "id": "food-pizza",
+      "description": "Gourmet Margherita Pizza",
+      "imageUrl": "https://images.unsplash.com/photo-1763478156969-4d7c0ab35590?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxnb3VybWV0JTIwcGl6emF8ZW58MHx8fHwxNzcyMTE5NjgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "gourmet pizza"
+    },
+    {
+      "id": "food-sushi",
+      "description": "Premium Sushi Platter",
+      "imageUrl": "https://images.unsplash.com/photo-1611143669185-af224c5e3252?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxzdXNoaSUyMHBsYXR0ZXJ8ZW58MHx8fHwxNzcyMTE5NjgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sushi platter"
+    },
+    {
+      "id": "food-burger",
+      "description": "Artisan Beef Burger",
+      "imageUrl": "https://images.unsplash.com/photo-1637771622300-6f968a373415?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxhcnRpc2FuJTIwYnVyZ2VyfGVufDB8fHx8MTc3MjExOTY4MXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "artisan burger"
+    },
+    {
+      "id": "hero-restaurant",
+      "description": "Luxury Dining Atmosphere",
+      "imageUrl": "https://images.unsplash.com/photo-1627900429100-3ed333915540?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxmaW5lJTIwZGluaW5nfGVufDB8fHx8MTc3MjEwNjU5OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fine dining"
+    }
+  ]
 }
