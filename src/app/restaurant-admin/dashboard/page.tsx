@@ -51,6 +51,8 @@ function DashboardContent() {
   }, [firestore, authUser?.uid]);
   
   const { data: userProfile, isLoading: loadingProfile } = useDoc(userProfileRef);
+  
+  // Determine if we have a restaurant to load based on the profile or impersonation
   const effectiveRestaurantId = impersonateId || (userProfile?.role === 'RestaurantAdmin' ? userProfile.restaurantId : null);
 
   const restaurantRef = useMemoFirebase(() => {
@@ -141,7 +143,11 @@ function DashboardContent() {
     }
   };
 
-  if (loadingProfile || loadingRes) {
+  // Improved loading state: Stay in loading if profile is loading,
+  // OR if we have a restaurant ID and it's currently fetching.
+  const isTrulyLoading = loadingProfile || (!!effectiveRestaurantId && loadingRes && !restaurant);
+
+  if (isTrulyLoading) {
     return (
       <div className="flex flex-col items-center justify-center p-20 space-y-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -150,7 +156,8 @@ function DashboardContent() {
     );
   }
 
-  if (!restaurant) {
+  // Only show "Access Restriction" if we are definitely done loading and have no restaurant
+  if (!restaurant && !loadingRes && !loadingProfile) {
     return (
       <div className="p-20 text-center max-w-md mx-auto space-y-6">
         <div className="bg-destructive/10 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto text-destructive">
@@ -193,7 +200,7 @@ function DashboardContent() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="border-primary text-primary hover:bg-primary/10" asChild>
-            <Link href={`/customer/${restaurant.id}`} target="_blank">
+            <Link href={`/customer/${restaurant?.id}`} target="_blank">
               <ShoppingCart className="mr-2 h-4 w-4" /> View Storefront
             </Link>
           </Button>
