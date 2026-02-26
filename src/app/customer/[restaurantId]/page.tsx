@@ -3,7 +3,7 @@
 import { useState, use as reactUse, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Star, Clock, MapPin, ChevronLeft, Plus, Minus, Loader2, UtensilsCrossed, ShoppingBag } from 'lucide-react';
+import { Star, Clock, MapPin, Plus, Minus, Loader2, UtensilsCrossed } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
@@ -28,9 +28,9 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
     if (!firestore || !restaurantId) return null;
     return doc(firestore, 'restaurants', restaurantId, 'design', 'settings');
   }, [firestore, restaurantId]);
-  const { data: design } = useDoc(designRef);
+  const { data: design, isLoading: loadingDesign } = useDoc(designRef);
 
-  // 3. Fetch Active Menus for this restaurant
+  // 3. Fetch Active Menus
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return query(
@@ -83,7 +83,8 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const cartTotal = cart.reduce((sum, entry) => sum + (entry.item.price * entry.qty), 0);
   const cartCount = cart.reduce((sum, entry) => sum + entry.qty, 0);
 
-  if (loadingRes || (loadingMenus && !menus)) {
+  // Prioritize loading state to avoid flickering "Not Found"
+  if (loadingRes || loadingDesign || (loadingMenus && !menus)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -92,6 +93,7 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
     );
   }
 
+  // Only show not found if we are definitely done loading and have no data
   if (!restaurant && !loadingRes) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-6">
@@ -110,7 +112,6 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const currencySymbol = restaurant?.baseCurrency === 'GBP' ? '£' : '$';
   const activeMenu = menus?.find(m => m.id === activeMenuId);
 
-  // Dynamic Styles from Design Config
   const designStyles = {
     '--primary': design?.theme?.primary || '#42668A',
     '--accent': design?.theme?.accent || '#53C683',
@@ -124,15 +125,11 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
 
   return (
     <div className="min-h-screen bg-background pb-24" style={designStyles}>
-      {/* Dynamic Font Import */}
       <link href={`https://fonts.googleapis.com/css2?family=${designStyles['--font-family']?.toString().replace(' ', '+')}&family=${designStyles['--heading-font']?.toString().replace(' ', '+')}&display=swap`} rel="stylesheet" />
-
-      {/* Custom CSS Injection */}
       {design?.customCss && (
         <style dangerouslySetInnerHTML={{ __html: design.customCss }} />
       )}
 
-      {/* Hero Section */}
       {design?.sections?.hero?.visible !== false && (
         <div className="relative h-48 md:h-64 overflow-hidden bg-primary/20">
           <img 
@@ -166,7 +163,6 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
           </CardContent>
         </Card>
 
-        {/* About Section */}
         {design?.sections?.about?.visible && (
           <div className="mb-10 px-4 py-8 bg-white rounded-2xl border shadow-sm text-center about-section">
             <h2 className="text-xl font-bold mb-4" style={{ color: designStyles['--primary'] as string, fontFamily: designStyles['--heading-font'] as string }}>Our Story</h2>
@@ -176,7 +172,6 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
           </div>
         )}
 
-        {/* Categories Bar */}
         <div className="sticky top-0 bg-background/80 backdrop-blur-md z-40 -mx-4 px-4 py-4 border-b mb-6">
           <div className="flex gap-2 overflow-x-auto no-scrollbar max-w-4xl mx-auto">
             {menus?.map((m: any) => (
@@ -197,7 +192,6 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
           </div>
         </div>
 
-        {/* Menu Items */}
         <div className="grid gap-6 menu-section">
           <h2 className="text-2xl font-bold px-1" style={{ fontFamily: designStyles['--heading-font'] as string }}>{activeMenu?.name || 'Menu Items'}</h2>
           {loadingItems ? (
@@ -236,7 +230,6 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
         </div>
       </div>
 
-      {/* Floating Cart */}
       {cartCount > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-50">
           <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
@@ -275,7 +268,6 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
         </div>
       )}
 
-      {/* Footer Section */}
       <footer className="mt-20 py-10 text-center border-t" style={{ backgroundColor: designStyles['--footer-bg'] as string }}>
         <p className="text-xs font-bold uppercase tracking-widest text-white/50">© 2024 {restaurant?.name} Global</p>
       </footer>
