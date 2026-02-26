@@ -35,7 +35,8 @@ import {
   Search,
   ChevronsUpDown,
   Check,
-  X
+  X,
+  Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
@@ -50,7 +51,10 @@ const CUISINES = [
   "Jamaican", "Japanese", "Jordanian", "Kazakh", "Kenyan", "Korean", "Lebanese", "Malaysian", "Mediterranean", "Mexican",
   "Middle Eastern", "Moroccan", "Nepalese", "Nigerian", "North African", "Norwegian", "Pakistani", "Palestinian", "Persian", "Peruvian",
   "Polish", "Portuguese", "Russian", "Saudi Arabian", "Scandinavian", "Scottish", "South African", "South American", "Spanish", "Sri Lankan",
-  "Swedish", "Swiss", "Syrian", "Taiwanese", "Thai", "Tibetan", "Turkish", "Ukrainian", "Uzbek", "Vietnamese"
+  "Swedish", "Swiss", "Syrian", "Taiwanese", "Thai", "Tibetan", "Turkish", "Ukrainian", "Uzbek", "Vietnamese",
+  "Fine Dining", "Casual Dining", "Family Restaurant", "Fast Food", "Buffet", "Bakery", "Patisserie", "Café", "Coffee Shop", 
+  "Tea House", "Dessert Shop", "Donut Shop", "Cupcake Shop", "Ice Cream Parlor", "Smoothie Bar", "Juice Bar", "Sandwich", 
+  "BBQ", "Seafood", "Vegetarian", "Salad Bar", "Sushi Bar", "Noodle Bar"
 ].sort();
 
 const formSchema = z.object({
@@ -220,17 +224,23 @@ export default function NewTenantPage() {
                   name="cuisine"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>Cuisine Types</FormLabel>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {field.value.map((c) => (
-                          <Badge key={c} variant="secondary" className="pl-2 pr-1 py-1 gap-1">
-                            {c}
-                            <X 
-                              className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                              onClick={() => field.onChange(field.value.filter(v => v !== c))}
-                            />
-                          </Badge>
-                        ))}
+                      <FormLabel>Cuisine & Establishment Types</FormLabel>
+                      <div className="flex flex-wrap gap-2 mb-2 min-h-[40px] p-2 bg-muted/20 rounded-lg border border-dashed">
+                        {field.value.length === 0 ? (
+                          <span className="text-xs text-muted-foreground italic flex items-center gap-1">
+                            <Sparkles className="h-3 w-3" /> No categories selected yet
+                          </span>
+                        ) : (
+                          field.value.map((c) => (
+                            <Badge key={c} variant="secondary" className="pl-2 pr-1 py-1 gap-1 animate-in fade-in zoom-in duration-200">
+                              {c}
+                              <X 
+                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
+                                onClick={() => field.onChange(field.value.filter(v => v !== c))}
+                              />
+                            </Badge>
+                          ))
+                        )}
                       </div>
                       <Popover>
                         <PopoverTrigger asChild>
@@ -239,13 +249,13 @@ export default function NewTenantPage() {
                               variant="outline"
                               role="combobox"
                               className={cn(
-                                "w-full justify-between",
+                                "w-full justify-between h-10",
                                 !field.value?.length && "text-muted-foreground"
                               )}
                             >
                               {field.value?.length > 0
-                                ? `${field.value.length} cuisines selected`
-                                : "Search and select cuisines..."}
+                                ? `${field.value.length} selected`
+                                : "Search cuisines, dining styles, or shop types..."}
                               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </FormControl>
@@ -255,7 +265,7 @@ export default function NewTenantPage() {
                             <div className="relative">
                               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                               <Input 
-                                placeholder="Filter cuisines..." 
+                                placeholder="Filter list..." 
                                 className="pl-9 h-9"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -265,7 +275,7 @@ export default function NewTenantPage() {
                           <ScrollArea className="h-[300px]">
                             <div className="p-2 space-y-1">
                               {filteredCuisines.length === 0 ? (
-                                <p className="text-center py-6 text-sm text-muted-foreground">No cuisine found.</p>
+                                <p className="text-center py-6 text-sm text-muted-foreground">No matching type found.</p>
                               ) : (
                                 filteredCuisines.map((cuisine) => {
                                   const isSelected = field.value?.includes(cuisine);
