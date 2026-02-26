@@ -7,6 +7,7 @@ export interface Restaurant {
   address: string;
   description: string;
   adminEmail: string;
+  customDomain?: string;
   status: 'active' | 'suspended';
   subscriptionTier: 'basic' | 'pro' | 'enterprise';
 }
@@ -20,6 +21,7 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     address: '123 Pizza St, London, EC1 1BB',
     description: 'Authentic wood-fired pizzas and homemade pasta in the heart of London.',
     adminEmail: 'admin@bellanapoli.com',
+    customDomain: 'order.bellanapoli.com',
     status: 'active',
     subscriptionTier: 'pro',
   },
@@ -31,6 +33,7 @@ export const MOCK_RESTAURANTS: Restaurant[] = [
     address: '45 Rue de Sushi, Paris, 75001',
     description: 'Minimalist Japanese dining featuring premium grade sushi and sashimi.',
     adminEmail: 'manager@sakurazen.fr',
+    customDomain: 'sakurazen.jp',
     status: 'active',
     subscriptionTier: 'enterprise',
   },

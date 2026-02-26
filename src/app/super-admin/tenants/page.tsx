@@ -11,7 +11,8 @@ import {
   Search, 
   MoreHorizontal, 
   ShieldAlert,
-  Store
+  Store,
+  Globe
 } from 'lucide-react';
 import { MOCK_RESTAURANTS, Restaurant } from '@/lib/mock-data';
 import { Input } from '@/components/ui/input';
@@ -33,7 +34,7 @@ export default function TenantsPage() {
           <h1 className="text-3xl font-headline font-bold text-primary flex items-center gap-2">
             <Store className="h-8 w-8" /> Restaurant Tenants
           </h1>
-          <p className="text-muted-foreground">Manage multi-tenant isolation and subscription statuses.</p>
+          <p className="text-muted-foreground">Manage multi-tenant isolation, domains, and subscriptions.</p>
         </div>
         <Button asChild className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm">
           <Link href="/super-admin/tenants/new">
@@ -54,7 +55,7 @@ export default function TenantsPage() {
               placeholder="Filter by name or email..." 
               className="pl-9 shadow-sm"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.setSearch(e.target.value))}
             />
           </div>
         </CardHeader>
@@ -62,8 +63,8 @@ export default function TenantsPage() {
           <TableHeader>
             <TableRow className="hover:bg-transparent bg-muted/30">
               <TableHead className="font-bold">Restaurant Name</TableHead>
+              <TableHead className="font-bold">Domain</TableHead>
               <TableHead className="font-bold">Admin Email</TableHead>
-              <TableHead className="font-bold">Location</TableHead>
               <TableHead className="font-bold">Tier</TableHead>
               <TableHead className="font-bold">Status</TableHead>
               <TableHead className="text-right font-bold">Actions</TableHead>
@@ -72,9 +73,23 @@ export default function TenantsPage() {
           <TableBody>
             {filteredRestaurants.map((res) => (
               <TableRow key={res.id} className="hover:bg-accent/5">
-                <TableCell className="font-medium">{res.name}</TableCell>
-                <TableCell>{res.adminEmail}</TableCell>
-                <TableCell>{res.location}</TableCell>
+                <TableCell className="font-medium">
+                  <div>
+                    <p className="font-bold">{res.name}</p>
+                    <p className="text-xs text-muted-foreground">{res.location}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  {res.customDomain ? (
+                    <div className="flex items-center gap-1.5 text-primary text-sm font-medium">
+                      <Globe className="h-3 w-3" />
+                      {res.customDomain}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">No custom domain</span>
+                  )}
+                </TableCell>
+                <TableCell className="text-sm">{res.adminEmail}</TableCell>
                 <TableCell>
                   <Badge variant="outline" className="capitalize px-3">{res.subscriptionTier}</Badge>
                 </TableCell>
