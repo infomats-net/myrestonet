@@ -78,8 +78,8 @@ export function AdminSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Subscriptions">
-                  <Link href="/super-admin/dashboard">
+                <SidebarMenuButton asChild tooltip="Subscriptions" isActive={pathname === "/super-admin/billing"}>
+                  <Link href="/super-admin/billing">
                     <CreditCard />
                     <span>Billing & Tiers</span>
                   </Link>
