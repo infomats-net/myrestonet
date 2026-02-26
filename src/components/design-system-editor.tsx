@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { generatePalette } from '@/ai/flows/generate-palette';
 
 interface DesignSettings {
   theme: {
@@ -88,6 +89,7 @@ const THEME_PRESETS = [
   { name: 'Dark', colors: { primary: '#38BDF8', accent: '#0284C7', background: '#0F172A', text: '#F8FAFC' } },
   { name: 'Modern', colors: { primary: '#10B981', accent: '#059669', background: '#F0FDFA', text: '#064E3B' } },
   { name: 'Vibrant', colors: { primary: '#F43F5E', accent: '#E11D48', background: '#FFF1F2', text: '#4C0519' } },
+  { name: 'Minimalist', colors: { primary: '#27272A', accent: '#71717A', background: '#FAFAFA', text: '#09090B' } },
 ];
 
 export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
@@ -96,6 +98,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   const [saving, setSaving] = useState(false);
   const [previewMode, setPreviewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [aiPrompt, setAiPrompt] = useState('');
+  const [generatingAi, setGeneratingAi] = useState(false);
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -154,90 +157,70 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
     }));
   };
 
-  if (loading) return <div className="p-20 flex justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+  const handleAiGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setGeneratingAi(true);
+    try {
+      const palette = await generatePalette({ description: aiPrompt });
+      setSettings(prev => ({
+        ...prev,
+        theme: {
+          ...prev.theme,
+          primary: palette.primary,
+          accent: palette.accent,
+          background: palette.background,
+          text: palette.text,
+        }
+      }));
+      toast({ title: "AI Palette Generated", description: "Successfully updated theme colors based on your description." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "AI Generation Failed", description: error.message });
+    } finally {
+      setGeneratingAi(false);
+    }
+  };
+
+  if (loading) return <div className="p-20 flex justify-center h-full"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 overflow-hidden -m-4 md:-m-8">
-      {/* Top Header Bar */}
-      <header className="h-20 bg-white border-b px-8 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="bg-sky-100 p-2.5 rounded-2xl">
-            <Palette className="h-6 w-6 text-sky-600" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 leading-none">Restaurant Front Designer</h1>
-            <p className="text-sm text-slate-500 mt-1">Customize your public restaurant identity.</p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-6">
-          <div className="flex items-center bg-sky-50 rounded-full p-1 border border-sky-100">
-            <button 
-              onClick={() => setPreviewMode('desktop')}
-              className={cn("p-2 rounded-full transition-all", previewMode === 'desktop' ? "bg-white text-sky-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
-            >
-              <Monitor className="h-5 w-5" />
-            </button>
-            <button 
-              onClick={() => setPreviewMode('tablet')}
-              className={cn("p-2 rounded-full transition-all", previewMode === 'tablet' ? "bg-white text-sky-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
-            >
-              <Tablet className="h-5 w-5" />
-            </button>
-            <button 
-              onClick={() => setPreviewMode('mobile')}
-              className={cn("p-2 rounded-full transition-all", previewMode === 'mobile' ? "bg-white text-sky-600 shadow-sm" : "text-slate-400 hover:text-slate-600")}
-            >
-              <Smartphone className="h-5 w-5" />
-            </button>
-          </div>
-
-          <Button onClick={handleSave} disabled={saving} className="bg-sky-500 hover:bg-sky-600 text-white rounded-2xl h-11 px-6 shadow-lg shadow-sky-500/20 font-bold transition-all transform hover:-translate-y-0.5">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Publish Changes
-          </Button>
-
-          <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center border border-sky-200 text-sky-600 font-bold text-sm">
-            {restaurantId.slice(0, 2).toUpperCase()}
-          </div>
-        </div>
-      </header>
-
+    <div className="flex flex-col h-[calc(100vh-140px)] bg-slate-50 overflow-hidden rounded-3xl border border-slate-200 shadow-sm">
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar Controls */}
         <aside className="w-[420px] bg-white border-r flex flex-col shrink-0">
           <Tabs defaultValue="theme" className="flex-1 flex flex-col">
-            <div className="px-6 py-4 border-b bg-slate-50/50">
-              <TabsList className="w-full h-12 bg-white border p-1 rounded-2xl shadow-sm">
-                <TabsTrigger value="theme" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><Palette className="h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="gallery" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><ImageIcon className="h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="layout" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><Layout className="h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="fonts" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><Type className="h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="code" className="flex-1 rounded-xl data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900"><Code className="h-4 w-4" /></TabsTrigger>
+            <div className="px-6 py-4 border-b bg-white">
+              <TabsList className="w-full h-12 bg-slate-50 border p-1 rounded-2xl">
+                <TabsTrigger value="theme" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"><Palette className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="gallery" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"><ImageIcon className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="layout" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"><Layout className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="fonts" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"><Type className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="code" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"><Code className="h-4 w-4" /></TabsTrigger>
               </TabsList>
             </div>
 
             <ScrollArea className="flex-1 px-6 py-6">
-              <TabsContent value="theme" className="space-y-10 mt-0">
+              <TabsContent value="theme" className="space-y-10 mt-0 pb-10">
                 {/* AI Theme Designer */}
-                <div className="p-6 rounded-3xl bg-white border border-sky-100 shadow-sm relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-                    <Sparkles className="h-12 w-12 text-sky-600" />
-                  </div>
+                <div className="p-6 rounded-[2rem] bg-sky-50/50 border border-sky-100/50 shadow-sm relative overflow-hidden group">
                   <div className="flex items-center gap-2 mb-4">
                     <Sparkles className="h-4 w-4 text-sky-500" />
                     <h3 className="text-sm font-bold text-sky-600 tracking-wider uppercase">AI Theme Designer</h3>
                   </div>
-                  <div className="relative mb-4">
+                  <div className="bg-white rounded-[1.5rem] border border-sky-100 p-2 mb-4 overflow-hidden shadow-sm">
                     <Textarea 
                       placeholder="e.g. A rustic Italian trattoria with warm earth tones and elegant typography..." 
-                      className="min-h-[100px] bg-slate-50 border-sky-100 focus-visible:ring-sky-500 rounded-2xl p-4 text-sm placeholder:text-slate-400"
+                      className="min-h-[100px] border-none focus-visible:ring-0 shadow-none text-sm placeholder:text-slate-400 p-3"
                       value={aiPrompt}
                       onChange={(e) => setAiPrompt(e.target.value)}
                     />
                   </div>
-                  <Button variant="outline" className="w-full rounded-full h-11 border-sky-200 text-sky-700 hover:bg-sky-50 font-bold gap-2">
-                    <RefreshCw className="h-4 w-4" />
+                  <Button 
+                    variant="outline" 
+                    className="w-full rounded-full h-11 border-sky-200 text-sky-700 hover:bg-white bg-white font-bold gap-2 shadow-sm"
+                    onClick={handleAiGenerate}
+                    disabled={generatingAi}
+                  >
+                    {generatingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                     Generate Palette
                   </Button>
                 </div>
@@ -250,28 +233,28 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Primary</Label>
                       <div className="flex gap-2">
                         <Input type="color" value={settings.theme.primary} onChange={(e) => setSettings({...settings, theme: {...settings.theme, primary: e.target.value}})} className="h-11 w-11 p-1 rounded-lg shrink-0 border-slate-200 cursor-pointer" />
-                        <Input value={settings.theme.primary} onChange={(e) => setSettings({...settings, theme: {...settings.theme, primary: e.target.value}})} className="h-11 rounded-xl bg-slate-50 border-slate-200 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
+                        <Input value={settings.theme.primary} onChange={(e) => setSettings({...settings, theme: {...settings.theme, primary: e.target.value}})} className="h-11 rounded-xl bg-sky-50/50 border-sky-100/50 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
                       </div>
                     </div>
                     <div className="space-y-2.5">
                       <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Accent</Label>
                       <div className="flex gap-2">
                         <Input type="color" value={settings.theme.accent} onChange={(e) => setSettings({...settings, theme: {...settings.theme, accent: e.target.value}})} className="h-11 w-11 p-1 rounded-lg shrink-0 border-slate-200 cursor-pointer" />
-                        <Input value={settings.theme.accent} onChange={(e) => setSettings({...settings, theme: {...settings.theme, accent: e.target.value}})} className="h-11 rounded-xl bg-slate-50 border-slate-200 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
+                        <Input value={settings.theme.accent} onChange={(e) => setSettings({...settings, theme: {...settings.theme, accent: e.target.value}})} className="h-11 rounded-xl bg-sky-50/50 border-sky-100/50 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
                       </div>
                     </div>
                     <div className="space-y-2.5">
                       <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Background</Label>
                       <div className="flex gap-2">
                         <Input type="color" value={settings.theme.background} onChange={(e) => setSettings({...settings, theme: {...settings.theme, background: e.target.value}})} className="h-11 w-11 p-1 rounded-lg shrink-0 border-slate-200 cursor-pointer" />
-                        <Input value={settings.theme.background} onChange={(e) => setSettings({...settings, theme: {...settings.theme, background: e.target.value}})} className="h-11 rounded-xl bg-slate-50 border-slate-200 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
+                        <Input value={settings.theme.background} onChange={(e) => setSettings({...settings, theme: {...settings.theme, background: e.target.value}})} className="h-11 rounded-xl bg-sky-50/50 border-sky-100/50 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
                       </div>
                     </div>
                     <div className="space-y-2.5">
                       <Label className="text-[11px] font-bold text-slate-500 uppercase ml-1">Text</Label>
                       <div className="flex gap-2">
                         <Input type="color" value={settings.theme.text} onChange={(e) => setSettings({...settings, theme: {...settings.theme, text: e.target.value}})} className="h-11 w-11 p-1 rounded-lg shrink-0 border-slate-200 cursor-pointer" />
-                        <Input value={settings.theme.text} onChange={(e) => setSettings({...settings, theme: {...settings.theme, text: e.target.value}})} className="h-11 rounded-xl bg-slate-50 border-slate-200 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
+                        <Input value={settings.theme.text} onChange={(e) => setSettings({...settings, theme: {...settings.theme, text: e.target.value}})} className="h-11 rounded-xl bg-sky-50/50 border-sky-100/50 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" />
                       </div>
                     </div>
                   </div>
@@ -285,7 +268,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       <Button 
                         key={p.name} 
                         variant="outline" 
-                        className="h-14 rounded-2xl bg-sky-50/30 border-sky-100 hover:bg-sky-50 hover:border-sky-200 text-slate-700 font-medium text-sm transition-all"
+                        className="h-14 rounded-2xl bg-sky-50/30 border-sky-100/50 hover:bg-sky-50 hover:border-sky-200 text-slate-700 font-medium text-sm transition-all"
                         onClick={() => applyPreset(p)}
                       >
                         {p.name}
@@ -344,46 +327,63 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
         </aside>
 
         {/* Main Preview Area */}
-        <main className="flex-1 bg-slate-100 flex flex-col items-center justify-center p-12 overflow-hidden">
+        <main className="flex-1 bg-muted/30 p-12 flex flex-col items-center justify-center relative group">
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 bg-white/80 backdrop-blur-md px-6 py-2 rounded-full border shadow-sm">
+            <div className="flex items-center gap-2">
+              <Eye className="h-3.5 w-3.5 text-primary" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Editing Mode</span>
+            </div>
+            <div className="h-4 w-px bg-slate-200" />
+            <div className="flex items-center gap-1">
+              <button 
+                onClick={() => setPreviewMode('desktop')}
+                className={cn("p-1.5 rounded-md transition-all", previewMode === 'desktop' ? "bg-primary text-white" : "text-slate-400 hover:text-slate-600")}
+              >
+                <Monitor className="h-3.5 w-3.5" />
+              </button>
+              <button 
+                onClick={() => setPreviewMode('tablet')}
+                className={cn("p-1.5 rounded-md transition-all", previewMode === 'tablet' ? "bg-primary text-white" : "text-slate-400 hover:text-slate-600")}
+              >
+                <Tablet className="h-3.5 w-3.5" />
+              </button>
+              <button 
+                onClick={() => setPreviewMode('mobile')}
+                className={cn("p-1.5 rounded-md transition-all", previewMode === 'mobile' ? "bg-primary text-white" : "text-slate-400 hover:text-slate-600")}
+              >
+                <Smartphone className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
           <div className={cn(
             "relative bg-white shadow-2xl transition-all duration-700 ease-in-out border-[12px] border-slate-900 overflow-hidden flex flex-col",
-            previewMode === 'desktop' ? "w-full max-w-5xl h-[85%]" : previewMode === 'tablet' ? "w-[768px] h-[90%]" : "w-[375px] h-[80%]",
+            previewMode === 'desktop' ? "w-full max-w-5xl h-[600px]" : previewMode === 'tablet' ? "w-[600px] h-[700px]" : "w-[340px] h-[600px]",
             "rounded-[40px]"
           )}>
-            {/* Simulated Storefront Content */}
-            <div className="flex-1 overflow-y-auto no-scrollbar scroll-smooth" style={{ 
+            <div className="flex-1 overflow-y-auto no-scrollbar" style={{ 
               fontFamily: settings.typography.fontFamily,
               backgroundColor: settings.theme.background,
               color: settings.theme.text
             }}>
-              {/* Nav */}
-              <nav className="h-20 flex items-center justify-between px-10 sticky top-0 z-50 backdrop-blur-md" style={{ backgroundColor: `${settings.theme.headerColor}CC` }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center">
-                    <ImageIcon className="h-5 w-5 text-sky-500" />
+              <nav className="h-16 flex items-center justify-between px-8 sticky top-0 z-50 backdrop-blur-md" style={{ backgroundColor: `${settings.theme.headerColor}CC` }}>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <ImageIcon className="h-4 w-4 text-primary" />
                   </div>
-                  <span className="font-bold text-lg tracking-tight">Restaurant Name</span>
-                </div>
-                <div className="flex gap-8 text-[11px] font-black uppercase tracking-[0.2em] opacity-50">
-                  <span className="cursor-pointer hover:opacity-100">Menu</span>
-                  <span className="cursor-pointer hover:opacity-100">About</span>
-                  <span className="cursor-pointer hover:opacity-100">Contact</span>
+                  <span className="font-bold text-base tracking-tight">Restaurant Name</span>
                 </div>
               </nav>
 
-              {/* Hero */}
               {settings.sections.hero.visible && (
-                <section className="min-h-[500px] flex flex-col items-center justify-center text-center px-10 py-20 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-sky-50 opacity-50" />
-                  <div className="relative z-10 max-w-3xl">
-                    <h2 className="text-6xl font-black mb-6 leading-[1.1]" style={{ color: settings.theme.text }}>
+                <section className="min-h-[300px] flex flex-col items-center justify-center text-center px-8 py-12 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-primary/5" />
+                  <div className="relative z-10">
+                    <h2 className="text-4xl font-black mb-4 leading-tight" style={{ color: settings.theme.text }}>
                       Restaurant Name
                     </h2>
-                    <p className="text-xl opacity-70 mb-10 font-medium">
-                      Signature culinary experience.
-                    </p>
                     <Button 
-                      className="rounded-full h-16 px-12 text-lg font-black shadow-xl transition-all transform hover:scale-105" 
+                      className="rounded-full h-12 px-8 font-bold shadow-lg" 
                       style={{ 
                         backgroundColor: settings.theme.primary,
                         color: settings.theme.background 
@@ -395,56 +395,49 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 </section>
               )}
 
-              {/* About */}
               {settings.sections.about.visible && (
-                <section className="py-24 px-16 grid grid-cols-2 gap-16 items-center">
-                  <div className="bg-slate-50 rounded-[2.5rem] h-[300px] flex items-center justify-center">
-                    <Layout className="h-16 w-16 text-slate-200" />
-                  </div>
-                  <div className="space-y-6">
-                    <h3 className="text-4xl font-black leading-tight">Our Story</h3>
-                    <p className="text-lg opacity-60 leading-relaxed">
-                      We believe in serving authentic flavors using only the freshest local ingredients. Experience the art of culinary excellence in a warm and inviting atmosphere.
-                    </p>
-                  </div>
+                <section className="py-16 px-10">
+                  <h3 className="text-2xl font-black mb-4">Our Story</h3>
+                  <p className="text-sm opacity-60 leading-relaxed">
+                    We believe in serving authentic flavors using only the freshest local ingredients. Experience the art of culinary excellence in a warm and inviting atmosphere.
+                  </p>
                 </section>
               )}
 
-              {/* Featured Menu Preview */}
-              <section className="py-24 px-16 bg-slate-50/50">
-                <div className="flex justify-between items-end mb-12">
-                  <h3 className="text-4xl font-black">Featured Menu</h3>
-                  <Button variant="link" className="font-bold uppercase tracking-widest text-[11px]">View All</Button>
+              <section className="py-16 px-10 bg-slate-50/50">
+                <div className="flex justify-between items-end mb-8">
+                  <h3 className="text-2xl font-black">Featured Menu</h3>
+                  <Button variant="link" className="font-bold uppercase tracking-widest text-[9px]">View All</Button>
                 </div>
-                <div className="grid grid-cols-2 gap-8">
-                  <div className="p-6 bg-white rounded-[2rem] shadow-sm flex gap-6 items-center">
-                    <div className="w-24 h-24 bg-slate-100 rounded-2xl shrink-0" />
-                    <div className="flex-1">
-                      <h4 className="font-bold">Signature Dish</h4>
-                      <p className="text-sm opacity-50">$14.00</p>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="p-4 bg-white rounded-2xl shadow-sm flex gap-4 items-center">
+                    <div className="w-16 h-16 bg-slate-100 rounded-xl shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-sm">Signature Dish</h4>
+                      <p className="text-xs opacity-50">$14.00</p>
                     </div>
                   </div>
-                  <div className="p-6 bg-white rounded-[2rem] shadow-sm flex gap-6 items-center">
-                    <div className="w-24 h-24 bg-slate-100 rounded-2xl shrink-0" />
-                    <div className="flex-1">
-                      <h4 className="font-bold">Chef Special</h4>
-                      <p className="text-sm opacity-50">$14.00</p>
+                  <div className="p-4 bg-white rounded-2xl shadow-sm flex gap-4 items-center">
+                    <div className="w-16 h-16 bg-slate-100 rounded-xl shrink-0" />
+                    <div>
+                      <h4 className="font-bold text-sm">Chef Special</h4>
+                      <p className="text-xs opacity-50">$14.00</p>
                     </div>
                   </div>
                 </div>
               </section>
 
-              {/* Footer */}
-              <footer className="py-16 text-center opacity-30 border-t">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em]">© 2024 Restaurant Name Global</p>
+              <footer className="py-12 text-center opacity-30 border-t">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em]">© 2024 Restaurant Name Global</p>
               </footer>
             </div>
           </div>
-          
-          {/* Status Indicator */}
-          <div className="mt-8 flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border text-[10px] font-black uppercase tracking-widest text-slate-400">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Live Preview Active
+
+          <div className="absolute bottom-10 right-10 flex gap-2">
+            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-white rounded-2xl h-12 px-8 shadow-xl font-bold">
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Publish Changes
+            </Button>
           </div>
         </main>
       </div>
