@@ -397,7 +397,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
         {/* Main Preview Area */}
         <main className="flex-1 bg-muted/30 p-12 flex flex-col items-center justify-center relative group">
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 bg-white/80 backdrop-blur-md px-6 py-2 rounded-full border shadow-sm">
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-4 bg-white/80 backdrop-blur-md px-6 pt-2 pb-1 rounded-full border shadow-sm">
             <div className="flex items-center gap-2">
               <Eye className="h-3.5 w-3.5 text-primary" />
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Editing Mode</span>
