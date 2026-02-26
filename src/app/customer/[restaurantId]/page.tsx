@@ -1,17 +1,18 @@
-
 "use client";
 
-import { useState } from 'react';
+import { useState, use as reactUse } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ShoppingBag, Star, Clock, MapPin, ChevronLeft, Plus, Minus, X } from 'lucide-react';
+import { Star, Clock, MapPin, ChevronLeft, Plus, Minus } from 'lucide-react';
 import { MOCK_RESTAURANTS, MOCK_MENU_ITEMS, MenuItem } from '@/lib/mock-data';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 
-export default function CustomerOrderPage({ params }: { params: { restaurantId: string } }) {
-  const restaurant = MOCK_RESTAURANTS.find(r => r.id === params.restaurantId) || MOCK_RESTAURANTS[0];
+export default function CustomerOrderPage({ params }: { params: Promise<{ restaurantId: string }> }) {
+  const resolvedParams = reactUse(params);
+  const restaurantId = resolvedParams.restaurantId;
+  const restaurant = MOCK_RESTAURANTS.find(r => r.id === restaurantId) || MOCK_RESTAURANTS[0];
   const items = MOCK_MENU_ITEMS;
   
   const [cart, setCart] = useState<{item: MenuItem, qty: number}[]>([]);
@@ -25,10 +26,6 @@ export default function CustomerOrderPage({ params }: { params: { restaurantId: 
       }
       return [...prev, { item, qty: 1 }];
     });
-  };
-
-  const removeFromCart = (itemId: string) => {
-    setCart(prev => prev.filter(i => i.item.id !== itemId));
   };
 
   const updateQty = (itemId: string, delta: number) => {
