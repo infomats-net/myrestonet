@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,8 +28,6 @@ import {
   Mail, 
   Lock, 
   ChevronLeft,
-  Store,
-  MapPin,
   Loader2,
   Eye,
   EyeOff,
@@ -43,7 +40,7 @@ import Link from 'next/link';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
 import { useFirebase } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, deleteApp, getApp } from 'firebase/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -53,25 +50,23 @@ const CUISINE_TYPES = [
   "Afghan", "African", "American", "Argentinian", "Asian", "Australian", "Austrian", "Bakery", "Barbecue", "Belgian", "Brazilian", "British", "Burmese", "Cafe", "Cajun", "Caribbean", "Chinese", "Colombian", "Contemporary", "Creole", "Cuban", "Czech", "Danish", "Dessert", "Dim Sum", "Eastern European", "Egyptian", "Ethiopian", "European", "Fast Food", "Filipino", "French", "Fusion", "German", "Greek", "Grill", "Hawaiian", "Healthy", "Hungarian", "Indian", "Indonesian", "International", "Irish", "Italian", "Jamaican", "Japanese", "Jewish", "Korean", "Latin American", "Lebanese", "Malaysian", "Mediterranean", "Mexican", "Middle Eastern", "Modern Australian", "Moroccan", "Nepalese", "North African", "Pakistani", "Persian", "Peruvian", "Pizza", "Polish", "Portuguese", "Pub", "Russian", "Scandinavian", "Seafood", "Singaporean", "South American", "South Indian", "Spanish", "Sri Lankan", "Steakhouse", "Sushi", "Swiss", "Taiwanese", "Tapas", "Thai", "Tibetan", "Turkish", "Vegan", "Vegetarian", "Vietnamese"
 ].sort();
 
-const AU_STATES = [
-  "NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"
-];
+const AU_STATES = ["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"];
 
 const formSchema = z.object({
-  restaurantName: z.string().min(2, "Restaurant name must be at least 2 characters"),
+  restaurantName: z.string().min(2, "Restaurant name is required"),
   customDomain: z.string().optional(),
   contactName: z.string().min(2, "Contact name is required"),
   contactNumber: z.string().optional(),
-  cuisine: z.array(z.string()).min(1, "Please select at least one cuisine type"),
-  country: z.string().min(1, "Please select a country"),
-  currency: z.string().min(1, "Please select a currency"),
+  cuisine: z.array(z.string()).min(1, "Select at least one cuisine"),
+  country: z.string().min(1, "Select a country"),
+  currency: z.string().min(1, "Select a currency"),
   city: z.string().min(1, "City is required"),
   state: z.string().min(1, "State is required"),
   postcode: z.string().min(3, "Post code is required"),
   address: z.string().min(5, "Street address is required"),
-  adminEmail: z.string().email("Invalid email address"),
+  adminEmail: z.string().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  confirmPassword: z.string().min(1, "Please confirm your password"),
+  confirmPassword: z.string().min(1, "Please confirm password"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
@@ -111,23 +106,17 @@ export default function NewTenantPage() {
   const selectedCuisines = form.watch("cuisine");
 
   const filteredCuisines = useMemo(() => {
-    return CUISINE_TYPES.filter(c => 
-      c.toLowerCase().includes(cuisineSearch.toLowerCase())
-    );
+    return CUISINE_TYPES.filter(c => c.toLowerCase().includes(cuisineSearch.toLowerCase()));
   }, [cuisineSearch]);
 
   useEffect(() => {
     if (watchedCountry) {
       const countryData = WORLD_COUNTRIES.find(c => c.name === watchedCountry);
-      if (countryData) {
-        form.setValue("currency", countryData.currency);
-      }
+      if (countryData) form.setValue("currency", countryData.currency);
     }
   }, [watchedCountry, form]);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useEffect(() => { setMounted(true); }, []);
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     if (!firestore || !auth) return;
@@ -135,16 +124,14 @@ export default function NewTenantPage() {
 
     let secondaryApp;
     try {
-      // Create user using a secondary app to avoid signing out the current Super Admin
-      const secondaryAppName = `tenant-creation-${Date.now()}`;
+      // SECONDARY AUTH STRATEGY
+      const secondaryAppName = `tenant-gen-${Date.now()}`;
       secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
       
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, values.adminEmail, values.password);
       const adminUid = userCredential.user.uid;
 
-      // Now create the restaurant and user profile using the MAIN firestore instance
-      // We are still logged in as Super Admin here.
       const restaurantRef = doc(collection(firestore, 'restaurants'));
       const restaurantId = restaurantRef.id;
 
@@ -167,6 +154,7 @@ export default function NewTenantPage() {
         cuisine: values.cuisine
       };
 
+      // Writing via primary firestore instance (authorized as Super Admin)
       await setDoc(restaurantRef, restaurantData);
 
       await setDoc(doc(firestore, 'users', adminUid), {
@@ -179,30 +167,15 @@ export default function NewTenantPage() {
         updatedAt: new Date().toISOString(),
       });
 
-      // Sign out the secondary auth session and delete the secondary app
+      // Cleanup secondary instance
       await signOut(secondaryAuth);
       await deleteApp(secondaryApp);
 
-      toast({
-        title: "Restaurant Initialized",
-        description: `${values.restaurantName} has been onboarded successfully.`,
-      });
-
+      toast({ title: "Restaurant Initialized", description: `${values.restaurantName} is ready.` });
       router.push('/super-admin/tenants');
     } catch (error: any) {
       if (secondaryApp) await deleteApp(secondaryApp);
-      
-      let errorMsg = error.message || "Failed to create restaurant tenant.";
-      if (error.code === 'auth/email-already-in-use') {
-        errorMsg = "This email is already registered to another user.";
-        form.setError("adminEmail", { message: errorMsg });
-      }
-
-      toast({
-        variant: "destructive",
-        title: "Initialization Failed",
-        description: errorMsg,
-      });
+      toast({ variant: "destructive", title: "Setup Failed", description: error.message });
     } finally {
       setLoading(false);
     }
@@ -210,11 +183,7 @@ export default function NewTenantPage() {
 
   const toggleCuisine = (cuisine: string) => {
     const current = form.getValues("cuisine");
-    if (current.includes(cuisine)) {
-      form.setValue("cuisine", current.filter(c => c !== cuisine), { shouldValidate: true });
-    } else {
-      form.setValue("cuisine", [...current, cuisine], { shouldValidate: true });
-    }
+    form.setValue("cuisine", current.includes(cuisine) ? current.filter(c => c !== cuisine) : [...current, cuisine], { shouldValidate: true });
   };
 
   if (!mounted) return null;
@@ -223,368 +192,188 @@ export default function NewTenantPage() {
     <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-6 bg-background">
       <div className="flex items-center gap-4 mb-2">
         <Button variant="ghost" size="icon" asChild className="rounded-full">
-          <Link href="/super-admin/tenants">
-            <ChevronLeft className="h-6 w-6" />
-          </Link>
+          <Link href="/super-admin/tenants"><ChevronLeft className="h-6 w-6" /></Link>
         </Button>
         <div>
           <h1 className="text-3xl font-headline font-bold text-primary">Restaurant Profile</h1>
-          <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold">
-            CORE DETAILS AND GLOBAL MARKET CONFIGURATION.
-          </p>
+          <p className="text-muted-foreground uppercase text-[10px] tracking-widest font-bold">CORE DETAILS AND GLOBAL MARKET CONFIGURATION.</p>
         </div>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-12 pb-12">
-          {/* SECTION 1: CORE DETAILS */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-            <FormField
-              control={form.control}
-              name="restaurantName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold text-sm text-primary">Restaurant Name</FormLabel>
-                  <FormControl>
-                    <Input className="h-11 bg-muted/20" placeholder="" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="customDomain"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold text-sm text-primary">Custom Domain</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input className="h-11 pl-10 bg-muted/20" placeholder="pizzaplace.com" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="contactName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold text-sm text-primary">Contact Name</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input className="h-11 pl-10 bg-muted/20" placeholder="" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="contactNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold text-sm text-primary">Contact Number</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input className="h-11 pl-10 bg-muted/20" placeholder="" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FormField control={form.control} name="restaurantName" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="font-bold text-sm text-primary">Restaurant Name</FormLabel>
+                <FormControl><Input className="h-11 bg-muted/20" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="customDomain" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="font-bold text-sm text-primary">Custom Domain</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input className="h-11 pl-10 bg-muted/20" placeholder="domain.com" {...field} />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="contactName" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="font-bold text-sm text-primary">Contact Name</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input className="h-11 pl-10 bg-muted/20" {...field} />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="contactNumber" render={({ field }) => (
+              <FormItem>
+                <FormLabel className="font-bold text-sm text-primary">Contact Number</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input className="h-11 pl-10 bg-muted/20" {...field} />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
             
-            <FormField
-              control={form.control}
-              name="cuisine"
-              render={() => (
-                <FormItem className="md:col-span-2">
-                  <FormLabel className="font-bold text-sm text-primary">Cuisine Types</FormLabel>
-                  <Popover open={isCuisineOpen} onOpenChange={setIsCuisineOpen}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={isCuisineOpen}
-                          className={cn(
-                            "w-full justify-between h-auto min-h-11 bg-muted/20 text-left font-normal py-2",
-                            selectedCuisines.length === 0 && "text-muted-foreground"
-                          )}
-                        >
-                          <div className="flex flex-wrap gap-1">
-                            {selectedCuisines.length > 0 ? (
-                              selectedCuisines.map((c) => (
-                                <Badge key={c} variant="secondary" className="mr-1 h-6">
-                                  {c}
-                                  <span 
-                                    className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleCuisine(c);
-                                    }}
-                                  >
-                                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                  </span>
-                                </Badge>
-                              ))
-                            ) : (
-                              "Select cuisines..."
-                            )}
-                          </div>
-                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                      <div className="flex items-center border-b px-3">
-                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                        <Input
-                          placeholder="Search cuisines..."
-                          className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                          value={cuisineSearch}
-                          onChange={(e) => setCuisineSearch(e.target.value)}
-                        />
-                      </div>
-                      <ScrollArea className="h-[300px] p-2">
-                        <div className="space-y-1">
-                          {filteredCuisines.length === 0 ? (
-                            <p className="p-4 text-center text-sm text-muted-foreground">No cuisine found.</p>
-                          ) : (
-                            filteredCuisines.map((cuisine) => (
-                              <div
-                                key={cuisine}
-                                className={cn(
-                                  "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
-                                  selectedCuisines.includes(cuisine) && "bg-accent/50"
-                                )}
-                                onClick={() => toggleCuisine(cuisine)}
-                              >
-                                <Checkbox 
-                                  checked={selectedCuisines.includes(cuisine)}
-                                  className="mr-2"
-                                  onCheckedChange={() => toggleCuisine(cuisine)}
-                                />
-                                {cuisine}
-                                {selectedCuisines.includes(cuisine) && (
-                                  <Check className="ml-auto h-4 w-4 opacity-70" />
-                                )}
-                              </div>
-                            ))
-                          )}
+            <FormField control={form.control} name="cuisine" render={() => (
+              <FormItem className="md:col-span-2">
+                <FormLabel className="font-bold text-sm text-primary">Cuisine Types</FormLabel>
+                <Popover open={isCuisineOpen} onOpenChange={setIsCuisineOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button variant="outline" role="combobox" className={cn("w-full justify-between h-auto min-h-11 bg-muted/20 text-left font-normal py-2", selectedCuisines.length === 0 && "text-muted-foreground")}>
+                        <div className="flex flex-wrap gap-1">
+                          {selectedCuisines.length > 0 ? selectedCuisines.map((c) => (
+                            <Badge key={c} variant="secondary" className="mr-1 h-6">
+                              {c}
+                              <X className="ml-1 h-3 w-3 cursor-pointer" onClick={(e) => { e.stopPropagation(); toggleCuisine(c); }} />
+                            </Badge>
+                          )) : "Select cuisines..."}
                         </div>
-                      </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <div className="flex items-center border-b px-3">
+                      <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                      <Input placeholder="Search cuisines..." className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-none focus-visible:ring-0 focus-visible:ring-offset-0" value={cuisineSearch} onChange={(e) => setCuisineSearch(e.target.value)} />
+                    </div>
+                    <ScrollArea className="h-[300px] p-2">
+                      <div className="space-y-1">
+                        {filteredCuisines.map((cuisine) => (
+                          <div key={cuisine} className={cn("relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground", selectedCuisines.includes(cuisine) && "bg-accent/50")} onClick={() => toggleCuisine(cuisine)}>
+                            <Checkbox checked={selectedCuisines.includes(cuisine)} className="mr-2" onCheckedChange={() => toggleCuisine(cuisine)} />
+                            {cuisine}
+                            {selectedCuisines.includes(cuisine) && <Check className="ml-auto h-4 w-4 opacity-70" />}
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </PopoverContent>
+                </Popover>
+                <FormMessage />
+              </FormItem>
+            )} />
           </div>
 
-          {/* SECTION 2: LOCATION & PAYMENTS */}
           <div className="space-y-6">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-t pt-8">
-              LOCATION & PAYMENTS
-            </h2>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-t pt-8">LOCATION & PAYMENTS</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-sm text-primary">Country</FormLabel>
+              <FormField control={form.control} name="country" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-bold text-sm text-primary">Country</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl><SelectTrigger className="h-11 bg-muted/20"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>{WORLD_COUNTRIES.map((c) => (<SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>))}</SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="currency" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-bold text-sm text-primary">Payment Currency</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger className="h-11 bg-muted/20"><SelectValue /></SelectTrigger></FormControl>
+                    <SelectContent>{WORLD_CURRENCIES.map((curr) => (<SelectItem key={curr.code} value={curr.code}>{curr.code} ({curr.symbol})</SelectItem>))}</SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="city" render={({ field }) => (
+                <FormItem><FormLabel className="font-bold text-sm text-primary">City</FormLabel><FormControl><Input className="h-11 bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="state" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-bold text-sm text-primary">State / Province</FormLabel>
+                  {watchedCountry === "Australia" ? (
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-11 bg-muted/20">
-                          <SelectValue placeholder="Select country" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {WORLD_COUNTRIES.map((c) => (
-                          <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
+                      <FormControl><SelectTrigger className="h-11 bg-muted/20"><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>{AU_STATES.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}</SelectContent>
                     </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="currency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-sm text-primary">Payment Currency</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-11 bg-muted/20">
-                          <SelectValue placeholder="Select currency" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {WORLD_CURRENCIES.map((curr) => {
-                          return (
-                            <SelectItem key={curr.code} value={curr.code}>{curr.code} ({curr.symbol})</SelectItem>
-                          )
-                        })}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-sm text-primary">City</FormLabel>
-                    <FormControl>
-                      <Input className="h-11 bg-muted/20" placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="state"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-sm text-primary">State / Province</FormLabel>
-                    {watchedCountry === "Australia" ? (
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-11 bg-muted/20">
-                            <SelectValue placeholder="Select state" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {AU_STATES.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <FormControl>
-                        <Input className="h-11 bg-muted/20" placeholder="" {...field} />
-                      </FormControl>
-                    )}
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="postcode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-sm text-primary">Post Code</FormLabel>
-                    <FormControl>
-                      <Input className="h-11 bg-muted/20" placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-sm text-primary">Street Address</FormLabel>
-                    <FormControl>
-                      <Input className="h-11 bg-muted/20" placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  ) : (<FormControl><Input className="h-11 bg-muted/20" {...field} /></FormControl>)}
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="postcode" render={({ field }) => (
+                <FormItem><FormLabel className="font-bold text-sm text-primary">Post Code</FormLabel><FormControl><Input className="h-11 bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="address" render={({ field }) => (
+                <FormItem><FormLabel className="font-bold text-sm text-primary">Street Address</FormLabel><FormControl><Input className="h-11 bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
             </div>
           </div>
 
-          {/* SECTION 3: ADMIN CREDENTIALS */}
           <div className="space-y-6">
-            <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-t pt-8">
-              ADMIN CREDENTIALS
-            </h2>
+            <h2 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground border-t pt-8">ADMIN CREDENTIALS</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-              <FormField
-                control={form.control}
-                name="adminEmail"
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel className="font-bold text-sm text-primary">Admin Email</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input className="h-11 pl-10 bg-muted/20" placeholder="admin@restaurant.com" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-sm text-primary">Password</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          type={showPassword ? "text" : "password"} 
-                          className="h-11 px-10 bg-muted/20" 
-                          placeholder="••••••••" 
-                          {...field} 
-                        />
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground"
-                          onClick={() => setShowPassword(!showPassword)}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="confirmPassword"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-sm text-primary">Confirm Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" className="h-11 bg-muted/20" placeholder="" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormField control={form.control} name="adminEmail" render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel className="font-bold text-sm text-primary">Admin Email</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input className="h-11 pl-10 bg-muted/20" {...field} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="password" render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-bold text-sm text-primary">Password</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input type={showPassword ? "text" : "password"} className="h-11 px-10 bg-muted/20" {...field} />
+                      <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8" onClick={() => setShowPassword(!showPassword)}>
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                <FormItem><FormLabel className="font-bold text-sm text-primary">Confirm Password</FormLabel><FormControl><Input type="password" className="h-11 bg-muted/20" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
             </div>
           </div>
 
           <div className="pt-4">
-            <Button 
-              type="submit" 
-              className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90 shadow-lg rounded-xl" 
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full h-14 text-lg font-bold bg-primary hover:bg-primary/90 shadow-lg rounded-xl" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Initialize Restaurant"}
             </Button>
           </div>

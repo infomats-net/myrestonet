@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,18 +21,31 @@ import {
   Plus,
   ChevronLeft
 } from 'lucide-react';
-import { MOCK_MENU_ITEMS, MOCK_SALES_DATA, MOCK_RESTAURANTS } from '@/lib/mock-data';
+import { MOCK_MENU_ITEMS, MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/flows/localized-seo-content';
 import Link from 'next/link';
+import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 
 function DashboardContent() {
   const searchParams = useSearchParams();
   const impersonateId = searchParams.get('impersonate');
-  const impersonatedRestaurant = impersonateId ? MOCK_RESTAURANTS.find(r => r.id === impersonateId) : null;
+  const firestore = useFirestore();
+  const { user } = useUser();
+  
+  // Determine which restaurant to display
+  const effectiveRestaurantId = impersonateId || (user?.role === 'RestaurantAdmin' ? user.restaurantId : null);
+
+  const restaurantRef = useMemoFirebase(() => {
+    if (!firestore || !effectiveRestaurantId) return null;
+    return doc(firestore, 'restaurants', effectiveRestaurantId);
+  }, [firestore, effectiveRestaurantId]);
+
+  const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
   
   const [activeTab, setActiveTab] = useState('overview');
   const [aiInsights, setAiInsights] = useState<AiSalesInsightsOutput | null>(null);
@@ -41,16 +54,32 @@ function DashboardContent() {
   const [loadingSeo, setLoadingSeo] = useState(false);
 
   const [seoForm, setSeoForm] = useState({
-    restaurantName: impersonatedRestaurant?.name || 'Bella Napoli',
-    cuisineType: impersonatedRestaurant?.cuisineType || 'Italian',
-    location: impersonatedRestaurant?.location || 'London, UK',
-    description: impersonatedRestaurant?.description || 'The best authentic Italian pizza and pasta in central London.',
+    restaurantName: '',
+    cuisineType: '',
+    location: '',
+    description: '',
     menuHighlights: 'Wood-fired Pizza, Fresh Tagliatelle, Tiramisu',
-    websiteUrl: impersonatedRestaurant?.customDomain ? `https://${impersonatedRestaurant.customDomain}` : 'https://bellanapoli.example.com',
-    phoneNumber: '+44 20 7123 4567',
-    address: impersonatedRestaurant?.address || '123 Pizza St, London, EC1 1BB',
+    websiteUrl: '',
+    phoneNumber: '',
+    address: '',
     locale: 'en-GB'
   });
+
+  useEffect(() => {
+    if (restaurant) {
+      setSeoForm({
+        restaurantName: restaurant.name || '',
+        cuisineType: Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : '',
+        location: `${restaurant.city}, ${restaurant.country}` || '',
+        description: restaurant.description || '',
+        menuHighlights: 'Chef specials, Seasonal menu',
+        websiteUrl: restaurant.customDomain ? `https://${restaurant.customDomain}` : '',
+        phoneNumber: restaurant.contactPhone || '',
+        address: restaurant.address || '',
+        locale: 'en-GB'
+      });
+    }
+  }, [restaurant]);
 
   const generateInsights = async () => {
     setLoadingAi(true);
@@ -79,6 +108,14 @@ function DashboardContent() {
     }
   };
 
+  if (loadingRes) {
+    return <div className="p-20 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div>;
+  }
+
+  if (!restaurant && !loadingRes) {
+    return <div className="p-20 text-center">Restaurant not found or insufficient permissions.</div>;
+  }
+
   return (
     <div className="p-4 md:p-8 space-y-8">
       {impersonateId && (
@@ -93,12 +130,12 @@ function DashboardContent() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-headline font-bold text-primary">
-              {impersonatedRestaurant?.name || 'Bella Napoli'}
+              {restaurant?.name}
             </h1>
             <Badge className="bg-accent/20 text-accent border-accent/20">Active Pro</Badge>
           </div>
           <p className="text-muted-foreground">
-            {impersonatedRestaurant?.adminEmail || 'Admin: gino@example.com'} • Location: {impersonatedRestaurant?.location || 'London, UK'}
+            {restaurant?.contactEmail} • Location: {restaurant?.city}, {restaurant?.country}
           </p>
         </div>
         <div className="flex gap-2">
@@ -127,7 +164,7 @@ function DashboardContent() {
                 <TrendingUp className="h-4 w-4 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">£1,240.50</div>
+                <div className="text-2xl font-bold">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}1,240.50</div>
                 <p className="text-xs text-muted-foreground">+8.2% from yesterday</p>
               </CardContent>
             </Card>
@@ -234,7 +271,7 @@ function DashboardContent() {
                       <h4 className="font-bold text-lg">{item.name}</h4>
                       <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>
                       <div className="flex gap-2 mt-1">
-                        <Badge variant="secondary" className="text-xs px-3">£{item.price.toFixed(2)}</Badge>
+                        <Badge variant="secondary" className="text-xs px-3">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{item.price.toFixed(2)}</Badge>
                         <Badge variant="outline" className="text-xs px-3">{item.category}</Badge>
                       </div>
                     </div>
@@ -347,11 +384,11 @@ function DashboardContent() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <p className="text-xs uppercase text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">£{aiInsights.keyPerformanceIndicators.totalRevenue.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{aiInsights.keyPerformanceIndicators.totalRevenue.toLocaleString()}</p>
                     </div>
                     <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <p className="text-xs uppercase text-muted-foreground">Avg. Order</p>
-                      <p className="text-2xl font-bold">£{aiInsights.keyPerformanceIndicators.averageOrderValue.toFixed(2)}</p>
+                      <p className="text-2xl font-bold">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{aiInsights.keyPerformanceIndicators.averageOrderValue.toFixed(2)}</p>
                     </div>
                     <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <p className="text-xs uppercase text-muted-foreground">Total Orders</p>
@@ -401,7 +438,7 @@ function DashboardContent() {
                           <p className="font-semibold text-sm">{item.itemName}</p>
                           <p className="text-xs text-muted-foreground">{item.totalQuantitySold} sold</p>
                         </div>
-                        <p className="font-bold text-accent">£{item.totalRevenueGenerated.toFixed(2)}</p>
+                        <p className="font-bold text-accent">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{item.totalRevenueGenerated.toFixed(2)}</p>
                       </div>
                     ))}
                   </CardContent>

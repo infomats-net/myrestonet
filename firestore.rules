@@ -27,7 +27,7 @@ service cloud.firestore {
     }
 
     function isDataAdmin(data) {
-      return isSignedIn() && request.auth.uid == data.adminUserId;
+      return isSignedIn() && (request.auth.uid == data.adminUserId || isSuperAdmin());
     }
 
     // --- COLLECTION RULES ---
@@ -35,7 +35,8 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId) || isSuperAdmin();
       allow list: if isSuperAdmin();
-      allow create: if isOwner(userId);
+      // Allow creation if the user is the owner (signup) or if requester is a superAdmin (onboarding)
+      allow create: if isOwner(userId) || isSuperAdmin();
       allow update: if isOwner(userId) || isSuperAdmin();
       allow delete: if isSuperAdmin();
     }
@@ -43,7 +44,6 @@ service cloud.firestore {
     match /superAdmins/{userId} {
       allow get: if isSignedIn();
       allow list: if isSuperAdmin();
-      // Allow creation if the user is the owner (unblocks first admin) or if requester is already a superAdmin
       allow create: if isOwner(userId) || isSuperAdmin();
       allow update, delete: if isSuperAdmin();
     }
