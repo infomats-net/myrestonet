@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import Link from 'next/link';
 
 export default function TenantsPage() {
+  const router = useRouter();
   const [restaurants] = useState<Restaurant[]>(MOCK_RESTAURANTS);
   const [search, setSearch] = useState('');
 
@@ -164,7 +166,10 @@ export default function TenantsPage() {
                       {/* Actions Column */}
                       <div className="flex flex-col gap-3 justify-center">
                         <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Administrative Actions</h4>
-                        <Button className="w-full justify-start h-12 bg-primary hover:bg-primary/90 shadow-md group" onClick={() => window.open(`/restaurant-admin/dashboard?impersonate=${res.id}`)}>
+                        <Button 
+                          className="w-full justify-start h-12 bg-primary hover:bg-primary/90 shadow-md group" 
+                          onClick={() => router.push(`/restaurant-admin/dashboard?impersonate=${res.id}`)}
+                        >
                           <ShieldAlert className="mr-3 h-5 w-5" /> 
                           <div className="text-left">
                             <p className="font-bold text-sm">Impersonate Admin</p>
