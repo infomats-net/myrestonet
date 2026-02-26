@@ -24,14 +24,17 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
-import { useRouter, usePathname } from "next/navigation"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useAuth } from "@/firebase"
 import { signOut } from "firebase/auth"
+import { Suspense } from "react"
 
-export function RestaurantSidebar() {
+function SidebarLinks() {
   const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const impersonateId = searchParams.get('impersonate');
 
   const handleSignOut = async () => {
     try {
@@ -42,42 +45,45 @@ export function RestaurantSidebar() {
     }
   };
 
+  const getHref = (tab: string) => {
+    const params = new URLSearchParams();
+    params.set('tab', tab);
+    if (impersonateId) {
+      params.set('impersonate', impersonateId);
+    }
+    return `/restaurant-admin/dashboard?${params.toString()}`;
+  };
+
+  const isTabActive = (tab: string) => {
+    return searchParams.get('tab') === tab || (tab === 'overview' && !searchParams.get('tab'));
+  };
+
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="bg-accent rounded-lg p-1.5 shrink-0">
-            <ShoppingBag className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-bold text-lg text-primary truncate group-data-[collapsible=icon]:hidden">
-            Merchant Panel
-          </span>
-        </Link>
-      </SidebarHeader>
+    <>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Overview" isActive={pathname === "/restaurant-admin/dashboard"}>
-                  <Link href="/restaurant-admin/dashboard?tab=overview">
+                <SidebarMenuButton asChild tooltip="Overview" isActive={isTabActive('overview')}>
+                  <Link href={getHref('overview')}>
                     <LayoutDashboard />
                     <span>Overview</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Orders">
-                  <Link href="/restaurant-admin/dashboard?tab=orders">
+                <SidebarMenuButton asChild tooltip="Orders" isActive={isTabActive('orders')}>
+                  <Link href={getHref('orders')}>
                     <ShoppingCart />
                     <span>Orders</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Menu">
-                  <Link href="/restaurant-admin/dashboard?tab=menu">
+                <SidebarMenuButton asChild tooltip="Menu" isActive={isTabActive('menu')}>
+                  <Link href={getHref('menu')}>
                     <Utensils />
                     <span>Menu Catalog</span>
                   </Link>
@@ -92,16 +98,16 @@ export function RestaurantSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="AI Insights">
-                  <Link href="/restaurant-admin/dashboard?tab=analytics">
+                <SidebarMenuButton asChild tooltip="AI Insights" isActive={isTabActive('analytics')}>
+                  <Link href={getHref('analytics')}>
                     <Sparkles className="text-accent" />
                     <span>AI Analytics</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="SEO">
-                  <Link href="/restaurant-admin/dashboard?tab=seo">
+                <SidebarMenuButton asChild tooltip="SEO" isActive={isTabActive('seo')}>
+                  <Link href={getHref('seo')}>
                     <Globe />
                     <span>Localized SEO</span>
                   </Link>
@@ -114,8 +120,8 @@ export function RestaurantSidebar() {
       <SidebarFooter className="border-t p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Settings">
-              <Link href="/restaurant-admin/dashboard?tab=overview">
+            <SidebarMenuButton asChild tooltip="Settings" isActive={isTabActive('settings')}>
+              <Link href={getHref('overview')}>
                 <Settings />
                 <span>Store Settings</span>
               </Link>
@@ -133,6 +139,26 @@ export function RestaurantSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+    </>
+  );
+}
+
+export function RestaurantSidebar() {
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
+        <Link href="/" className="flex items-center gap-2">
+          <div className="bg-accent rounded-lg p-1.5 shrink-0">
+            <ShoppingBag className="h-5 w-5 text-white" />
+          </div>
+          <span className="font-bold text-lg text-primary truncate group-data-[collapsible=icon]:hidden">
+            Merchant Panel
+          </span>
+        </Link>
+      </SidebarHeader>
+      <Suspense fallback={<div className="p-4"><div className="h-4 w-full bg-muted animate-pulse rounded" /></div>}>
+        <SidebarLinks />
+      </Suspense>
     </Sidebar>
   )
 }
