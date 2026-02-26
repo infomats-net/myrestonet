@@ -314,7 +314,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
           previewMode === 'desktop' ? "w-full" : previewMode === 'tablet' ? "w-[768px]" : "w-[375px]"
         )}>
           {/* Simulated Storefront */}
-          <div className="h-full overflow-y-auto no-scrollbar" style={{ fontFamily: settings.typography.fontFamily, transform: 'scale(3)', transformOrigin: 'top center' }}>
+          <div className="h-full overflow-y-auto no-scrollbar" style={{ fontFamily: settings.typography.fontFamily }}>
             {/* Nav */}
             <div className="h-16 border-b flex items-center justify-between px-6" style={{ backgroundColor: settings.theme.headerColor }}>
               <div className="h-8 w-32 bg-primary/20 rounded animate-pulse" style={{ backgroundColor: `${settings.theme.primary}20` }} />
