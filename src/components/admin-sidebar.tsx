@@ -24,10 +24,23 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useAuth } from "@/firebase"
+import { signOut } from "firebase/auth"
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push("/auth/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -109,11 +122,13 @@ export function AdminSidebar() {
       <SidebarFooter className="border-t p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Sign Out">
-              <Link href="/auth/login" className="text-destructive hover:text-destructive">
-                <LogOut />
-                <span>Sign Out</span>
-              </Link>
+            <SidebarMenuButton 
+              tooltip="Sign Out" 
+              onClick={handleSignOut}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <LogOut />
+              <span>Sign Out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

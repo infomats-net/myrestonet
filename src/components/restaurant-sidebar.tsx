@@ -23,8 +23,23 @@ import {
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/firebase"
+import { signOut } from "firebase/auth"
 
 export function RestaurantSidebar() {
+  const auth = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push("/auth/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
@@ -33,7 +48,7 @@ export function RestaurantSidebar() {
             <ShoppingBag className="h-5 w-5 text-white" />
           </div>
           <span className="font-bold text-lg text-primary truncate group-data-[collapsible=icon]:hidden">
-            Bella Napoli
+            Merchant Panel
           </span>
         </Link>
       </SidebarHeader>
@@ -105,11 +120,13 @@ export function RestaurantSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Sign Out">
-              <Link href="/auth/login" className="text-destructive hover:text-destructive">
-                <LogOut />
-                <span>Sign Out</span>
-              </Link>
+            <SidebarMenuButton 
+              tooltip="Sign Out" 
+              onClick={handleSignOut}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <LogOut />
+              <span>Sign Out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
