@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/form';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -188,9 +188,11 @@ export default function NewTenantPage() {
           <Button variant="ghost" size="icon" asChild className="rounded-full bg-white shadow-sm border">
             <Link href="/super-admin/tenants"><ChevronLeft /></Link>
           </Button>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">New Restaurant Instance</h1>
-            <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1">Configure global market parameters and tenant isolation.</p>
+          <div className="flex flex-wrap items-center gap-x-4">
+            <div>
+              <h1 className="text-3xl font-black text-slate-900 tracking-tight">New Restaurant Instance</h1>
+              <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1">Configure global market parameters and tenant isolation.</p>
+            </div>
           </div>
         </div>
       </div>
