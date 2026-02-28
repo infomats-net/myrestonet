@@ -32,8 +32,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if request.auth.uid == userId || isSuperAdmin();
-      // Temporarily allow create for platform initialization
-      allow create: if request.auth.uid == userId;
+      // Creation is now restricted to Super Admins only after initialization
+      allow create: if isSuperAdmin();
       allow update, delete: if isSuperAdmin();
     }
   }

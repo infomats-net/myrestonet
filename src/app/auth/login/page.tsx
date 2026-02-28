@@ -123,7 +123,7 @@ export default function LoginPage() {
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
-              New to the platform? <Link href="/auth/signup" className="text-primary hover:underline font-bold">Initialize Super Admin</Link>
+              Contact your administrator if you need an account.
             </p>
           </CardFooter>
         </form>
