@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -105,14 +104,23 @@ function MenuItemManager({ restaurantId, menuId, currency, onAddItem }: { restau
                   <p className="text-[10px] text-muted-foreground">{currency}{item.price.toFixed(2)} • {item.category}</p>
                 </div>
               </div>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                onClick={() => handleDeleteItem(item.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-muted-foreground hover:text-blue-600"
+                >
+                  <ArrowUpRight className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => handleDeleteItem(item.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
@@ -429,19 +437,19 @@ function DashboardContent() {
             <h1 className="text-3xl font-headline font-bold text-primary">
               {restaurant?.name}
             </h1>
-            <Badge className="bg-accent/20 text-accent border-accent/20">Active Pro</Badge>
+            <Badge className="bg-blue-50 text-blue-600 border-blue-100">Active Pro</Badge>
           </div>
           <p className="text-muted-foreground text-sm">
             {restaurant?.contactEmail} • Location: {restaurant?.city}, {restaurant?.country}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-primary text-primary hover:bg-primary/10" asChild>
+          <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50" asChild>
             <Link href={`/customer/${restaurant?.id}`} target="_blank">
               <ShoppingCart className="mr-2 h-4 w-4" /> View Storefront
             </Link>
           </Button>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button className="bg-blue-600 hover:bg-blue-700">
             <Settings className="mr-2 h-4 w-4" /> Store Settings
           </Button>
         </div>
@@ -449,14 +457,14 @@ function DashboardContent() {
 
       <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab} value={activeTab}>
         <TabsList className="bg-white border p-1 rounded-xl flex overflow-x-auto no-scrollbar h-auto w-full md:w-auto">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Overview</TabsTrigger>
-          <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Orders</TabsTrigger>
-          <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Menus</TabsTrigger>
-          <TabsTrigger value="design" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg px-6 py-2.5">Overview</TabsTrigger>
+          <TabsTrigger value="orders" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg px-6 py-2.5">Orders</TabsTrigger>
+          <TabsTrigger value="menu" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg px-6 py-2.5">Menus</TabsTrigger>
+          <TabsTrigger value="design" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2">
             <Palette className="h-4 w-4" /> Design System
           </TabsTrigger>
-          <TabsTrigger value="seo" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">SEO Engine</TabsTrigger>
-          <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">AI Insights</TabsTrigger>
+          <TabsTrigger value="seo" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg px-6 py-2.5">SEO Engine</TabsTrigger>
+          <TabsTrigger value="analytics" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white rounded-lg px-6 py-2.5">AI Insights</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-4">
@@ -464,7 +472,7 @@ function DashboardContent() {
             <Card className="border-none shadow-md">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Daily Sales</CardTitle>
-                <TrendingUp className="h-4 w-4 text-accent" />
+                <TrendingUp className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{currencySymbol}1,240.50</div>
@@ -474,7 +482,7 @@ function DashboardContent() {
             <Card className="border-none shadow-md">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Open Orders</CardTitle>
-                <Clock className="h-4 w-4 text-primary" />
+                <Clock className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{orders?.filter(o => o.status !== 'Delivered' && o.status !== 'Cancelled').length || 0}</div>
@@ -488,7 +496,7 @@ function DashboardContent() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">18 min</div>
-                <p className="text-xs text-accent font-semibold">Performing optimally</p>
+                <p className="text-xs text-blue-600 font-semibold">Performing optimally</p>
               </CardContent>
             </Card>
           </div>
@@ -527,7 +535,7 @@ function DashboardContent() {
                         <TableCell className="text-xs">{new Date(order.orderedAt).toLocaleDateString()}</TableCell>
                         <TableCell><Badge variant="secondary">{order.status}</Badge></TableCell>
                         <TableCell className="font-bold">{currencySymbol}{order.totalAmount.toFixed(2)}</TableCell>
-                        <TableCell className="text-right"><Button variant="ghost" size="sm">Update</Button></TableCell>
+                        <TableCell className="text-right"><Button variant="ghost" size="sm" className="text-blue-600">Update</Button></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -549,7 +557,7 @@ function DashboardContent() {
                 <CardDescription>Manage your active sections and digital catalogue.</CardDescription>
               </div>
               <Button 
-                className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm w-full md:w-auto"
+                className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm w-full md:w-auto"
                 onClick={() => setIsMenuDialogOpen(true)}
               >
                 <Plus className="mr-2 h-4 w-4" /> Create New Menu Section
@@ -567,8 +575,8 @@ function DashboardContent() {
                       <AccordionTrigger className="hover:no-underline">
                         <div className="flex flex-1 items-center justify-between text-left pr-4">
                           <div className="flex items-center gap-4">
-                            <div className="bg-primary/10 p-3 rounded-xl hidden sm:block">
-                              <Utensils className="h-6 w-6 text-primary" />
+                            <div className="bg-blue-50 p-3 rounded-xl hidden sm:block">
+                              <Utensils className="h-6 w-6 text-blue-600" />
                             </div>
                             <div>
                               <p className="font-bold text-lg leading-tight">{menu.name}</p>
@@ -589,7 +597,7 @@ function DashboardContent() {
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              className="text-xs h-9 border-accent text-accent hover:bg-accent/5 gap-1.5"
+                              className="text-xs h-9 border-blue-600 text-blue-600 hover:bg-blue-50 gap-1.5"
                               onClick={() => {
                                 setTargetMenuId(menu.id);
                                 setIsItemDialogOpen(true);
@@ -625,7 +633,7 @@ function DashboardContent() {
               ) : (
                 <div className="text-center py-20 border-2 border-dashed rounded-xl space-y-4">
                   <p className="text-muted-foreground">You haven't initialized any menus yet.</p>
-                  <Button variant="outline" onClick={() => setIsMenuDialogOpen(true)} className="shadow-sm">
+                  <Button variant="outline" onClick={() => setIsMenuDialogOpen(true)} className="shadow-sm border-blue-600 text-blue-600">
                     <Plus className="mr-2 h-4 w-4" /> Start Initial Menu
                   </Button>
                 </div>
@@ -673,7 +681,7 @@ function DashboardContent() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsMenuDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreateMenu} disabled={isCreating || !menuForm.name}>
+              <Button onClick={handleCreateMenu} disabled={isCreating || !menuForm.name} className="bg-blue-600">
                 {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Section"}
               </Button>
             </DialogFooter>
@@ -746,7 +754,7 @@ function DashboardContent() {
                 <Input 
                   id="itemImage" 
                   value={itemForm.imageUrl} 
-                  onChange={(e) => setSettings({...settings, imageUrl: e.target.value})}
+                  onChange={(e) => setItemForm({...itemForm, imageUrl: e.target.value})}
                   placeholder="https://images.unsplash.com/..."
                 />
               </div>
@@ -761,7 +769,7 @@ function DashboardContent() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsItemDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreateMenuItem} disabled={isCreating || !itemForm.name}>
+              <Button onClick={handleCreateMenuItem} disabled={isCreating || !itemForm.name} className="bg-blue-600">
                 {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Item"}
               </Button>
             </DialogFooter>
@@ -794,7 +802,7 @@ function DashboardContent() {
                   <Label>Address</Label>
                   <Input value={seoForm.address} onChange={(e) => setSeoForm({...seoForm, address: e.target.value})} />
                 </div>
-                <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm" onClick={generateSeo} disabled={loadingSeo}>
+                <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm" onClick={generateSeo} disabled={loadingSeo}>
                   {loadingSeo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Generate SEO Strategy"}
                 </Button>
               </CardContent>
@@ -803,7 +811,7 @@ function DashboardContent() {
             <Card className="border-none shadow-lg h-fit">
               <CardHeader>
                 <CardTitle className="font-headline flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-accent" /> AI Generated SEO Package
+                  <Sparkles className="h-5 w-5 text-blue-600" /> AI Generated SEO Package
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -827,7 +835,7 @@ function DashboardContent() {
                         {seoResult.schemaMarkup}
                       </div>
                     </div>
-                    <Button className="w-full mt-4 bg-primary shadow-sm">
+                    <Button className="w-full mt-4 bg-blue-600 shadow-sm">
                       <Save className="mr-2 h-4 w-4" /> Apply Global Meta Tags
                     </Button>
                   </div>
@@ -841,14 +849,14 @@ function DashboardContent() {
           {!aiInsights ? (
             <Card className="border-none shadow-lg text-center py-20">
               <CardContent className="space-y-4">
-                <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
-                  <BarChart3 className="h-10 w-10 text-primary opacity-40" />
+                <div className="bg-blue-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
+                  <BarChart3 className="h-10 w-10 text-blue-600 opacity-40" />
                 </div>
                 <h3 className="text-xl font-bold">Comprehensive Sales Intelligence</h3>
                 <p className="text-muted-foreground max-w-md mx-auto">
                   Run our AI auditor to identify trends, underperforming menu items, and peak revenue windows.
                 </p>
-                <Button onClick={generateInsights} disabled={loadingAi} className="bg-primary shadow-md">
+                <Button onClick={generateInsights} disabled={loadingAi} className="bg-blue-600 shadow-md">
                   {loadingAi ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Run Deep Analysis"}
                 </Button>
               </CardContent>
@@ -861,15 +869,15 @@ function DashboardContent() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                       <p className="text-xs uppercase text-muted-foreground">Total Revenue</p>
                       <p className="text-2xl font-bold">{currencySymbol}{aiInsights.keyPerformanceIndicators.totalRevenue.toLocaleString()}</p>
                     </div>
-                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                       <p className="text-xs uppercase text-muted-foreground">Avg. Order</p>
                       <p className="text-2xl font-bold">{currencySymbol}{aiInsights.keyPerformanceIndicators.averageOrderValue.toFixed(2)}</p>
                     </div>
-                    <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                       <p className="text-xs uppercase text-muted-foreground">Total Orders</p>
                       <p className="text-2xl font-bold">{aiInsights.keyPerformanceIndicators.numberOfOrders}</p>
                     </div>

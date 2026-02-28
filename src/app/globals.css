@@ -16,8 +16,8 @@
     --secondary-foreground: 210 35% 20%;
     --muted: 210 15% 90%;
     --muted-foreground: 210 15% 45%;
-    --accent: 145 50% 55%; /* #53C683 */
-    --accent-foreground: 145 10% 10%;
+    --accent: 210 100% 45%; /* Professional Blue (Previously Green) */
+    --accent-foreground: 210 100% 98%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 15% 98%;
     --border: 210 15% 85%;
@@ -49,8 +49,8 @@
     --secondary-foreground: 210 15% 98%;
     --muted: 210 30% 18%;
     --muted-foreground: 210 15% 65%;
-    --accent: 145 50% 45%;
-    --accent-foreground: 145 10% 98%;
+    --accent: 210 100% 50%;
+    --accent-foreground: 210 100% 98%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 210 15% 98%;
     --border: 210 30% 20%;
@@ -77,10 +77,10 @@
     @apply bg-background text-foreground;
   }
   a {
-    @apply text-primary hover:underline transition-colors;
+    @apply text-blue-600 hover:text-blue-700 hover:underline transition-colors;
   }
 }
 
 .bg-accent-soft {
-  background-color: hsla(145, 50%, 55%, 0.1);
+  background-color: hsla(210, 100%, 45%, 0.1);
 }
