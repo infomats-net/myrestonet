@@ -31,7 +31,6 @@ import { doc, collection, addDoc, deleteDoc, updateDoc } from 'firebase/firestor
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
-import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import Link from 'next/link';
 
 function DashboardContent() {
@@ -45,7 +44,6 @@ function DashboardContent() {
   const { user: authUser, isUserLoading: authLoading } = useUser();
   const { toast } = useToast();
   
-  // 1. Fetch User Profile
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !authUser?.uid) return null;
     return doc(firestore, 'users', authUser.uid);
@@ -55,7 +53,6 @@ function DashboardContent() {
   
   const effectiveRestaurantId = impersonateId || userProfile?.restaurantId;
 
-  // 2. Fetch Restaurant Data
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return doc(firestore, 'restaurants', effectiveRestaurantId);
@@ -63,7 +60,6 @@ function DashboardContent() {
 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
 
-  // 3. Fetch Menu Items
   const menuQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return collection(firestore, 'restaurants', effectiveRestaurantId, 'menu');
@@ -71,7 +67,6 @@ function DashboardContent() {
 
   const { data: menuItems } = useCollection(menuQuery);
 
-  // 4. Fetch Orders
   const ordersQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return collection(firestore, 'restaurants', effectiveRestaurantId, 'orders');
@@ -84,9 +79,7 @@ function DashboardContent() {
   const [isSaving, setIsSaving] = useState(false);
   const [itemForm, setItemForm] = useState({ name: '', price: '', category: 'Main', isAvailable: true });
 
-  // Payment & Delivery Form State
   const [payDevForm, setPayDevForm] = useState({
-    stripe: { enabled: false, publishableKey: '', accountId: '' },
     paypal: { enabled: false, clientId: '' },
     cod: { enabled: false },
     delivery: { enabled: true, charge: '0', freeAbove: '' }
@@ -95,7 +88,6 @@ function DashboardContent() {
   useEffect(() => {
     if (restaurant) {
       setPayDevForm({
-        stripe: restaurant.paymentSettings?.stripe || { enabled: false, publishableKey: '', accountId: '' },
         paypal: restaurant.paymentSettings?.paypal || { enabled: false, clientId: '' },
         cod: restaurant.paymentSettings?.cod || { enabled: false },
         delivery: {
@@ -111,16 +103,12 @@ function DashboardContent() {
     if (!firestore || !effectiveRestaurantId) return;
     setIsSaving(true);
     try {
-      if (payDevForm.stripe.enabled && !payDevForm.stripe.publishableKey) {
-        throw new Error("Stripe requires a Publishable Key");
-      }
       if (payDevForm.paypal.enabled && !payDevForm.paypal.clientId) {
         throw new Error("PayPal requires a Client ID");
       }
 
       await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId), {
         paymentSettings: {
-          stripe: payDevForm.stripe,
           paypal: payDevForm.paypal,
           cod: payDevForm.cod,
         },
@@ -170,16 +158,11 @@ function DashboardContent() {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut(auth);
-    router.push('/auth/login');
-  };
-
   if (authLoading || loadingProfile || loadingRes) {
     return (
       <div className="p-20 flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="font-bold text-lg">Loading Dashboard...</p>
+        <p className="font-bold text-lg">Verifying Identity...</p>
       </div>
     );
   }
@@ -193,7 +176,9 @@ function DashboardContent() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">{restaurant?.name}</h1>
-            <p className="text-muted-foreground text-sm font-medium uppercase tracking-widest">{effectiveRestaurantId}</p>
+            <p className="text-muted-foreground text-sm font-medium flex items-center gap-1.5">
+              <span className="uppercase tracking-widest">{effectiveRestaurantId}</span>
+            </p>
           </div>
         </div>
         <Button variant="outline" asChild className="rounded-xl">
@@ -205,11 +190,36 @@ function DashboardContent() {
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full">
         <TabsList className="bg-slate-100/50 border p-1 rounded-2xl h-14 w-full flex">
-          <TabsTrigger value="overview" className="flex-1 rounded-xl h-full font-bold">Overview</TabsTrigger>
-          <TabsTrigger value="menu" className="flex-1 rounded-xl h-full font-bold">Menu</TabsTrigger>
-          <TabsTrigger value="orders" className="flex-1 rounded-xl h-full font-bold">Orders</TabsTrigger>
-          <TabsTrigger value="payments" className="flex-1 rounded-xl h-full font-bold">Payment & Delivery</TabsTrigger>
-          <TabsTrigger value="design" className="flex-1 rounded-xl h-full font-bold">Design</TabsTrigger>
+          <TabsTrigger 
+            value="overview" 
+            className="flex-1 rounded-xl h-full font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger 
+            value="menu" 
+            className="flex-1 rounded-xl h-full font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Menu
+          </TabsTrigger>
+          <TabsTrigger 
+            value="orders" 
+            className="flex-1 rounded-xl h-full font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Orders
+          </TabsTrigger>
+          <TabsTrigger 
+            value="payments" 
+            className="flex-1 rounded-xl h-full font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Payment & Delivery
+          </TabsTrigger>
+          <TabsTrigger 
+            value="design" 
+            className="flex-1 rounded-xl h-full font-bold transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
+            Design
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -294,31 +304,6 @@ function DashboardContent() {
                 <h3 className="text-lg font-black flex items-center gap-2"><DollarSign className="h-5 w-5" /> Payment Methods</h3>
                 
                 <div className="grid gap-6">
-                  <Card className="p-6 border-slate-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-blue-500/10 p-2 rounded-lg"><CreditCard className="h-5 w-5 text-blue-600" /></div>
-                        <div>
-                          <p className="font-bold">Stripe Payments</p>
-                          <p className="text-xs text-muted-foreground">Accept credit cards securely.</p>
-                        </div>
-                      </div>
-                      <Switch checked={payDevForm.stripe.enabled} onCheckedChange={(v) => setPayDevForm({...payDevForm, stripe: {...payDevForm.stripe, enabled: v}})} />
-                    </div>
-                    {payDevForm.stripe.enabled && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2">
-                        <div className="space-y-1">
-                          <Label className="text-[10px] font-bold">Publishable Key</Label>
-                          <Input value={payDevForm.stripe.publishableKey} onChange={(e) => setPayDevForm({...payDevForm, stripe: {...payDevForm.stripe, publishableKey: e.target.value}})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[10px] font-bold">Account ID</Label>
-                          <Input value={payDevForm.stripe.accountId} onChange={(e) => setPayDevForm({...payDevForm, stripe: {...payDevForm.stripe, accountId: e.target.value}})} />
-                        </div>
-                      </div>
-                    )}
-                  </Card>
-
                   <Card className="p-6 border-slate-200">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
