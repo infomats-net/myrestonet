@@ -45,6 +45,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { checkIsRestaurantOpen } from '@/lib/operating-hours';
 
 type CartItem = {
   id: string;
@@ -80,7 +81,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   }, [firestore, restaurantId]);
   const { data: designSettings } = useDoc(designRef);
 
-  // 3. Fetch All Menus
+  // 3. Fetch Operating Hours
+  const hoursRef = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return doc(firestore, 'restaurants', restaurantId, 'config', 'operatingHours');
+  }, [firestore, restaurantId]);
+  const { data: operatingHours } = useDoc(hoursRef);
+
+  // 4. Fetch All Menus
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'menus');
@@ -90,7 +98,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [allMenuItems, setAllMenuItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  // 4. Fetch Items for all menus
+  // 5. Fetch Items for all menus
   useEffect(() => {
     if (!firestore || !restaurantId || !menus) return;
     
@@ -192,6 +200,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     </div>
   );
 
+  const isOpen = checkIsRestaurantOpen(operatingHours);
   const theme = designSettings?.theme || { primary: '#22c55e', background: '#ffffff', text: '#0f172a' };
   const sections = designSettings?.sections || { 
     hero: { visible: true }, 
@@ -244,7 +253,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 text-slate-900">
                 <div className="flex-1 space-y-6">
                   <div className="flex items-center gap-3">
-                    <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none font-bold">OPEN NOW</Badge>
+                    <Badge className={cn(
+                      "border-none font-bold",
+                      isOpen ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-destructive/10 text-destructive hover:bg-destructive/10"
+                    )}>
+                      {isOpen ? "OPEN NOW" : "CLOSED NOW"}
+                    </Badge>
                     <div className="flex items-center gap-1 text-amber-500">
                       <Star className="h-4 w-4 fill-current" />
                       <span className="font-black">4.9</span>
@@ -273,7 +287,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                   </div>
                 </div>
                 <div className="w-full md:w-72 shrink-0 space-y-4">
-                  <Button className="w-full h-16 rounded-2xl text-xl font-black shadow-lg" style={{ backgroundColor: theme.primary }} asChild>
+                  <Button className="w-full h-16 rounded-2xl text-xl font-black shadow-lg" style={{ backgroundColor: theme.primary }} asChild disabled={!isOpen}>
                     <Link href={`/customer/${restaurantId}/reserve`}>
                       Reserve a Table <ChevronRight className="ml-2 h-5 w-5" />
                     </Link>
@@ -529,11 +543,11 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 <h3 className="text-2xl font-black">Secure Your Spot</h3>
                 <p className="text-slate-500">Instant confirmation via our AI-powered table allocator.</p>
               </div>
-              <Button size="lg" className="w-full h-16 rounded-2xl text-xl font-black shadow-xl" style={{ backgroundColor: theme.primary }} asChild>
+              <Button size="lg" className="w-full h-16 rounded-2xl text-xl font-black shadow-xl" style={{ backgroundColor: theme.primary }} asChild disabled={!isOpen}>
                 <Link href={`/customer/${restaurantId}/reserve`}>Book Now</Link>
               </Button>
               <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                No credit card required for booking
+                {isOpen ? "No credit card required for booking" : "We are currently closed"}
               </p>
             </Card>
           </div>

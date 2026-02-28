@@ -29,7 +29,8 @@ import {
   LayoutGrid,
   CalendarDays,
   CheckCircle2,
-  XCircle
+  XCircle,
+  Clock3
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection, useAuth 
 import { doc, collection, addDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
+import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -170,8 +172,8 @@ function DashboardContent() {
           <TabsTrigger value="reservations" className="flex-1 rounded-xl h-full font-bold">Reservations</TabsTrigger>
           <TabsTrigger value="tables" className="flex-1 rounded-xl h-full font-bold">Tables</TabsTrigger>
           <TabsTrigger value="menu" className="flex-1 rounded-xl h-full font-bold">Menu</TabsTrigger>
-          <TabsTrigger value="payments" className="flex-1 rounded-xl h-full font-bold">Billing</TabsTrigger>
           <TabsTrigger value="design" className="flex-1 rounded-xl h-full font-bold">Design</TabsTrigger>
+          <TabsTrigger value="settings" className="flex-1 rounded-xl h-full font-bold">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -321,15 +323,14 @@ function DashboardContent() {
           </div>
         </TabsContent>
 
-        {/* Existing Tabs */}
         <TabsContent value="menu">
           <Card className="rounded-[2rem] border-none shadow-md p-10"><p className="text-center italic text-muted-foreground">Menu management is located in the sidebar tab.</p></Card>
         </TabsContent>
-        <TabsContent value="payments">
-          <Card className="rounded-[2rem] border-none shadow-md p-10"><p className="text-center italic text-muted-foreground">Billing settings coming soon.</p></Card>
-        </TabsContent>
         <TabsContent value="design">
           <DesignSystemEditor restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+        <TabsContent value="settings">
+          <OperatingHoursEditor restaurantId={effectiveRestaurantId!} />
         </TabsContent>
       </Tabs>
 
