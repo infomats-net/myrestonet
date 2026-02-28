@@ -32,7 +32,8 @@ import {
   MapPin,
   Star,
   Info,
-  Layers
+  Clock,
+  Trophy
 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -59,7 +60,14 @@ interface DesignSettings {
   };
   sections: {
     hero: { visible: boolean; height: string };
-    welcomeCard: { visible: boolean };
+    welcomeCard: { 
+      visible: boolean;
+      showBadges: boolean;
+      showRating: boolean;
+      showDeliveryInfo: boolean;
+      showLocation: boolean;
+      showRanking: boolean;
+    };
     about: { visible: boolean };
     menuList: { visible: boolean };
     gallery: { visible: boolean };
@@ -87,7 +95,14 @@ const DEFAULT_SETTINGS: DesignSettings = {
   },
   sections: {
     hero: { visible: true, height: '400px' },
-    welcomeCard: { visible: true },
+    welcomeCard: { 
+      visible: true,
+      showBadges: true,
+      showRating: true,
+      showDeliveryInfo: true,
+      showLocation: true,
+      showRanking: true
+    },
     about: { visible: true },
     menuList: { visible: true },
     gallery: { visible: true },
@@ -140,7 +155,14 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
             ...data,
             theme: { ...DEFAULT_SETTINGS.theme, ...data.theme },
             typography: { ...DEFAULT_SETTINGS.typography, ...data.typography },
-            sections: { ...DEFAULT_SETTINGS.sections, ...data.sections },
+            sections: { 
+              ...DEFAULT_SETTINGS.sections, 
+              ...data.sections,
+              welcomeCard: {
+                ...DEFAULT_SETTINGS.sections.welcomeCard,
+                ...data.sections?.welcomeCard
+              }
+            },
             customCss: data.customCss ?? DEFAULT_SETTINGS.customCss
           } as DesignSettings);
         }
@@ -206,6 +228,32 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
     } finally {
       setGeneratingAi(false);
     }
+  };
+
+  const updateSectionVisibility = (key: string, visible: boolean) => {
+    setSettings(prev => ({
+      ...prev, 
+      sections: {
+        ...prev.sections, 
+        [key]: {
+          ...(prev.sections as any)[key],
+          visible
+        }
+      }
+    }));
+  };
+
+  const updateWelcomeCardSetting = (key: string, value: boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      sections: {
+        ...prev.sections,
+        welcomeCard: {
+          ...prev.sections.welcomeCard,
+          [key]: value
+        }
+      }
+    }));
   };
 
   if (loading) return <div className="p-20 flex justify-center h-full"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -404,25 +452,43 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       { id: 'contact', label: 'Contact', icon: Phone, visibilityKey: 'contact' },
                       { id: 'map', label: 'Map', icon: MapPin, visibilityKey: 'map' },
                     ].map((section) => (
-                      <div key={section.id} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100">
-                        <div className="flex items-center gap-3">
-                          <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-100"><section.icon className="h-3.5 w-3.5 text-slate-400" /></div>
-                          <span className="text-xs font-semibold text-slate-700">{section.label}</span>
+                      <div key={section.id} className="space-y-2">
+                        <div className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-100"><section.icon className="h-3.5 w-3.5 text-slate-400" /></div>
+                            <span className="text-xs font-semibold text-slate-700">{section.label}</span>
+                          </div>
+                          <Switch 
+                            className="scale-75"
+                            checked={(settings.sections as any)[section.visibilityKey].visible} 
+                            onCheckedChange={(v) => updateSectionVisibility(section.visibilityKey, v)} 
+                          />
                         </div>
-                        <Switch 
-                          className="scale-75"
-                          checked={(settings.sections as any)[section.visibilityKey].visible} 
-                          onCheckedChange={(v) => setSettings({
-                            ...settings, 
-                            sections: {
-                              ...settings.sections, 
-                              [section.visibilityKey]: {
-                                ...(settings.sections as any)[section.visibilityKey],
-                                visible: v
-                              }
-                            }
-                          })} 
-                        />
+                        
+                        {/* Nested Options for Welcome Card */}
+                        {section.id === 'welcomeCard' && settings.sections.welcomeCard.visible && (
+                          <div className="ml-8 space-y-2 pb-2 animate-in slide-in-from-top-2 duration-300">
+                            {[
+                              { label: 'Status Badges', key: 'showBadges', icon: Info },
+                              { label: 'Rating & Reviews', key: 'showRating', icon: Star },
+                              { label: 'Delivery Info', key: 'showDeliveryInfo', icon: Clock },
+                              { label: 'Physical Location', key: 'showLocation', icon: MapPin },
+                              { label: 'Global Ranking', key: 'showRanking', icon: Trophy },
+                            ].map((sub) => (
+                              <div key={sub.key} className="flex items-center justify-between p-2.5 bg-white rounded-lg border border-slate-100 shadow-sm">
+                                <div className="flex items-center gap-2">
+                                  <sub.icon className="h-3 w-3 text-slate-400" />
+                                  <span className="text-[10px] font-medium text-slate-600">{sub.label}</span>
+                                </div>
+                                <Switch 
+                                  className="scale-[0.6]"
+                                  checked={(settings.sections.welcomeCard as any)[sub.key]} 
+                                  onCheckedChange={(v) => updateWelcomeCardSetting(sub.key, v)} 
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -545,20 +611,31 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 <div className="px-12 -mt-10 mb-16">
                   <div className="bg-white rounded-[2rem] p-8 shadow-xl border flex justify-between items-center">
                     <div>
-                      <div className="flex gap-2 mb-2">
-                        <Badge variant="secondary" className="bg-primary/10 text-primary" style={{ color: settings.theme.primary, backgroundColor: `${settings.theme.primary}10` }}>Open Now</Badge>
-                        <Badge variant="outline">Michelin Recommended</Badge>
-                      </div>
+                      {settings.sections.welcomeCard.showBadges && (
+                        <div className="flex gap-2 mb-2">
+                          <Badge variant="secondary" className="bg-primary/10 text-primary" style={{ color: settings.theme.primary, backgroundColor: `${settings.theme.primary}10` }}>Open Now</Badge>
+                          <Badge variant="outline">Michelin Recommended</Badge>
+                        </div>
+                      )}
                       <h3 className="text-2xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Welcome to Signature Dining</h3>
                       <div className="flex gap-4 text-xs text-slate-400 mt-2">
-                        <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-primary text-primary" style={{ color: settings.theme.primary, fill: settings.theme.primary }} /> 4.9</span>
-                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> 123 Culinary Ave</span>
+                        {settings.sections.welcomeCard.showRating && (
+                          <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-primary text-primary" style={{ color: settings.theme.primary, fill: settings.theme.primary }} /> 4.9</span>
+                        )}
+                        {settings.sections.welcomeCard.showDeliveryInfo && (
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> 15-25 min</span>
+                        )}
+                        {settings.sections.welcomeCard.showLocation && (
+                          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> 123 Culinary Ave</span>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Ranking</p>
-                      <p className="text-4xl font-black text-primary" style={{ color: settings.theme.primary }}>#14</p>
-                    </div>
+                    {settings.sections.welcomeCard.showRanking && (
+                      <div className="text-right">
+                        <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Ranking</p>
+                        <p className="text-4xl font-black text-primary" style={{ color: settings.theme.primary }}>#14</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

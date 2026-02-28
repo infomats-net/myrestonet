@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, use as reactUse, useEffect } from 'react';
@@ -18,7 +17,8 @@ import {
   Facebook, 
   Twitter, 
   AlertTriangle,
-  Lock
+  Lock,
+  Trophy
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -173,6 +173,15 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
 
   const fullAddressQuery = encodeURIComponent(`${restaurant?.address}, ${restaurant?.city}, ${restaurant?.country}`);
 
+  const wc = design?.sections?.welcomeCard || { 
+    visible: true, 
+    showBadges: true, 
+    showRating: true, 
+    showDeliveryInfo: true, 
+    showLocation: true, 
+    showRanking: true 
+  };
+
   return (
     <div className="min-h-screen bg-background pb-24" style={designStyles}>
       <link href={`https://fonts.googleapis.com/css2?family=${designStyles['--font-family']?.toString().replace(' ', '+')}&family=${designStyles['--heading-font']?.toString().replace(' ', '+')}&display=swap`} rel="stylesheet" />
@@ -237,29 +246,39 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
 
       <div className="container max-w-6xl mx-auto px-4 relative z-10">
         {/* Info Card Overlay (Welcome & Info Card) */}
-        {design?.sections?.welcomeCard?.visible !== false && (
+        {wc.visible !== false && (
           <Card className="border-none shadow-2xl -mt-20 mb-16 overflow-hidden bg-white/95 backdrop-blur-sm">
             <CardContent className="p-8 md:p-12">
               <div className="flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                    <Badge variant={isOpen ? "secondary" : "destructive"} className={cn("font-bold px-3 py-1", isOpen && "bg-primary/10 text-primary")}>
-                      {isOpen ? 'Open for Orders' : 'Closed for Orders'}
-                    </Badge>
-                    <Badge variant="outline" className="font-bold border-primary/20 text-primary px-3 py-1">Michelin Recommended</Badge>
-                  </div>
+                  {wc.showBadges !== false && (
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                      <Badge variant={isOpen ? "secondary" : "destructive"} className={cn("font-bold px-3 py-1", isOpen && "bg-primary/10 text-primary")}>
+                        {isOpen ? 'Open for Orders' : 'Closed for Orders'}
+                      </Badge>
+                      <Badge variant="outline" className="font-bold border-primary/20 text-primary px-3 py-1">Michelin Recommended</Badge>
+                    </div>
+                  )}
                   <h2 className="text-4xl font-bold" style={{ color: designStyles['--text'] as string, fontFamily: designStyles['--heading-font'] as string }}>Welcome to {restaurant?.name}</h2>
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm">
-                    <span className="flex items-center font-bold" style={{ color: designStyles['--accent'] as string }}><Star className="h-5 w-5 fill-current mr-2" /> 4.9 (500+ Reviews)</span>
-                    <span className="flex items-center text-muted-foreground"><Clock className="h-5 w-5 mr-2" /> 15-25 min delivery</span>
-                    <span className="flex items-center text-muted-foreground"><MapPin className="h-5 w-5 mr-2" /> {restaurant?.address}</span>
+                    {wc.showRating !== false && (
+                      <span className="flex items-center font-bold" style={{ color: designStyles['--accent'] as string }}><Star className="h-5 w-5 fill-current mr-2" /> 4.9 (500+ Reviews)</span>
+                    )}
+                    {wc.showDeliveryInfo !== false && (
+                      <span className="flex items-center text-muted-foreground"><Clock className="h-5 w-5 mr-2" /> 15-25 min delivery</span>
+                    )}
+                    {wc.showLocation !== false && (
+                      <span className="flex items-center text-muted-foreground"><MapPin className="h-5 w-5 mr-2" /> {restaurant?.address}</span>
+                    )}
                   </div>
                 </div>
-                <div className="flex flex-col items-center md:items-end gap-3">
-                  <p className="text-xs uppercase text-muted-foreground font-black tracking-widest">Global Ranking</p>
-                  <div className="text-5xl font-black text-primary">#14</div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase">Local Favorites</p>
-                </div>
+                {wc.showRanking !== false && (
+                  <div className="flex flex-col items-center md:items-end gap-3">
+                    <p className="text-xs uppercase text-muted-foreground font-black tracking-widest">Global Ranking</p>
+                    <div className="text-5xl font-black text-primary">#14</div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase">Local Favorites</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
