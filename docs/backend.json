@@ -9,7 +9,7 @@
         "id": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["super_admin", "restaurant_admin", "staff"] },
-        "restaurantId": { "type": "string", "description": "The tenant ID this user belongs to." },
+        "restaurantId": { "type": "string", "description": "The tenant ID this user belongs to (null for super_admin)." },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "role"]
@@ -27,6 +27,7 @@
         "country": { "type": "string" },
         "baseCurrency": { "type": "string" },
         "baseLanguage": { "type": "string" },
+        "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "trial"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -40,6 +41,8 @@
         "customerId": { "type": "string" },
         "status": { "type": "string" },
         "totalAmount": { "type": "number" },
+        "deliveryCharge": { "type": "number" },
+        "paymentMethod": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
@@ -53,6 +56,18 @@
         "category": { "type": "string" },
         "isAvailable": { "type": "boolean" }
       }
+    },
+    "Payment": {
+      "title": "Payment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderId": { "type": "string" },
+        "amount": { "type": "number" },
+        "method": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -61,7 +76,7 @@
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/backend/entities/UserProfile" },
-      "description": "Global users collection."
+      "description": "Global users collection for role-based access control."
     },
     "/restaurants/{restaurantId}": {
       "schema": { "$ref": "#/backend/entities/Restaurant" },
@@ -69,11 +84,15 @@
     },
     "/restaurants/{restaurantId}/orders/{orderId}": {
       "schema": { "$ref": "#/backend/entities/Order" },
-      "description": "Tenant-specific orders."
+      "description": "Tenant-specific orders subcollection."
     },
     "/restaurants/{restaurantId}/menu/{menuItemId}": {
       "schema": { "$ref": "#/backend/entities/MenuItem" },
-      "description": "Tenant-specific menu items."
+      "description": "Tenant-specific menu subcollection."
+    },
+    "/restaurants/{restaurantId}/payments/{paymentId}": {
+      "schema": { "$ref": "#/backend/entities/Payment" },
+      "description": "Tenant-specific payments subcollection."
     }
   }
 }

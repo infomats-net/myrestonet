@@ -32,23 +32,27 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fetch user role from Firestore
+      // Fetch user role from the strict users collection
       const userDoc = await getDoc(doc(firestore, 'users', user.uid));
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const role = userData.role?.toLowerCase();
 
-        if (role === 'super_admin' || role === 'superadmin') {
+        if (role === 'super_admin') {
           router.push('/super-admin/dashboard');
-        } else if (role === 'restaurant_admin' || role === 'restaurantadmin') {
+        } else if (role === 'restaurant_admin' || role === 'staff') {
           router.push('/restaurant-admin/dashboard');
         } else {
+          // Fallback if no specific dashboard exists for the role
           router.push(`/customer/${userData.restaurantId || 'demo'}`);
         }
       } else {
-        // Fallback for first-time login/manual provisioning
-        router.push('/super-admin/dashboard');
+        toast({
+          variant: "destructive",
+          title: "Profile not found",
+          description: "Your user profile is missing. Please contact a Super Admin.",
+        });
       }
 
       toast({
@@ -59,7 +63,7 @@ export default function LoginPage() {
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: "Invalid email or password.",
+        description: error.message || "Invalid email or password.",
       });
     } finally {
       setLoading(false);
@@ -109,6 +113,9 @@ export default function LoginPage() {
             <Button className="w-full text-lg h-12" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
             </Button>
+            <p className="text-sm text-center text-muted-foreground">
+              Don't have an account? <Link href="/auth/signup" className="text-primary hover:underline">Initialize Platform</Link>
+            </p>
           </CardFooter>
         </form>
       </Card>

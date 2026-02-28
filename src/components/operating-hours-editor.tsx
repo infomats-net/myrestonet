@@ -18,8 +18,6 @@ import {
   Trash2, 
   Save, 
   Loader2, 
-  AlertCircle,
-  CheckCircle2,
   CalendarDays
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
@@ -27,6 +25,8 @@ import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { DEFAULT_OPERATING_HOURS, OperatingHours } from '@/lib/operating-hours';
 import { cn } from '@/lib/utils';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export function OperatingHoursEditor({ restaurantId }: { restaurantId: string }) {
   const [hours, setHours] = useState<OperatingHours>(DEFAULT_OPERATING_HOURS);
@@ -41,13 +41,24 @@ export function OperatingHoursEditor({ restaurantId }: { restaurantId: string })
   useEffect(() => {
     if (!firestore || !restaurantId) return;
 
+    // Strict multi-tenant path for configuration
     const docRef = doc(firestore, 'restaurants', restaurantId, 'config', 'operatingHours');
-    const unsub = onSnapshot(docRef, (snap) => {
-      if (snap.exists()) {
-        setHours({ ...DEFAULT_OPERATING_HOURS, ...snap.data() } as OperatingHours);
+    const unsub = onSnapshot(docRef, 
+      (snap) => {
+        if (snap.exists()) {
+          setHours({ ...DEFAULT_OPERATING_HOURS, ...snap.data() } as OperatingHours);
+        }
+        setLoading(false);
+      },
+      async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'get',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setLoading(false);
       }
-      setLoading(false);
-    });
+    );
 
     return () => unsub();
   }, [firestore, restaurantId]);
@@ -56,13 +67,14 @@ export function OperatingHoursEditor({ restaurantId }: { restaurantId: string })
     if (!firestore || !restaurantId) return;
     setSaving(true);
     try {
-      await setDoc(doc(firestore, 'restaurants', restaurantId, 'config', 'operatingHours'), {
+      const docRef = doc(firestore, 'restaurants', restaurantId, 'config', 'operatingHours');
+      await setDoc(docRef, {
         ...hours,
         updatedAt: new Date().toISOString()
-      });
-      toast({ title: 'Schedule Updated', description: 'Your operating hours and holiday closures have been published.' });
+      }, { merge: true });
+      toast({ title: 'Schedule Updated', description: 'Business hours have been synced to the live storefront.' });
     } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+      toast({ variant: 'destructive', title: 'Update Failed', description: "You don't have permission to update settings." });
     } finally {
       setSaving(false);
     }
@@ -82,7 +94,7 @@ export function OperatingHoursEditor({ restaurantId }: { restaurantId: string })
     if (!newHolidayDate) return;
     const dateStr = format(newHolidayDate, 'yyyy-MM-dd');
     if (hours.holidays.some(h => h.date === dateStr)) {
-      toast({ variant: "destructive", title: "Already added", description: "This date is already marked as a closure." });
+      toast({ variant: "destructive", title: "Duplicate date", description: "This closure is already scheduled." });
       return;
     }
     setHours(prev => ({
@@ -99,7 +111,7 @@ export function OperatingHoursEditor({ restaurantId }: { restaurantId: string })
     }));
   };
 
-  if (loading) return <div className="p-20 flex justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
+  if (loading) return <div className="p-20 flex justify-center items-center h-full"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -110,7 +122,7 @@ export function OperatingHoursEditor({ restaurantId }: { restaurantId: string })
           </div>
           <div>
             <h2 className="text-xl font-bold text-slate-900">Operating Schedule</h2>
-            <p className="text-sm text-muted-foreground">Manage your weekly opening times and special closures.</p>
+            <p className="text-sm text-muted-foreground">Manage tenant-specific availability.</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
@@ -131,58 +143,49 @@ export function OperatingHoursEditor({ restaurantId }: { restaurantId: string })
 
       {!hours.isAlwaysOpen && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Weekly Schedule */}
           <Card className="lg:col-span-2 border-none shadow-xl rounded-[2rem] overflow-hidden">
             <CardHeader className="bg-slate-50/50 border-b pb-6">
               <div className="flex items-center gap-2">
                 <CalendarDays className="h-5 w-5 text-primary" />
                 <CardTitle className="text-lg font-bold">Weekly Routine</CardTitle>
               </div>
-              <CardDescription>Configure standard opening and closing windows for each day.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y">
                 {(Object.keys(hours.schedule) as Array<keyof OperatingHours['schedule']>).map((day) => (
-                  <div key={day} className="flex flex-col sm:flex-row items-center justify-between p-6 gap-4 hover:bg-slate-50/30 transition-colors">
+                  <div key={day} className="flex flex-col sm:flex-row items-center justify-between p-6 gap-4">
                     <div className="w-full sm:w-32">
                       <Label className="text-sm font-black uppercase tracking-widest text-slate-900 block mb-1">{day}</Label>
                       {hours.schedule[day].isClosed ? (
-                        <Badge variant="destructive" className="rounded-md px-2 text-[10px] font-black uppercase">Closed</Badge>
+                        <Badge variant="destructive" className="rounded-md px-2 text-[10px] uppercase">Closed</Badge>
                       ) : (
-                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 border-emerald-100 rounded-md px-2 text-[10px] font-black uppercase">Active</Badge>
+                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-600 rounded-md px-2 text-[10px] uppercase">Active</Badge>
                       )}
                     </div>
                     
                     <div className="flex-1 flex flex-wrap items-center gap-6 justify-end w-full">
                       {!hours.schedule[day].isClosed && (
                         <div className="flex items-center gap-3">
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Open</span>
-                            <Input 
-                              type="time" 
-                              value={hours.schedule[day].open} 
-                              onChange={(e) => updateDay(day, 'open', e.target.value)}
-                              className="h-10 w-32 rounded-xl bg-slate-50 border-slate-200"
-                            />
-                          </div>
-                          <div className="h-px w-2 bg-slate-300 mt-5" />
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Close</span>
-                            <Input 
-                              type="time" 
-                              value={hours.schedule[day].close} 
-                              onChange={(e) => updateDay(day, 'close', e.target.value)}
-                              className="h-10 w-32 rounded-xl bg-slate-50 border-slate-200"
-                            />
-                          </div>
+                          <Input 
+                            type="time" 
+                            value={hours.schedule[day].open} 
+                            onChange={(e) => updateDay(day, 'open', e.target.value)}
+                            className="h-10 w-32 rounded-xl bg-slate-50 border-slate-200"
+                          />
+                          <span className="text-slate-300">to</span>
+                          <Input 
+                            type="time" 
+                            value={hours.schedule[day].close} 
+                            onChange={(e) => updateDay(day, 'close', e.target.value)}
+                            className="h-10 w-32 rounded-xl bg-slate-50 border-slate-200"
+                          />
                         </div>
                       )}
-                      <div className="flex items-center gap-2 mt-auto">
+                      <div className="flex items-center gap-2">
                         <Switch 
                           checked={!hours.schedule[day].isClosed} 
                           onCheckedChange={(v) => updateDay(day, 'isClosed', !v)} 
                         />
-                        <span className="text-xs font-bold text-slate-500 uppercase">{hours.schedule[day].isClosed ? 'Closed' : 'Open'}</span>
                       </div>
                     </div>
                   </div>
@@ -191,103 +194,57 @@ export function OperatingHoursEditor({ restaurantId }: { restaurantId: string })
             </CardContent>
           </Card>
 
-          {/* Holiday Closures */}
-          <div className="space-y-6">
-            <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden">
-              <CardHeader className="bg-amber-50/50 border-b border-amber-100">
-                <div className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5 text-amber-600" />
-                  <CardTitle className="text-lg font-bold text-amber-900">Special Closures</CardTitle>
-                </div>
-                <CardDescription className="text-amber-700/70">Set specific dates when the restaurant is closed (holidays, private events).</CardDescription>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="space-y-4">
-                  <div className="grid gap-2">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Date of Closure</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-12 rounded-xl bg-slate-50", !newHolidayDate && "text-muted-foreground")}>
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {newHolidayDate ? format(newHolidayDate, "PPP") : <span>Pick a date</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={newHolidayDate} onSelect={setNewHolidayDate} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-slate-500">Reason (e.g. Christmas)</Label>
-                    <Input 
-                      placeholder="Reason for closure..." 
-                      className="h-12 rounded-xl bg-slate-50"
-                      value={newHolidayReason}
-                      onChange={(e) => setNewHolidayReason(e.target.value)}
-                    />
-                  </div>
-                  <Button onClick={addHoliday} className="w-full h-12 rounded-xl bg-amber-600 hover:bg-amber-700 font-bold gap-2">
-                    <Plus className="h-4 w-4" /> Add Special Closure
-                  </Button>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Planned Closures ({hours.holidays.length})</h4>
-                  <div className="space-y-2">
-                    {hours.holidays.length === 0 ? (
-                      <div className="p-8 text-center bg-slate-50 rounded-2xl border-2 border-dashed">
-                        <p className="text-xs text-muted-foreground italic">No holidays listed.</p>
-                      </div>
-                    ) : (
-                      hours.holidays.map((h, i) => (
-                        <div key={i} className="flex items-center justify-between p-4 bg-white border rounded-2xl shadow-sm group hover:border-amber-200 transition-all">
-                          <div>
-                            <p className="text-sm font-bold text-slate-900">{format(new Date(h.date), 'MMM dd, yyyy')}</p>
-                            <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">{h.reason}</p>
-                          </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 text-slate-300 hover:text-destructive hover:bg-destructive/5 rounded-full"
-                            onClick={() => removeHoliday(i)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="bg-primary/5 border border-primary/10 rounded-3xl p-6 flex gap-4">
-              <div className="bg-white h-10 w-10 rounded-xl flex items-center justify-center text-primary shadow-sm border border-primary/10 shrink-0">
-                <CheckCircle2 className="h-5 w-5" />
+          <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden h-fit">
+            <CardHeader className="bg-amber-50/50 border-b">
+              <div className="flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5 text-amber-600" />
+                <CardTitle className="text-lg font-bold">Special Closures</CardTitle>
               </div>
-              <div className="space-y-1">
-                <p className="text-xs font-bold text-primary uppercase tracking-widest">Global Sync</p>
-                <p className="text-xs text-slate-600 leading-relaxed">Customers will see a 'Closed Now' notice and won't be able to order during these times.</p>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              <div className="space-y-4">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start h-12 rounded-xl bg-slate-50">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {newHolidayDate ? format(newHolidayDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={newHolidayDate} onSelect={setNewHolidayDate} initialFocus />
+                  </PopoverContent>
+                </Popover>
+                <Input 
+                  placeholder="Reason (e.g. Christmas)..." 
+                  className="h-12 rounded-xl bg-slate-50"
+                  value={newHolidayReason}
+                  onChange={(e) => setNewHolidayReason(e.target.value)}
+                />
+                <Button onClick={addHoliday} className="w-full h-12 rounded-xl bg-amber-600 hover:bg-amber-700 font-bold gap-2">
+                  <Plus className="h-4 w-4" /> Add Closure
+                </Button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {hours.isAlwaysOpen && (
-        <div className="p-20 text-center bg-slate-50/50 rounded-[3rem] border-4 border-dashed space-y-6">
-          <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto text-primary">
-            <CheckCircle2 className="h-12 w-12" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-2xl font-bold text-slate-900">24/7 Availability Active</h3>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Your restaurant is currently set to be always open. Customers can place orders at any time of the day or year.
-            </p>
-          </div>
-          <Button variant="outline" className="rounded-full px-8" onClick={() => setHours({...hours, isAlwaysOpen: false})}>
-            Set Specific Business Hours
-          </Button>
+              <div className="space-y-2 pt-4 border-t">
+                {hours.holidays.map((h, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-white border rounded-xl shadow-sm group">
+                    <div>
+                      <p className="text-sm font-bold">{format(new Date(h.date), 'MMM dd, yyyy')}</p>
+                      <p className="text-[10px] text-muted-foreground uppercase">{h.reason}</p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-slate-300 hover:text-destructive rounded-full"
+                      onClick={() => removeHoliday(i)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
