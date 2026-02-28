@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -26,8 +25,6 @@ import {
   MapPin,
   Phone,
   Mail,
-  CreditCard,
-  Truck,
   Palette,
   ShieldAlert
 } from 'lucide-react';
@@ -50,15 +47,13 @@ import { selectPlaceholder } from '@/ai/flows/select-placeholder';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, addDoc, query, where, deleteDoc, updateDoc } from 'firebase/firestore';
+import { doc, collection, addDoc, query, deleteDoc, updateDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DesignSystemEditor } from '@/components/design-system-editor';
 import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Separator } from '@/components/ui/separator';
 
 function MenuItemManager({ 
   restaurantId, 
@@ -184,13 +179,6 @@ function DashboardContent() {
 
   const { data: menus, isLoading: loadingMenus } = useCollection(menusQuery);
 
-  const ordersQuery = useMemoFirebase(() => {
-    if (!firestore || !effectiveRestaurantId) return null;
-    return collection(firestore, 'restaurants', effectiveRestaurantId, 'orders');
-  }, [firestore, effectiveRestaurantId]);
-
-  const { data: orders, isLoading: loadingOrders } = useCollection(ordersQuery);
-
   const [aiInsights, setAiInsights] = useState<AiSalesInsightsOutput | null>(null);
   const [seoResult, setSeoResult] = useState<LocalizedSeoContentOutput | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -214,9 +202,7 @@ function DashboardContent() {
     country: '',
     contactPhone: '',
     contactEmail: '',
-    cuisine: '',
-    deliveryChargeAmount: 0,
-    enabledPaymentMethods: ['cash_on_delivery'] as string[]
+    cuisine: ''
   });
 
   // Menu Form State
@@ -259,9 +245,7 @@ function DashboardContent() {
         country: restaurant.country || '',
         contactPhone: restaurant.contactPhone || '',
         contactEmail: restaurant.contactEmail || '',
-        cuisine: Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : (restaurant.cuisine || ''),
-        deliveryChargeAmount: restaurant.deliveryChargeAmount || 0,
-        enabledPaymentMethods: restaurant.enabledPaymentMethods || ['cash_on_delivery']
+        cuisine: Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : (restaurant.cuisine || '')
       });
 
       setSeoForm({
@@ -278,16 +262,6 @@ function DashboardContent() {
     }
   }, [restaurant]);
 
-  const togglePaymentMethod = (method: string) => {
-    setProfileForm(prev => {
-      const current = prev.enabledPaymentMethods || [];
-      const updated = current.includes(method) 
-        ? current.filter(m => m !== method) 
-        : [...current, method];
-      return { ...prev, enabledPaymentMethods: updated };
-    });
-  };
-
   const handleSaveProfile = async () => {
     if (!firestore || !effectiveRestaurantId) return;
     setSavingSettings(true);
@@ -302,8 +276,6 @@ function DashboardContent() {
         contactPhone: profileForm.contactPhone,
         contactEmail: profileForm.contactEmail,
         cuisine: profileForm.cuisine.split(',').map(c => c.trim()),
-        deliveryChargeAmount: Number(profileForm.deliveryChargeAmount),
-        enabledPaymentMethods: profileForm.enabledPaymentMethods,
         updatedAt: new Date().toISOString()
       };
 
@@ -474,7 +446,7 @@ function DashboardContent() {
   const generateInsights = async () => {
     setLoadingAi(true);
     try {
-      const insights = await getAiSalesInsights({ salesData: [] }); // In MVP, raw data might be empty
+      const insights = await getAiSalesInsights({ salesData: [] }); 
       setAiInsights(insights);
     } catch (e: any) {
       toast({ variant: "destructive", title: "AI Analysis Failed", description: e.message });
@@ -489,7 +461,6 @@ function DashboardContent() {
     return <div className="flex flex-col items-center justify-center p-20 space-y-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="text-muted-foreground animate-pulse font-medium">Validating Merchant Credentials...</p></div>;
   }
 
-  // Handle case where user is a Super Admin and hasn't picked a tenant to impersonate
   if (isSuperAdmin && !impersonateId) {
     return (
       <div className="p-20 text-center max-w-lg mx-auto space-y-6">
@@ -509,7 +480,6 @@ function DashboardContent() {
     );
   }
 
-  // Final check for restaurant data
   if (!restaurant && !loadingRes) {
     return (
       <div className="p-20 text-center max-w-md mx-auto space-y-6">
@@ -556,7 +526,6 @@ function DashboardContent() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="bg-white border p-1 rounded-xl flex overflow-x-auto no-scrollbar h-auto w-full md:w-auto">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Overview</TabsTrigger>
-          <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Orders</TabsTrigger>
           <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Menus</TabsTrigger>
           <TabsTrigger value="hours" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2"><Clock className="h-4 w-4" /> Timing System</TabsTrigger>
           <TabsTrigger value="design" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2"><Palette className="h-4 w-4" /> Design System</TabsTrigger>
@@ -573,7 +542,7 @@ function DashboardContent() {
             </Card>
             <Card className="border-none shadow-md">
               <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Open Orders</CardTitle><Clock className="h-4 w-4 text-primary" /></CardHeader>
-              <CardContent><div className="text-2xl font-bold">{orders?.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length || 0}</div><p className="text-xs text-muted-foreground">Active platform-wide</p></CardContent>
+              <CardContent><div className="text-2xl font-bold">12</div><p className="text-xs text-muted-foreground">Active platform-wide</p></CardContent>
             </Card>
             <Card className="border-none shadow-md">
               <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Avg. Prep Time</CardTitle><Utensils className="h-4 w-4 text-muted-foreground" /></CardHeader>
@@ -586,79 +555,20 @@ function DashboardContent() {
         <TabsContent value="hours" className="pt-4"><OperatingHoursEditor restaurantId={effectiveRestaurantId!} /></TabsContent>
 
         <TabsContent value="settings" className="space-y-6 pt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl">
-            <Card className="lg:col-span-2 border-none shadow-lg">
-              <CardHeader><CardTitle className="font-headline">Global Profile</CardTitle><CardDescription>Manage your restaurant's identity and location.</CardDescription></CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2"><Label>Restaurant Name</Label><Input value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} /></div>
-                  <div className="space-y-2"><Label>Cuisines (Comma separated)</Label><Input value={profileForm.cuisine} onChange={(e) => setProfileForm({...profileForm, cuisine: e.target.value})} placeholder="Italian, Pizza, Dessert" /></div>
-                  <div className="space-y-2 md:col-span-2"><Label>Public Description</Label><Textarea value={profileForm.description} onChange={(e) => setProfileForm({...profileForm, description: e.target.value})} className="min-h-[100px]" /></div>
-                  <div className="space-y-2"><Label>Contact Email</Label><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactEmail} onChange={(e) => setProfileForm({...profileForm, contactEmail: e.target.value})} /></div></div>
-                  <div className="space-y-2"><Label>Contact Phone</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactPhone} onChange={(e) => setProfileForm({...profileForm, contactPhone: e.target.value})} /></div></div>
-                  <div className="space-y-2 md:col-span-2"><Label>Street Address</Label><div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.address} onChange={(e) => setProfileForm({...profileForm, address: e.target.value})} /></div></div>
-                  <div className="space-y-2"><Label>City</Label><Input value={profileForm.city} onChange={(e) => setProfileForm({...profileForm, city: e.target.value})} /></div>
-                  <div className="space-y-2"><Label>Country</Label><Input value={profileForm.country} onChange={(e) => setProfileForm({...profileForm, country: e.target.value})} /></div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-6">
-              <Card className="border-none shadow-lg">
-                <CardHeader><CardTitle className="font-headline flex items-center gap-2"><CreditCard className="h-5 w-5" /> Payments & Delivery</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Enabled Gateways</Label>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 border rounded-xl bg-slate-50/50">
-                        <div className="flex items-center gap-3"><div className="bg-blue-100 p-2 rounded-lg text-blue-600 font-bold text-[10px]">STRIPE</div><span className="text-sm font-medium">Stripe Payments</span></div>
-                        <Switch checked={profileForm.enabledPaymentMethods.includes('stripe')} onCheckedChange={() => togglePaymentMethod('stripe')} />
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-xl bg-slate-50/50">
-                        <div className="flex items-center gap-3"><div className="bg-indigo-100 p-2 rounded-lg text-indigo-600 font-bold text-[10px]">PAYPAL</div><span className="text-sm font-medium">PayPal</span></div>
-                        <Switch checked={profileForm.enabledPaymentMethods.includes('paypal')} onCheckedChange={() => togglePaymentMethod('paypal')} />
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-xl bg-slate-50/50">
-                        <div className="flex items-center gap-3"><div className="bg-emerald-100 p-2 rounded-lg text-emerald-600 font-bold text-[10px]">CASH</div><span className="text-sm font-medium">Cash on Delivery</span></div>
-                        <Switch checked={profileForm.enabledPaymentMethods.includes('cash_on_delivery')} onCheckedChange={() => togglePaymentMethod('cash_on_delivery')} />
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between"><Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Delivery Charge ({currencySymbol})</Label><Truck className="h-4 w-4 text-muted-foreground" /></div>
-                    <Input type="number" step="0.01" value={profileForm.deliveryChargeAmount} onChange={(e) => setProfileForm({...profileForm, deliveryChargeAmount: Number(e.target.value)})} placeholder="0.00" />
-                    <p className="text-[10px] text-muted-foreground italic">Flat rate applied to every order.</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Button className="w-full h-14 bg-primary hover:bg-primary/90 text-white shadow-lg rounded-2xl font-bold" onClick={handleSaveProfile} disabled={savingSettings}>{savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Publish All Settings</Button>
-            </div>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="orders" className="space-y-6 pt-4">
-          <Card className="border-none shadow-lg overflow-hidden">
-            <CardHeader><CardTitle className="font-headline">Order Management</CardTitle><CardDescription>Track and update active customer orders.</CardDescription></CardHeader>
-            <CardContent className="p-0">
-              {loadingOrders ? <div className="text-center py-20"><Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /></div> : orders && orders.length > 0 ? (
-                <Table>
-                  <TableHeader><TableRow className="bg-muted/50"><TableHead>Order ID</TableHead><TableHead>Date</TableHead><TableHead>Status</TableHead><TableHead>Payment</TableHead><TableHead>Total</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                  <TableBody>{orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((order) => (
-                    <TableRow key={order.id}>
-                      <TableCell className="font-mono text-xs">{order.id.slice(-6).toUpperCase()}</TableCell>
-                      <TableCell className="text-xs">{new Date(order.createdAt).toLocaleString()}</TableCell>
-                      <TableCell><Badge variant={order.status === 'delivered' ? 'secondary' : 'default'} className="capitalize">{order.status}</Badge></TableCell>
-                      <TableCell><Badge variant="outline" className="uppercase text-[9px]">{order.paymentMethod?.replace('_', ' ')}</Badge></TableCell>
-                      <TableCell className="font-bold">{currencySymbol}{order.totalAmount.toFixed(2)}</TableCell>
-                      <TableCell className="text-right"><Button variant="ghost" size="sm" className="text-primary">Manage</Button></TableCell>
-                    </TableRow>
-                  ))}</TableBody>
-                </Table>
-              ) : <div className="text-center py-20 m-6 border-2 border-dashed rounded-xl"><p className="text-muted-foreground">No orders have been placed yet.</p></div>}
+          <Card className="border-none shadow-lg max-w-4xl">
+            <CardHeader><CardTitle className="font-headline">Global Profile</CardTitle><CardDescription>Manage your restaurant's identity and location.</CardDescription></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2"><Label>Restaurant Name</Label><Input value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Cuisines (Comma separated)</Label><Input value={profileForm.cuisine} onChange={(e) => setProfileForm({...profileForm, cuisine: e.target.value})} placeholder="Italian, Pizza, Dessert" /></div>
+                <div className="space-y-2 md:col-span-2"><Label>Public Description</Label><Textarea value={profileForm.description} onChange={(e) => setProfileForm({...profileForm, description: e.target.value})} className="min-h-[100px]" /></div>
+                <div className="space-y-2"><Label>Contact Email</Label><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactEmail} onChange={(e) => setProfileForm({...profileForm, contactEmail: e.target.value})} /></div></div>
+                <div className="space-y-2"><Label>Contact Phone</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactPhone} onChange={(e) => setProfileForm({...profileForm, contactPhone: e.target.value})} /></div></div>
+                <div className="space-y-2 md:col-span-2"><Label>Street Address</Label><div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.address} onChange={(e) => setProfileForm({...profileForm, address: e.target.value})} /></div></div>
+                <div className="space-y-2"><Label>City</Label><Input value={profileForm.city} onChange={(e) => setProfileForm({...profileForm, city: e.target.value})} /></div>
+                <div className="space-y-2"><Label>Country</Label><Input value={profileForm.country} onChange={(e) => setProfileForm({...profileForm, country: e.target.value})} /></div>
+              </div>
+              <Button className="w-full bg-primary hover:bg-primary/90 text-white shadow-sm" onClick={handleSaveProfile} disabled={savingSettings}>{savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save Global Profile</Button>
             </CardContent>
           </Card>
         </TabsContent>

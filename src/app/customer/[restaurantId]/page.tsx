@@ -2,7 +2,7 @@
 
 import { useState, use as reactUse, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Star, 
   Clock, 
@@ -13,24 +13,15 @@ import {
   UtensilsCrossed, 
   Phone, 
   Mail, 
-  Instagram, 
-  Facebook, 
-  Twitter, 
-  AlertTriangle,
   Lock,
-  Trophy,
-  CreditCard,
-  Wallet,
-  Coins,
   CheckCircle2,
-  Truck
+  AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
-import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
-import { signInAnonymously } from 'firebase/auth';
+import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { checkIsRestaurantOpen, OperatingHours } from '@/lib/operating-hours';
@@ -43,17 +34,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
 
 export default function CustomerOrderPage({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = reactUse(params);
   const restaurantId = resolvedParams.restaurantId;
   const firestore = useFirestore();
-  const auth = useAuth();
-  const { toast } = useToast();
 
   // 1. Fetch Restaurant Data
   const restaurantRef = useMemoFirebase(() => {
@@ -89,14 +74,6 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(true);
   const [showClosedAlert, setShowClosedAlert] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [completingOrder, setCompletingOrder] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState(false);
-
-  // Checkout Form State
-  const [paymentMethod, setPaymentMethod] = useState<string>('');
-  const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [customerNotes, setCustomerNotes] = useState('');
 
   useEffect(() => {
     if (menus && menus.length > 0 && !activeMenuId) {
@@ -110,12 +87,6 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
     const interval = setInterval(checkStatus, 30000);
     return () => clearInterval(interval);
   }, [hours]);
-
-  useEffect(() => {
-    if (restaurant?.enabledPaymentMethods?.length > 0) {
-      setPaymentMethod(restaurant.enabledPaymentMethods[0]);
-    }
-  }, [restaurant]);
 
   const itemsQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId || !activeMenuId) return null;
@@ -143,72 +114,7 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   };
 
   const subtotal = cart.reduce((sum, entry) => sum + (entry.item.price * entry.qty), 0);
-  const deliveryCharge = restaurant?.deliveryChargeAmount || 0;
-  const cartTotal = subtotal + deliveryCharge;
   const cartCount = cart.reduce((sum, entry) => sum + entry.qty, 0);
-
-  const handleCompleteOrder = async () => {
-    if (!auth || !firestore || !restaurantId) return;
-    if (!deliveryAddress) {
-      toast({ variant: "destructive", title: "Missing Address", description: "Please provide a delivery address." });
-      return;
-    }
-
-    setCompletingOrder(true);
-    try {
-      // 1. Ensure user is authenticated (Anonymous fallback)
-      let user = auth.currentUser;
-      if (!user) {
-        const cred = await signInAnonymously(auth);
-        user = cred.user;
-      }
-
-      // 2. Create Order Header
-      const ordersCol = collection(firestore, 'restaurants', restaurantId, 'orders');
-      const orderData = {
-        restaurantId,
-        customerId: user.uid,
-        status: 'pending',
-        paymentMethod,
-        paymentStatus: 'pending',
-        subtotalAmount: subtotal,
-        deliveryChargeAmount: deliveryCharge,
-        totalAmount: cartTotal,
-        deliveryAddress,
-        customerNotes,
-        adminUserIds: restaurant?.adminUserIds || [],
-        createdAt: new Date().toISOString(),
-        orderedAt: new Date().toISOString(),
-      };
-
-      const orderRef = await addDoc(ordersCol, orderData);
-
-      // 3. Create Order Items
-      const itemsCol = collection(firestore, 'restaurants', restaurantId, 'orders', orderRef.id, 'orderItems');
-      for (const entry of cart) {
-        await addDoc(itemsCol, {
-          orderId: orderRef.id,
-          menuItemId: entry.item.id,
-          name: entry.item.name,
-          quantity: entry.qty,
-          unitPrice: entry.item.price,
-          itemTotal: entry.item.price * entry.qty,
-          adminUserIds: restaurant?.adminUserIds || [],
-          customerId: user.uid,
-          createdAt: new Date().toISOString(),
-        });
-      }
-
-      setOrderSuccess(true);
-      setCart([]);
-      setIsCartOpen(false);
-      setIsCheckoutOpen(false);
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Order Failed", description: error.message });
-    } finally {
-      setCompletingOrder(false);
-    }
-  };
 
   if (loadingRes || loadingDesign || loadingHours || (loadingMenus && !menus)) {
     return <div className="min-h-screen flex flex-col items-center justify-center space-y-4"><Loader2 className="h-10 w-10 animate-spin text-primary" /><p className="text-muted-foreground font-medium animate-pulse">Syncing with Kitchen...</p></div>;
@@ -359,76 +265,11 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
                   <div key={entry.item.id} className="flex justify-between items-center p-6 bg-slate-50 rounded-[2.5rem] border border-slate-100 transition-all hover:bg-slate-100/50"><div className="flex gap-6 items-center"><div className="w-20 h-20 rounded-[1.5rem] bg-muted overflow-hidden border-2 border-white shadow-md"><img src={entry.item.imageUrl || `https://picsum.photos/seed/${entry.item.id}/100/100`} className="w-full h-full object-cover" alt="Item" /></div><div><p className="font-black text-lg leading-tight">{entry.item.name}</p><p className="text-sm font-bold text-primary opacity-80" style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{entry.item.price}</p></div></div><div className="flex items-center gap-6"><Button variant="outline" size="icon" className="h-10 w-10 rounded-full border-2" onClick={() => updateQty(entry.item.id, -1)}><Minus className="h-4 w-4" /></Button><span className="text-xl font-black min-w-[2ch] text-center">{entry.qty}</span><Button variant="outline" size="icon" className="h-10 w-10 rounded-full border-2" onClick={() => updateQty(entry.item.id, 1)}><Plus className="h-4 w-4" /></Button></div></div>
                 ))}
               </div>
-              <SheetFooter className="absolute bottom-0 left-0 w-full p-10 border-t bg-white/95 backdrop-blur-md rounded-b-[4rem]"><div className="flex justify-between w-full mb-8 font-black text-3xl"><span>Subtotal</span><span style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{subtotal.toFixed(2)}</span></div><Button className="w-full h-20 text-2xl font-black rounded-[2.5rem] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]" style={{ backgroundColor: designStyles['--primary'] as string }} onClick={() => setIsCheckoutOpen(true)}>Proceed to Checkout</Button></SheetFooter>
+              <SheetFooter className="absolute bottom-0 left-0 w-full p-10 border-t bg-white/95 backdrop-blur-md rounded-b-[4rem]"><div className="flex justify-between w-full mb-8 font-black text-3xl"><span>Subtotal</span><span style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{subtotal.toFixed(2)}</span></div><Button className="w-full h-20 text-2xl font-black rounded-[2.5rem] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]" style={{ backgroundColor: designStyles['--primary'] as string }}>Checkout</Button></SheetFooter>
             </SheetContent>
           </Sheet>
         </div>
       )}
-
-      {/* Checkout Dialog */}
-      <AlertDialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
-        <AlertDialogContent className="rounded-[3rem] max-w-2xl max-h-[90vh] overflow-y-auto">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-3xl font-black">Finalize Your Order</AlertDialogTitle>
-            <AlertDialogDescription>Complete the details below to send your order to the kitchen.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-6 space-y-8">
-            <div className="space-y-4">
-              <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Delivery Address</Label>
-              <Input placeholder="Enter your full address..." className="h-14 rounded-2xl bg-slate-50" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} />
-            </div>
-            
-            <div className="space-y-4">
-              <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Payment Method</Label>
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {restaurant?.enabledPaymentMethods?.includes('stripe') && (
-                  <Label className={cn("flex items-center gap-3 p-4 border-2 rounded-2xl cursor-pointer transition-all", paymentMethod === 'stripe' ? "border-primary bg-primary/5" : "border-slate-100")}>
-                    <RadioGroupItem value="stripe" className="sr-only" />
-                    <CreditCard className="h-5 w-5 text-primary" />
-                    <span className="font-bold">Stripe Payments</span>
-                  </Label>
-                )}
-                {restaurant?.enabledPaymentMethods?.includes('paypal') && (
-                  <Label className={cn("flex items-center gap-3 p-4 border-2 rounded-2xl cursor-pointer transition-all", paymentMethod === 'paypal' ? "border-primary bg-primary/5" : "border-slate-100")}>
-                    <RadioGroupItem value="paypal" className="sr-only" />
-                    <Wallet className="h-5 w-5 text-blue-600" />
-                    <span className="font-bold">PayPal</span>
-                  </Label>
-                )}
-                {restaurant?.enabledPaymentMethods?.includes('cash_on_delivery') && (
-                  <Label className={cn("flex items-center gap-3 p-4 border-2 rounded-2xl cursor-pointer transition-all", paymentMethod === 'cash_on_delivery' ? "border-primary bg-primary/5" : "border-slate-100")}>
-                    <RadioGroupItem value="cash_on_delivery" className="sr-only" />
-                    <Coins className="h-5 w-5 text-emerald-600" />
-                    <span className="font-bold">Cash on Delivery</span>
-                  </Label>
-                )}
-              </RadioGroup>
-            </div>
-
-            <div className="bg-slate-50 p-6 rounded-3xl space-y-3">
-              <div className="flex justify-between text-sm"><span>Subtotal</span><span className="font-bold">{currencySymbol}{subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between text-sm"><span>Delivery Charge</span><span className="font-bold">{currencySymbol}{deliveryCharge.toFixed(2)}</span></div>
-              <Separator />
-              <div className="flex justify-between text-2xl font-black"><span>Total</span><span style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{cartTotal.toFixed(2)}</span></div>
-            </div>
-          </div>
-          <AlertDialogFooter className="gap-2">
-            <Button variant="ghost" className="rounded-2xl h-14 font-bold" onClick={() => setIsCheckoutOpen(false)}>Back</Button>
-            <Button className="rounded-2xl h-14 font-black flex-1 text-lg shadow-xl" style={{ backgroundColor: designStyles['--primary'] as string }} onClick={handleCompleteOrder} disabled={completingOrder}>
-              {completingOrder ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : "Complete Order"}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Success Dialog */}
-      <AlertDialog open={orderSuccess} onOpenChange={setOrderSuccess}>
-        <AlertDialogContent className="rounded-[3rem] text-center p-12">
-          <div className="bg-emerald-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto text-emerald-600 mb-6"><CheckCircle2 className="h-12 w-12" /></div>
-          <AlertDialogHeader><AlertDialogTitle className="text-3xl font-black">Order Received!</AlertDialogTitle><AlertDialogDescription className="text-lg">Your culinary journey is underway. We'll start preparing your meal right now.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter className="mt-8 justify-center sm:justify-center"><AlertDialogAction className="rounded-2xl h-14 px-12 font-black bg-primary" onClick={() => setOrderSuccess(false)}>Awesome!</AlertDialogAction></AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog open={showClosedAlert} onOpenChange={setShowClosedAlert}><AlertDialogContent className="rounded-[2rem]"><AlertDialogHeader><AlertDialogTitle className="text-2xl font-black flex items-center gap-3"><div className="bg-destructive/10 p-3 rounded-2xl text-destructive"><AlertTriangle className="h-6 w-6" /></div>Restaurant Closed Now</AlertDialogTitle><AlertDialogDescription className="text-lg py-4">We are sorry! We aren't taking orders right now. Please come back soon.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogAction onClick={() => setShowClosedAlert(false)} className="h-14 rounded-2xl font-black text-lg bg-primary">Got it, thanks!</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
 
