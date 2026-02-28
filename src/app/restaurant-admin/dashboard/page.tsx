@@ -35,6 +35,7 @@ import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 function DashboardContent() {
   const router = useRouter();
