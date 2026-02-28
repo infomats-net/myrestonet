@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -27,6 +26,13 @@ import {
   DialogDescription
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc, serverTimestamp, query, where, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
