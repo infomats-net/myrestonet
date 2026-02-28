@@ -136,6 +136,9 @@ function DashboardContent() {
     );
   }
 
+  // Define styling for tabs triggers to ensure consistency
+  const tabTriggerStyle = "flex-1 rounded-xl h-full font-bold bg-primary text-primary-foreground data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all";
+
   return (
     <div className="p-8 space-y-8 w-full">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border shadow-sm">
@@ -167,13 +170,13 @@ function DashboardContent() {
         params.set('tab', v);
         router.push(`/restaurant-admin/dashboard?${params.toString()}`, { scroll: false });
       }} className="space-y-6 w-full">
-        <TabsList className="bg-slate-100/50 border p-1 rounded-2xl h-14 w-full flex overflow-x-auto no-scrollbar">
-          <TabsTrigger value="overview" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Overview</TabsTrigger>
-          <TabsTrigger value="reservations" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Reservations</TabsTrigger>
-          <TabsTrigger value="tables" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Tables</TabsTrigger>
-          <TabsTrigger value="menu" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Menu</TabsTrigger>
-          <TabsTrigger value="design" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Design</TabsTrigger>
-          <TabsTrigger value="settings" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Settings</TabsTrigger>
+        <TabsList className="bg-slate-100/50 border p-1 rounded-2xl h-14 w-full flex gap-1 overflow-x-auto no-scrollbar">
+          <TabsTrigger value="overview" className={tabTriggerStyle}>Overview</TabsTrigger>
+          <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
+          <TabsTrigger value="tables" className={tabTriggerStyle}>Tables</TabsTrigger>
+          <TabsTrigger value="menu" className={tabTriggerStyle}>Menu</TabsTrigger>
+          <TabsTrigger value="design" className={tabTriggerStyle}>Design</TabsTrigger>
+          <TabsTrigger value="settings" className={tabTriggerStyle}>Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
