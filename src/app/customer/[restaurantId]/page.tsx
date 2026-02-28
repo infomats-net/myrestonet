@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, ReactNode } from 'react';
@@ -199,7 +200,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const theme = designSettings?.theme || { primary: '#22c55e', background: '#ffffff', text: '#0f172a' };
   const typography = designSettings?.typography || { fontFamily: 'Inter', headingFont: 'Inter', baseSize: '16px' };
   
-  // Robust sections configuration with fallbacks
   const sections = {
     hero: designSettings?.sections?.hero ?? { visible: true },
     welcomeCard: designSettings?.sections?.welcomeCard ?? { 
@@ -470,25 +470,25 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       </section>
     ),
     contact: (
-      <section key="contact" id="contact" className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-3 gap-8 scroll-mt-24">
-        <Card className="rounded-[3rem] border-none shadow-2xl bg-white text-slate-900 p-12 space-y-8 lg:col-span-1">
+      <section key="contact" id="contact" className="max-w-6xl mx-auto px-6 py-12 scroll-mt-24">
+        <Card className="rounded-[3rem] border-none shadow-2xl bg-white text-slate-900 p-12 space-y-8">
           <h2 className="text-3xl font-black" style={headingStyle}>Connect With Us</h2>
-          <div className="space-y-6">
-            <div className="flex items-center gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="flex items-center gap-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
               <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Phone className="h-5 w-5" /></div>
               <div>
                 <p className="text-[10px] font-black uppercase text-slate-400">Call Us</p>
                 <p className="font-bold">{restaurant.contactPhone}</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
               <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Mail className="h-5 w-5" /></div>
               <div>
                 <p className="text-[10px] font-black uppercase text-slate-400">Email Us</p>
                 <p className="font-bold">{restaurant.adminEmail}</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
               <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><MapPin className="h-5 w-5" /></div>
               <div>
                 <p className="text-[10px] font-black uppercase text-slate-400">Visit Us</p>
@@ -497,35 +497,35 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             </div>
           </div>
         </Card>
-
-        {sections.map.visible && (
-          <div className="lg:col-span-2 rounded-[3.5rem] overflow-hidden shadow-2xl relative h-[500px] group">
-            <img 
-              src="https://picsum.photos/seed/map-area/1200/800" 
-              alt="Location Map" 
-              className="w-full h-full object-cover grayscale brightness-75 transition-all duration-700"
-              data-ai-hint="aerial view"
-            />
-            <div className="absolute inset-0 bg-black/10" />
-            <div className="absolute bottom-6 left-6 right-6 p-8 md:p-10 bg-white/90 backdrop-blur-md rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 border border-white/20">
-              <div className="flex items-center gap-6">
-                <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
-                  <MapIcon className="h-8 w-8 text-emerald-600" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-black text-2xl text-slate-900" style={headingStyle}>Find Your Way</h3>
-                  <p className="text-slate-500 font-medium">Get directions to our premium location.</p>
-                </div>
-              </div>
-              <Button size="lg" className="rounded-[1.5rem] h-16 px-10 text-lg font-black shadow-lg hover:scale-105 transition-transform" style={{ backgroundColor: theme.primary }}>
-                Open Maps
-              </Button>
-            </div>
-          </div>
-        )}
       </section>
     ),
-    map: null // Handled inside contact for design consistency, but key exists for order
+    map: (
+      <section key="map" className="max-w-6xl mx-auto px-6 py-12">
+        <div className="rounded-[3.5rem] overflow-hidden shadow-2xl relative h-[500px] group">
+          <img 
+            src="https://picsum.photos/seed/map-area/1200/800" 
+            alt="Location Map" 
+            className="w-full h-full object-cover grayscale brightness-75 transition-all duration-700"
+            data-ai-hint="aerial view"
+          />
+          <div className="absolute inset-0 bg-black/10" />
+          <div className="absolute bottom-6 left-6 right-6 p-8 md:p-10 bg-white/90 backdrop-blur-md rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 border border-white/20">
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
+                <MapIcon className="h-8 w-8 text-emerald-600" />
+              </div>
+              <div className="text-left">
+                <h3 className="font-black text-2xl text-slate-900" style={headingStyle}>Find Your Way</h3>
+                <p className="text-slate-500 font-medium">Get directions to our premium location.</p>
+              </div>
+            </div>
+            <Button size="lg" className="rounded-[1.5rem] h-16 px-10 text-lg font-black shadow-lg hover:scale-105 transition-transform" style={{ backgroundColor: theme.primary }}>
+              Open Maps
+            </Button>
+          </div>
+        </div>
+      </section>
+    )
   };
 
   return (
