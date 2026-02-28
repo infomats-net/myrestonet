@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -25,17 +24,13 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection, useAuth } from '@/firebase';
 import { doc, collection, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
 import { OperatingHoursEditor } from '@/components/operating-hours-editor';
+import Link from 'next/link';
 
 function DashboardContent() {
   const router = useRouter();
@@ -49,6 +44,13 @@ function DashboardContent() {
   const { toast } = useToast();
   const [showTimeout, setShowTimeout] = useState(false);
   
+  // Safety Redirect for logged out users
+  useEffect(() => {
+    if (!authLoading && !authUser) {
+      router.push('/auth/login');
+    }
+  }, [authLoading, authUser, router]);
+
   // 1. Fetch User Profile to get restaurantId
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !authUser?.uid) return null;
@@ -100,7 +102,6 @@ function DashboardContent() {
     if (!firestore || !effectiveRestaurantId || !itemForm.name) return;
     setIsSaving(true);
     try {
-      const menuCol = collection(firestore, 'restaurants', effectiveRestaurantId, 'menu');
       const data = {
         ...itemForm,
         price: parseFloat(itemForm.price) || 0,
@@ -112,6 +113,7 @@ function DashboardContent() {
         await updateDoc(ref, data);
         toast({ title: "Updated", description: "Menu item has been updated." });
       } else {
+        const menuCol = collection(firestore, 'restaurants', effectiveRestaurantId, 'menu');
         await addDoc(menuCol, { ...data, createdAt: new Date().toISOString() });
         toast({ title: "Created", description: "New menu item added." });
       }
@@ -145,8 +147,8 @@ function DashboardContent() {
       <div className="p-20 text-center flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <div className="space-y-1">
-          <p className="font-bold text-lg">Verifying Identity...</p>
-          <p className="text-sm text-muted-foreground italic">Connecting to your secure merchant instance</p>
+          <p className="font-bold text-lg">Validating Credentials...</p>
+          <p className="text-sm text-muted-foreground italic">Syncing with your secure restaurant instance</p>
         </div>
         
         {showTimeout && (
@@ -211,11 +213,12 @@ function DashboardContent() {
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">{restaurant?.name || "Merchant Dashboard"}</h1>
-            <p className="text-muted-foreground text-sm font-medium flex items-center gap-1.5">
+            {/* Hydration fix: use div instead of p for container with complex children */}
+            <div className="text-muted-foreground text-sm font-medium flex items-center gap-1.5">
               <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-widest h-5">{userProfile?.role || 'Admin'}</Badge>
               <span>•</span>
-              Tenant ID: {effectiveRestaurantId}
-            </p>
+              <span>Tenant ID: {effectiveRestaurantId}</span>
+            </div>
           </div>
         </div>
         <Button variant="outline" asChild className="rounded-xl h-12 px-6 shadow-sm group">
