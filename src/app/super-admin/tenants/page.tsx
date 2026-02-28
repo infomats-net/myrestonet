@@ -114,11 +114,16 @@ export default function TenantsPage() {
                           <div className="bg-primary/10 w-14 h-14 rounded-2xl flex items-center justify-center text-primary shrink-0">
                             <span className="text-xl font-black">{res.name?.[0] || 'R'}</span>
                           </div>
-                          <div>
+                          <div className="space-y-1">
                             <p className="font-black text-xl text-slate-900 leading-tight">{res.name}</p>
-                            <p className="text-xs font-bold text-slate-400 flex items-center gap-1.5 mt-1">
-                              <MapPin className="h-3 w-3 text-primary" /> {res.city}, {res.country}
-                            </p>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-x-4 gap-y-1">
+                              <p className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5">
+                                <MapPin className="h-3 w-3 text-primary" /> {res.city}, {res.country}
+                              </p>
+                              <p className="text-[11px] font-bold text-slate-500 flex items-center gap-1.5">
+                                <Mail className="h-3 w-3 text-primary" /> {res.adminEmail}
+                              </p>
+                            </div>
                           </div>
                         </div>
                         
