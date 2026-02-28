@@ -242,12 +242,20 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       {/* Navigation Bar */}
       <nav className="sticky top-0 z-[100] w-full border-b backdrop-blur-md transition-all h-20 flex items-center bg-white/90">
         <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
-          <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2 group">
-            <div className="bg-primary rounded-lg p-1.5 transition-transform group-hover:scale-110" style={{ backgroundColor: theme.primary }}>
-              <UtensilsCrossed className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2 group">
+              <div className="bg-primary rounded-lg p-1.5 transition-transform group-hover:scale-110" style={{ backgroundColor: theme.primary }}>
+                <UtensilsCrossed className="h-5 w-5 text-white" />
+              </div>
+              <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
+            </Link>
+            <Badge className={cn(
+              "hidden sm:flex text-[10px] px-2 py-0.5 border-none font-black uppercase tracking-widest rounded-full h-fit",
+              isOpen ? "bg-emerald-100 text-emerald-700" : "bg-destructive/10 text-destructive"
+            )}>
+              {isOpen ? "Open" : "Closed"}
+            </Badge>
+          </div>
 
           <div className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
             {sections.menuList?.visible && <a href="#menu" className="hover:text-primary transition-colors" style={{ '--hover-color': theme.primary } as any}>Menu</a>}
