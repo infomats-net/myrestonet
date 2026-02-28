@@ -37,7 +37,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/dialog";
 import { MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
 import { Input } from '@/components/ui/input';
@@ -105,7 +105,7 @@ function MenuItemManager({
       {items && items.length > 0 ? (
         <div className="grid gap-2">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between p-3 bg-white border rounded-lg group hover:border-primary/20 transition-colors">
+            <div key={item.id} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:border-primary/20 transition-colors shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded bg-muted overflow-hidden">
                   <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-full h-full object-cover" />
@@ -115,7 +115,7 @@ function MenuItemManager({
                   <p className="text-[10px] text-muted-foreground">{currency}{item.price.toFixed(2)} • {item.category}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1">
                 <Button 
                   variant="ghost" 
                   size="icon" 
