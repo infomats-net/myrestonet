@@ -1,7 +1,6 @@
-
 "use client";
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, ReactNode } from 'react';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth } from '@/firebase';
 import { doc, collection, addDoc, getDocs } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
@@ -219,6 +218,8 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     map: designSettings?.sections?.map ?? { visible: true }
   };
 
+  const sectionOrder = designSettings?.sectionOrder || ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'contact', 'map'];
+
   const globalStyle = { 
     backgroundColor: theme.background, 
     color: theme.text,
@@ -228,6 +229,303 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   const headingStyle = {
     fontFamily: typography.headingFont
+  };
+
+  const SECTION_COMPONENTS: Record<string, ReactNode> = {
+    hero: (
+      <section key="hero" className="relative h-[60vh] flex items-center justify-center text-center px-6 overflow-hidden">
+        <div className="absolute inset-0 bg-black/40 z-10" />
+        <img 
+          src="https://picsum.photos/seed/restaurant-hero/1920/1080" 
+          alt="Hero" 
+          className="absolute inset-0 w-full h-full object-cover"
+          data-ai-hint="restaurant interior"
+        />
+        <div className="relative z-20 space-y-6 max-w-3xl">
+          <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight drop-shadow-lg" style={headingStyle}>
+            {restaurant.name}
+          </h1>
+          <p className="text-xl text-white/90 font-medium drop-shadow-md">
+            Discover localized flavors and premium dining experiences.
+          </p>
+          <div className="flex gap-4 justify-center">
+            <Button size="lg" className="rounded-2xl h-14 px-8 text-lg font-black shadow-xl" style={{ backgroundColor: theme.primary }} asChild>
+              <a href="#menu">View Menu</a>
+            </Button>
+            <Button size="lg" variant="outline" className="rounded-2xl h-14 px-8 text-lg font-black bg-white/10 text-white border-white/20 backdrop-blur-md hover:bg-white hover:text-black" asChild>
+              <Link href={`/customer/${restaurantId}/reserve`}>Book Table</Link>
+            </Button>
+          </div>
+        </div>
+      </section>
+    ),
+    welcomeCard: (
+      <section key="welcomeCard" className={cn("relative z-30", sections.hero.visible && "-mt-32 px-6")}>
+        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white max-w-6xl mx-auto">
+          <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 text-slate-900">
+            <div className="flex-1 space-y-6">
+              <div className="flex items-center gap-3">
+                {sections.welcomeCard.showBadges && (
+                  <Badge className={cn(
+                    "border-none font-bold",
+                    isOpen ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-destructive/10 text-destructive hover:bg-destructive/10"
+                  )}>
+                    {isOpen ? "OPEN NOW" : "CLOSED NOW"}
+                  </Badge>
+                )}
+                {sections.welcomeCard.showRating && (
+                  <div className="flex items-center gap-1 text-amber-500">
+                    <Star className="h-4 w-4 fill-current" />
+                    <span className="font-black">4.9</span>
+                    <span className="text-slate-400 text-sm">(500+ reviews)</span>
+                  </div>
+                )}
+              </div>
+              <h2 className="text-3xl font-black" style={headingStyle}>Welcome to {restaurant.name}</h2>
+              {sections.welcomeCard.showLocation && (
+                <p className="text-slate-500 leading-relaxed font-medium">
+                  {restaurant.city}, {restaurant.country}. Experience high-end dining with isolation and security at the core of our service.
+                </p>
+              )}
+              {sections.welcomeCard.showDeliveryInfo && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
+                    <Clock className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-slate-400">Wait Time</p>
+                      <p className="font-bold text-slate-900">15-20 Mins</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
+                    <Truck className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-slate-400">Delivery</p>
+                      <p className="font-bold text-slate-900">Free over $50</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="w-full md:w-72 shrink-0 space-y-4">
+              <Button className="w-full h-16 rounded-2xl text-xl font-black shadow-lg" style={{ backgroundColor: theme.primary }} asChild disabled={!isOpen}>
+                <Link href={`/customer/${restaurantId}/reserve`}>
+                  Reserve a Table <ChevronRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+              <Button variant="outline" className="w-full h-16 rounded-2xl text-xl font-black border-2" asChild>
+                <a href="#menu">Order Online</a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+    ),
+    about: (
+      <section key="about" id="about" className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-2 gap-12 items-center scroll-mt-24">
+        <div className="space-y-6">
+          <h2 className="text-4xl font-black tracking-tight" style={headingStyle}>About Our Culinary Vision</h2>
+          <p className="text-lg leading-relaxed opacity-70">
+            At {restaurant.name}, we believe that dining is an art form. Every dish we serve is a testament to our commitment to excellence, crafted with the freshest local ingredients and a touch of global inspiration.
+          </p>
+          <div className="space-y-4">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0" style={{ color: theme.primary }}>
+                <MapPin className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-bold">Premium Location</p>
+                <p className="text-sm opacity-60">{restaurant.address}, {restaurant.city}</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0" style={{ color: theme.primary }}>
+                <Info className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-bold">Cuisines</p>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {restaurant.cuisine?.map((c: string) => (
+                    <Badge key={c} variant="secondary" className="font-bold">{c}</Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="relative group">
+          <div className="absolute -inset-4 bg-primary/10 rounded-[3rem] blur-xl group-hover:bg-primary/20 transition-all duration-500" style={{ backgroundColor: `${theme.primary}20` }} />
+          <img 
+            src="https://picsum.photos/seed/rest-about/800/600" 
+            alt="Interior" 
+            className="relative rounded-[2.5rem] shadow-2xl object-cover w-full h-[400px]"
+            data-ai-hint="restaurant kitchen"
+          />
+        </div>
+      </section>
+    ),
+    menuList: (
+      <section key="menuList" id="menu" className="max-w-6xl mx-auto px-6 py-12 space-y-12 scroll-mt-24">
+        <div className="text-center space-y-4">
+          <h2 className="text-5xl font-black tracking-tight" style={headingStyle}>Our Signature Menu</h2>
+          <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of dishes, designed to delight and satisfy.</p>
+        </div>
+
+        {menus?.map(menu => (
+          <div key={menu.id} className="space-y-8">
+            <div className="flex items-center gap-4">
+              <h3 className="text-3xl font-black border-l-8 pl-6" style={{ borderColor: theme.primary, ...headingStyle }}>{menu.name}</h3>
+              <div className="h-px bg-slate-200 flex-1" />
+            </div>
+            <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {allMenuItems.filter(i => i.menuId === menu.id).map(item => (
+                <Card key={item.id} className="overflow-hidden border-none shadow-lg rounded-[2.5rem] group hover:shadow-2xl transition-all duration-500 bg-white text-slate-900">
+                  <div className="relative h-56 overflow-hidden">
+                    <img 
+                      src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/400`} 
+                      alt={item.name} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      data-ai-hint="food dish"
+                    />
+                    <div className="absolute top-4 right-4">
+                      <Badge className="bg-white/90 text-black border-none font-black backdrop-blur-md px-4 py-1.5 rounded-full text-lg shadow-xl">
+                        ${item.price}
+                      </Badge>
+                    </div>
+                  </div>
+                  <CardContent className="p-8 space-y-4">
+                    <div className="space-y-2">
+                      <h4 className="font-black text-2xl group-hover:text-primary transition-colors" style={headingStyle}>{item.name}</h4>
+                      <p className="text-sm text-slate-500 line-clamp-2 font-medium">{item.description}</p>
+                    </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                      <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold uppercase text-[10px] tracking-widest">
+                        {item.category}
+                      </Badge>
+                      <Button size="icon" className="rounded-full w-12 h-12 shadow-lg shadow-primary/20 hover:scale-110 transition-transform" style={{ backgroundColor: theme.primary }} onClick={() => addToCart(item)}>
+                        <Plus className="h-6 w-6" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        ))}
+      </section>
+    ),
+    gallery: (
+      <section key="gallery" className="max-w-6xl mx-auto px-6 py-12 space-y-12">
+        <div className="text-center space-y-4">
+          <h2 className="text-4xl font-black" style={headingStyle}>Visual Journey</h2>
+          <p className="opacity-60">A glimpse into our kitchen and dining ambiance.</p>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <div key={i} className={cn(
+              "relative rounded-3xl overflow-hidden shadow-xl group",
+              i % 3 === 0 ? "md:col-span-2 md:row-span-2 h-96 md:h-auto" : "h-48 md:h-64"
+            )}>
+              <img 
+                src={`https://picsum.photos/seed/gallery-${i}/800/800`} 
+                alt="Gallery" 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                data-ai-hint="restaurant food"
+              />
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <ImageIcon className="text-white h-8 w-8" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    ),
+    testimonials: (
+      <section key="testimonials" className="max-w-6xl mx-auto px-6 py-12 space-y-12 bg-slate-50/50 rounded-[4rem]">
+        <div className="text-center space-y-4 max-w-3xl mx-auto pt-8">
+          <Quote className="h-12 w-12 text-primary mx-auto opacity-20" style={{ color: theme.primary }} />
+          <h2 className="text-4xl font-black" style={headingStyle}>Guest Experiences</h2>
+          <p className="opacity-60 text-lg">Don't just take our word for it. Here is what our community has to say.</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8">
+          {[
+            { name: "James Miller", role: "Food Critic", text: "The attention to detail in every dish is simply unmatched. A true gem in the city." },
+            { name: "Sophia Chen", role: "Regular Guest", text: "My go-to spot for every special occasion. The atmosphere is always perfect." },
+            { name: "Robert Wilson", role: "Local Resident", text: "Fast delivery, incredible flavors, and always consistent. Highly recommend the pizza!" }
+          ].map((item, i) => (
+            <Card key={i} className="rounded-3xl border-none shadow-xl p-10 space-y-6 bg-white text-slate-900">
+              <div className="flex gap-1 text-amber-400">
+                {[1,2,3,4,5].map(s => <Star key={s} className="h-4 w-4 fill-current" />)}
+              </div>
+              <p className="italic text-lg leading-relaxed opacity-80">"{item.text}"</p>
+              <div className="flex items-center gap-4 border-t pt-6">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary" style={{ color: theme.primary }}>{item.name[0]}</div>
+                <div>
+                  <p className="font-bold">{item.name}</p>
+                  <p className="text-xs opacity-50 uppercase font-black tracking-widest">{item.role}</p>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </section>
+    ),
+    contact: (
+      <section key="contact" id="contact" className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-1 lg:grid-cols-3 gap-8 scroll-mt-24">
+        <Card className="rounded-[3rem] border-none shadow-2xl bg-white text-slate-900 p-12 space-y-8 lg:col-span-1">
+          <h2 className="text-3xl font-black" style={headingStyle}>Connect With Us</h2>
+          <div className="space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Phone className="h-5 w-5" /></div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-slate-400">Call Us</p>
+                <p className="font-bold">{restaurant.contactPhone}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Mail className="h-5 w-5" /></div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-slate-400">Email Us</p>
+                <p className="font-bold">{restaurant.adminEmail}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><MapPin className="h-5 w-5" /></div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-slate-400">Visit Us</p>
+                <p className="font-bold">{restaurant.address}, {restaurant.city}</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {sections.map.visible && (
+          <div className="lg:col-span-2 rounded-[3.5rem] overflow-hidden shadow-2xl relative h-[500px] group">
+            <img 
+              src="https://picsum.photos/seed/map-area/1200/800" 
+              alt="Location Map" 
+              className="w-full h-full object-cover grayscale brightness-75 transition-all duration-700"
+              data-ai-hint="aerial view"
+            />
+            <div className="absolute inset-0 bg-black/10" />
+            <div className="absolute bottom-6 left-6 right-6 p-8 md:p-10 bg-white/90 backdrop-blur-md rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 border border-white/20">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
+                  <MapIcon className="h-8 w-8 text-emerald-600" />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-black text-2xl text-slate-900" style={headingStyle}>Find Your Way</h3>
+                  <p className="text-slate-500 font-medium">Get directions to our premium location.</p>
+                </div>
+              </div>
+              <Button size="lg" className="rounded-[1.5rem] h-16 px-10 text-lg font-black shadow-lg hover:scale-105 transition-transform" style={{ backgroundColor: theme.primary }}>
+                Open Maps
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
+    ),
+    map: null // Handled inside contact for design consistency, but key exists for order
   };
 
   return (
@@ -270,317 +568,17 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         </div>
       </nav>
 
-      {/* 1. Hero Section */}
-      {sections.hero.visible && (
-        <section className="relative h-[60vh] flex items-center justify-center text-center px-6 overflow-hidden">
-          <div className="absolute inset-0 bg-black/40 z-10" />
-          <img 
-            src="https://picsum.photos/seed/restaurant-hero/1920/1080" 
-            alt="Hero" 
-            className="absolute inset-0 w-full h-full object-cover"
-            data-ai-hint="restaurant interior"
-          />
-          <div className="relative z-20 space-y-6 max-w-3xl">
-            <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight drop-shadow-lg" style={headingStyle}>
-              {restaurant.name}
-            </h1>
-            <p className="text-xl text-white/90 font-medium drop-shadow-md">
-              Discover localized flavors and premium dining experiences.
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Button size="lg" className="rounded-2xl h-14 px-8 text-lg font-black shadow-xl" style={{ backgroundColor: theme.primary }} asChild>
-                <a href="#menu">View Menu</a>
-              </Button>
-              <Button size="lg" variant="outline" className="rounded-2xl h-14 px-8 text-lg font-black bg-white/10 text-white border-white/20 backdrop-blur-md hover:bg-white hover:text-black" asChild>
-                <Link href={`/customer/${restaurantId}/reserve`}>Book Table</Link>
-              </Button>
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Main Dynamic Content Sections */}
+      <div className="space-y-24">
+        {sectionOrder.map(sectionKey => {
+          const sectionConfig = (sections as any)[sectionKey];
+          if (!sectionConfig?.visible) return null;
+          return SECTION_COMPONENTS[sectionKey];
+        })}
+      </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-12 space-y-24">
-        
-        {/* 2. Welcome Card / Quick Info */}
-        {sections.welcomeCard.visible && (
-          <section className={cn("relative z-30", sections.hero.visible && "-mt-32")}>
-            <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
-              <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 text-slate-900">
-                <div className="flex-1 space-y-6">
-                  <div className="flex items-center gap-3">
-                    {sections.welcomeCard.showBadges && (
-                      <Badge className={cn(
-                        "border-none font-bold",
-                        isOpen ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-destructive/10 text-destructive hover:bg-destructive/10"
-                      )}>
-                        {isOpen ? "OPEN NOW" : "CLOSED NOW"}
-                      </Badge>
-                    )}
-                    {sections.welcomeCard.showRating && (
-                      <div className="flex items-center gap-1 text-amber-500">
-                        <Star className="h-4 w-4 fill-current" />
-                        <span className="font-black">4.9</span>
-                        <span className="text-slate-400 text-sm">(500+ reviews)</span>
-                      </div>
-                    )}
-                  </div>
-                  <h2 className="text-3xl font-black" style={headingStyle}>Welcome to {restaurant.name}</h2>
-                  {sections.welcomeCard.showLocation && (
-                    <p className="text-slate-500 leading-relaxed font-medium">
-                      {restaurant.city}, {restaurant.country}. Experience high-end dining with isolation and security at the core of our service.
-                    </p>
-                  )}
-                  {sections.welcomeCard.showDeliveryInfo && (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
-                        <Clock className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
-                        <div>
-                          <p className="text-[10px] font-black uppercase text-slate-400">Wait Time</p>
-                          <p className="font-bold text-slate-900">15-20 Mins</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
-                        <Truck className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
-                        <div>
-                          <p className="text-[10px] font-black uppercase text-slate-400">Delivery</p>
-                          <p className="font-bold text-slate-900">Free over $50</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="w-full md:w-72 shrink-0 space-y-4">
-                  <Button className="w-full h-16 rounded-2xl text-xl font-black shadow-lg" style={{ backgroundColor: theme.primary }} asChild disabled={!isOpen}>
-                    <Link href={`/customer/${restaurantId}/reserve`}>
-                      Reserve a Table <ChevronRight className="ml-2 h-5 w-5" />
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="w-full h-16 rounded-2xl text-xl font-black border-2" asChild>
-                    <a href="#menu">Order Online</a>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-        )}
-
-        {/* 3. About Section */}
-        {sections.about.visible && (
-          <section id="about" className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center scroll-mt-24">
-            <div className="space-y-6">
-              <h2 className="text-4xl font-black tracking-tight" style={headingStyle}>About Our Culinary Vision</h2>
-              <p className="text-lg leading-relaxed opacity-70">
-                At {restaurant.name}, we believe that dining is an art form. Every dish we serve is a testament to our commitment to excellence, crafted with the freshest local ingredients and a touch of global inspiration.
-              </p>
-              <div className="space-y-4">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0" style={{ color: theme.primary }}>
-                    <MapPin className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold">Premium Location</p>
-                    <p className="text-sm opacity-60">{restaurant.address}, {restaurant.city}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0" style={{ color: theme.primary }}>
-                    <Info className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="font-bold">Cuisines</p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {restaurant.cuisine?.map((c: string) => (
-                        <Badge key={c} variant="secondary" className="font-bold">{c}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="relative group">
-              <div className="absolute -inset-4 bg-primary/10 rounded-[3rem] blur-xl group-hover:bg-primary/20 transition-all duration-500" style={{ backgroundColor: `${theme.primary}20` }} />
-              <img 
-                src="https://picsum.photos/seed/rest-about/800/600" 
-                alt="Interior" 
-                className="relative rounded-[2.5rem] shadow-2xl object-cover w-full h-[400px]"
-                data-ai-hint="restaurant kitchen"
-              />
-            </div>
-          </section>
-        )}
-
-        {/* 4. Menu Section */}
-        {sections.menuList.visible && (
-          <section id="menu" className="space-y-12 scroll-mt-24">
-            <div className="text-center space-y-4">
-              <h2 className="text-5xl font-black tracking-tight" style={headingStyle}>Our Signature Menu</h2>
-              <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of dishes, designed to delight and satisfy.</p>
-            </div>
-
-            {menus?.map(menu => (
-              <div key={menu.id} className="space-y-8">
-                <div className="flex items-center gap-4">
-                  <h3 className="text-3xl font-black border-l-8 pl-6" style={{ borderColor: theme.primary, ...headingStyle }}>{menu.name}</h3>
-                  <div className="h-px bg-slate-200 flex-1" />
-                </div>
-                <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                  {allMenuItems.filter(i => i.menuId === menu.id).map(item => (
-                    <Card key={item.id} className="overflow-hidden border-none shadow-lg rounded-[2.5rem] group hover:shadow-2xl transition-all duration-500 bg-white text-slate-900">
-                      <div className="relative h-56 overflow-hidden">
-                        <img 
-                          src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/400`} 
-                          alt={item.name} 
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                          data-ai-hint="food dish"
-                        />
-                        <div className="absolute top-4 right-4">
-                          <Badge className="bg-white/90 text-black border-none font-black backdrop-blur-md px-4 py-1.5 rounded-full text-lg shadow-xl">
-                            ${item.price}
-                          </Badge>
-                        </div>
-                      </div>
-                      <CardContent className="p-8 space-y-4">
-                        <div className="space-y-2">
-                          <h4 className="font-black text-2xl group-hover:text-primary transition-colors" style={headingStyle}>{item.name}</h4>
-                          <p className="text-sm text-slate-500 line-clamp-2 font-medium">{item.description}</p>
-                        </div>
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                          <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold uppercase text-[10px] tracking-widest">
-                            {item.category}
-                          </Badge>
-                          <Button size="icon" className="rounded-full w-12 h-12 shadow-lg shadow-primary/20 hover:scale-110 transition-transform" style={{ backgroundColor: theme.primary }} onClick={() => addToCart(item)}>
-                            <Plus className="h-6 w-6" />
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </section>
-        )}
-
-        {/* 5. Gallery Section */}
-        {sections.gallery.visible && (
-          <section className="space-y-12">
-            <div className="text-center space-y-4">
-              <h2 className="text-4xl font-black" style={headingStyle}>Visual Journey</h2>
-              <p className="opacity-60">A glimpse into our kitchen and dining ambiance.</p>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                <div key={i} className={cn(
-                  "relative rounded-3xl overflow-hidden shadow-xl group",
-                  i % 3 === 0 ? "md:col-span-2 md:row-span-2 h-96 md:h-auto" : "h-48 md:h-64"
-                )}>
-                  <img 
-                    src={`https://picsum.photos/seed/gallery-${i}/800/800`} 
-                    alt="Gallery" 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                    data-ai-hint="restaurant food"
-                  />
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <ImageIcon className="text-white h-8 w-8" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 6. Testimonials Section */}
-        {sections.testimonials.visible && (
-          <section className="space-y-12 bg-slate-50/50 -mx-6 px-6 py-20 rounded-[4rem]">
-            <div className="text-center space-y-4 max-w-3xl mx-auto">
-              <Quote className="h-12 w-12 text-primary mx-auto opacity-20" style={{ color: theme.primary }} />
-              <h2 className="text-4xl font-black" style={headingStyle}>Guest Experiences</h2>
-              <p className="opacity-60 text-lg">Don't just take our word for it. Here is what our community has to say.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {[
-                { name: "James Miller", role: "Food Critic", text: "The attention to detail in every dish is simply unmatched. A true gem in the city." },
-                { name: "Sophia Chen", role: "Regular Guest", text: "My go-to spot for every special occasion. The atmosphere is always perfect." },
-                { name: "Robert Wilson", role: "Local Resident", text: "Fast delivery, incredible flavors, and always consistent. Highly recommend the pizza!" }
-              ].map((item, i) => (
-                <Card key={i} className="rounded-3xl border-none shadow-xl p-10 space-y-6 bg-white text-slate-900">
-                  <div className="flex gap-1 text-amber-400">
-                    {[1,2,3,4,5].map(s => <Star key={s} className="h-4 w-4 fill-current" />)}
-                  </div>
-                  <p className="italic text-lg leading-relaxed opacity-80">"{item.text}"</p>
-                  <div className="flex items-center gap-4 border-t pt-6">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary" style={{ color: theme.primary }}>{item.name[0]}</div>
-                    <div>
-                      <p className="font-bold">{item.name}</p>
-                      <p className="text-xs opacity-50 uppercase font-black tracking-widest">{item.role}</p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 7. Contact Section */}
-        {sections.contact.visible && (
-          <section id="contact" className="grid grid-cols-1 lg:grid-cols-3 gap-8 scroll-mt-24">
-            <Card className="rounded-[3rem] border-none shadow-2xl bg-white text-slate-900 p-12 space-y-8 lg:col-span-1">
-              <h2 className="text-3xl font-black" style={headingStyle}>Connect With Us</h2>
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Phone className="h-5 w-5" /></div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-slate-400">Call Us</p>
-                    <p className="font-bold">{restaurant.contactPhone}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Mail className="h-5 w-5" /></div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-slate-400">Email Us</p>
-                    <p className="font-bold">{restaurant.adminEmail}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><MapPin className="h-5 w-5" /></div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-slate-400">Visit Us</p>
-                    <p className="font-bold">{restaurant.address}, {restaurant.city}</p>
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            {/* 8. Map Section */}
-            {sections.map.visible && (
-              <div className="lg:col-span-2 rounded-[3.5rem] overflow-hidden shadow-2xl relative h-[500px] group">
-                <img 
-                  src="https://picsum.photos/seed/map-area/1200/800" 
-                  alt="Location Map" 
-                  className="w-full h-full object-cover grayscale brightness-75 transition-all duration-700"
-                  data-ai-hint="aerial view"
-                />
-                <div className="absolute inset-0 bg-black/10" />
-                <div className="absolute bottom-6 left-6 right-6 p-8 md:p-10 bg-white/90 backdrop-blur-md rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 border border-white/20">
-                  <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
-                      <MapIcon className="h-8 w-8 text-emerald-600" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="font-black text-2xl text-slate-900" style={headingStyle}>Find Your Way</h3>
-                      <p className="text-slate-500 font-medium">Get directions to our premium location.</p>
-                    </div>
-                  </div>
-                  <Button size="lg" className="rounded-[1.5rem] h-16 px-10 text-lg font-black shadow-lg hover:scale-105 transition-transform" style={{ backgroundColor: theme.primary }}>
-                    Open Maps
-                  </Button>
-                </div>
-              </div>
-            )}
-          </section>
-        )}
-
-        {/* 9. Final CTA / Booking Section */}
+      <div className="max-w-6xl mx-auto px-6 py-12 space-y-24 mt-12">
+        {/* Final CTA / Booking Section - Always Last */}
         <section className="bg-slate-900 text-white rounded-[3rem] p-8 md:p-20 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -mr-48 -mt-48" style={{ backgroundColor: `${theme.primary}30` }} />
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">

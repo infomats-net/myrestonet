@@ -31,7 +31,9 @@ import {
   Star,
   Info,
   Clock,
-  Map as MapIcon
+  Map as MapIcon,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -52,7 +54,7 @@ interface DesignSettings {
     footerColor: string;
   };
   typography: {
-    fontFamily: string; // Used as Body Font
+    fontFamily: string;
     headingFont: string;
     baseSize: string;
   };
@@ -73,8 +75,22 @@ interface DesignSettings {
     contact: { visible: boolean };
     map: { visible: boolean };
   };
+  sectionOrder: string[];
   customCss?: string;
 }
+
+const SECTION_LABELS: Record<string, { label: string; icon: any }> = {
+  hero: { label: 'Hero Banner', icon: Monitor },
+  welcomeCard: { label: 'Info Card', icon: Info },
+  about: { label: 'About Us', icon: User },
+  menuList: { label: 'Menu Catalog', icon: UtensilsCrossed },
+  gallery: { label: 'Photo Gallery', icon: ImageIcon },
+  testimonials: { label: 'Testimonials', icon: MessageSquare },
+  contact: { label: 'Contact Details', icon: Phone },
+  map: { label: 'Interactive Map', icon: MapIcon },
+};
+
+const DEFAULT_ORDER = ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'contact', 'map'];
 
 const DEFAULT_SETTINGS: DesignSettings = {
   theme: {
@@ -108,6 +124,7 @@ const DEFAULT_SETTINGS: DesignSettings = {
     contact: { visible: true },
     map: { visible: true }
   },
+  sectionOrder: DEFAULT_ORDER,
   customCss: '/* Enter custom CSS here */\n.hero-title { font-size: 5rem; }'
 };
 
@@ -136,7 +153,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   const [aiPrompt, setAiPrompt] = useState('');
   const [generatingAi, setGeneratingAi] = useState(false);
   const firestore = useFirestore();
-  const { user } = useUser();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -162,6 +178,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 ...data.sections?.welcomeCard
               }
             },
+            sectionOrder: data.sectionOrder || DEFAULT_ORDER,
             customCss: data.customCss ?? DEFAULT_SETTINGS.customCss
           } as DesignSettings);
         }
@@ -255,6 +272,19 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
         }
       }
     }));
+  };
+
+  const moveSection = (index: number, direction: 'up' | 'down') => {
+    const newOrder = [...settings.sectionOrder];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newOrder.length) return;
+    
+    const temp = newOrder[index];
+    newOrder[index] = newOrder[targetIndex];
+    newOrder[targetIndex] = temp;
+    
+    setSettings(prev => ({ ...prev, sectionOrder: newOrder }));
   };
 
   if (loading) return <div className="p-20 flex justify-center h-full items-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
@@ -404,53 +434,73 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 </TabsContent>
 
                 <TabsContent value="layout" className="space-y-4 mt-0">
-                   <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4">Sections Visibility</h4>
-                   <div className="space-y-2">
-                    {[
-                      { id: 'hero', label: 'Hero Banner', icon: Monitor, visibilityKey: 'hero' },
-                      { id: 'welcomeCard', label: 'Info Card', icon: Info, visibilityKey: 'welcomeCard' },
-                      { id: 'about', label: 'About Us', icon: User, visibilityKey: 'about' },
-                      { id: 'menuList', label: 'Menu Catalog', icon: UtensilsCrossed, visibilityKey: 'menuList' },
-                      { id: 'gallery', label: 'Photo Gallery', icon: ImageIcon, visibilityKey: 'gallery' },
-                      { id: 'testimonials', label: 'Testimonials', icon: MessageSquare, visibilityKey: 'testimonials' },
-                      { id: 'contact', label: 'Contact Details', icon: Phone, visibilityKey: 'contact' },
-                      { id: 'map', label: 'Interactive Map', icon: MapIcon, visibilityKey: 'map' },
-                    ].map((section) => (
-                      <div key={section.id} className="space-y-2">
-                        <div className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border">
-                          <div className="flex items-center gap-3">
-                            <section.icon className="h-3.5 w-3.5 text-slate-400" />
-                            <span className="text-xs font-semibold text-slate-700">{section.label}</span>
+                   <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4">Sections Order & Visibility</h4>
+                   <div className="space-y-3">
+                    {settings.sectionOrder.map((sectionKey, index) => {
+                      const sectionInfo = SECTION_LABELS[sectionKey];
+                      if (!sectionInfo) return null;
+                      
+                      return (
+                        <div key={sectionKey} className="space-y-2">
+                          <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border shadow-sm group hover:border-primary/20 transition-colors">
+                            <div className="flex flex-col gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 text-slate-300 hover:text-primary disabled:opacity-30" 
+                                disabled={index === 0}
+                                onClick={() => moveSection(index, 'up')}
+                              >
+                                <ChevronUp className="h-4 w-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 text-slate-300 hover:text-primary disabled:opacity-30" 
+                                disabled={index === settings.sectionOrder.length - 1}
+                                onClick={() => moveSection(index, 'down')}
+                              >
+                                <ChevronDown className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            
+                            <div className="flex-1 flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                                <sectionInfo.icon className="h-4 w-4" />
+                              </div>
+                              <span className="text-xs font-bold text-slate-700">{sectionInfo.label}</span>
+                            </div>
+
+                            <Switch 
+                              className="scale-75"
+                              checked={(settings.sections as any)[sectionKey].visible} 
+                              onCheckedChange={(v) => updateSectionVisibility(sectionKey, v)} 
+                            />
                           </div>
-                          <Switch 
-                            className="scale-75"
-                            checked={(settings.sections as any)[section.visibilityKey].visible} 
-                            onCheckedChange={(v) => updateSectionVisibility(section.visibilityKey, v)} 
-                          />
+                          
+                          {sectionKey === 'welcomeCard' && settings.sections.welcomeCard.visible && (
+                            <div className="ml-12 p-4 bg-slate-50/30 rounded-2xl border border-dashed space-y-4 animate-in slide-in-from-top-2 duration-300">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Status Badges</Label>
+                                <Switch className="scale-75" checked={settings.sections.welcomeCard.showBadges} onCheckedChange={(v) => updateWelcomeCardSetting('showBadges', v)} />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Ratings</Label>
+                                <Switch className="scale-75" checked={settings.sections.welcomeCard.showRating} onCheckedChange={(v) => updateWelcomeCardSetting('showRating', v)} />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Location Details</Label>
+                                <Switch className="scale-75" checked={settings.sections.welcomeCard.showLocation} onCheckedChange={(v) => updateWelcomeCardSetting('showLocation', v)} />
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Delivery & Wait Info</Label>
+                                <Switch className="scale-75" checked={settings.sections.welcomeCard.showDeliveryInfo} onCheckedChange={(v) => updateWelcomeCardSetting('showDeliveryInfo', v)} />
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        
-                        {section.id === 'welcomeCard' && settings.sections.welcomeCard.visible && (
-                          <div className="ml-8 p-4 bg-slate-50/30 rounded-2xl border border-dashed space-y-4 animate-in slide-in-from-top-2 duration-300">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Status Badges</Label>
-                              <Switch className="scale-75" checked={settings.sections.welcomeCard.showBadges} onCheckedChange={(v) => updateWelcomeCardSetting('showBadges', v)} />
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Ratings</Label>
-                              <Switch className="scale-75" checked={settings.sections.welcomeCard.showRating} onCheckedChange={(v) => updateWelcomeCardSetting('showRating', v)} />
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Location Details</Label>
-                              <Switch className="scale-75" checked={settings.sections.welcomeCard.showLocation} onCheckedChange={(v) => updateWelcomeCardSetting('showLocation', v)} />
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Delivery & Wait Info</Label>
-                              <Switch className="scale-75" checked={settings.sections.welcomeCard.showDeliveryInfo} onCheckedChange={(v) => updateWelcomeCardSetting('showDeliveryInfo', v)} />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </TabsContent>
 
@@ -514,95 +564,105 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               </nav>
 
               <div className="space-y-12 pb-20">
-                {settings.sections.hero.visible && (
-                  <section className="h-64 flex flex-col items-center justify-center text-center p-8" style={{ backgroundColor: `${settings.theme.primary}10` }}>
-                    <h2 className="text-4xl font-black mb-4" style={{ fontFamily: settings.typography.headingFont }}>Taste the Future</h2>
-                    <Button size="sm" style={{ backgroundColor: settings.theme.primary }}>View Menu</Button>
-                  </section>
-                )}
+                {settings.sectionOrder.map(sectionKey => {
+                  const section = (settings.sections as any)[sectionKey];
+                  if (!section?.visible) return null;
 
-                {settings.sections.welcomeCard.visible && (
-                  <div className="px-8 -mt-6">
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border space-y-4">
-                      <div className="flex items-center justify-between">
-                        {settings.sections.welcomeCard.showBadges && (
-                          <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold">Open Now</Badge>
-                        )}
-                        {settings.sections.welcomeCard.showRating && (
-                          <div className="flex items-center gap-1 text-amber-500">
-                            <Star className="h-3 w-3 fill-current" />
-                            <span className="text-[10px] font-black">4.9</span>
+                  switch(sectionKey) {
+                    case 'hero':
+                      return (
+                        <section key="hero" className="h-64 flex flex-col items-center justify-center text-center p-8" style={{ backgroundColor: `${settings.theme.primary}10` }}>
+                          <h2 className="text-4xl font-black mb-4" style={{ fontFamily: settings.typography.headingFont }}>Taste the Future</h2>
+                          <Button size="sm" style={{ backgroundColor: settings.theme.primary }}>View Menu</Button>
+                        </section>
+                      );
+                    case 'welcomeCard':
+                      return (
+                        <div key="welcomeCard" className="px-8 -mt-6">
+                          <div className="bg-white rounded-2xl p-6 shadow-lg border space-y-4">
+                            <div className="flex items-center justify-between">
+                              {settings.sections.welcomeCard.showBadges && (
+                                <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold">Open Now</Badge>
+                              )}
+                              {settings.sections.welcomeCard.showRating && (
+                                <div className="flex items-center gap-1 text-amber-500">
+                                  <Star className="h-3 w-3 fill-current" />
+                                  <span className="text-[10px] font-black">4.9</span>
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <h3 className="font-bold" style={{ fontFamily: settings.typography.headingFont }}>Welcome</h3>
+                              {settings.sections.welcomeCard.showLocation && (
+                                <p className="text-[10px] opacity-50">Providing elite culinary experiences since 2024.</p>
+                              )}
+                            </div>
+                            {settings.sections.welcomeCard.showDeliveryInfo && (
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-slate-50 p-2 rounded-lg text-[8px] font-bold uppercase text-slate-400">15 min wait</div>
+                                <div className="bg-slate-50 p-2 rounded-lg text-[8px] font-bold uppercase text-slate-400">Free delivery</div>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-bold" style={{ fontFamily: settings.typography.headingFont }}>Welcome</h3>
-                        {settings.sections.welcomeCard.showLocation && (
-                          <p className="text-[10px] opacity-50">Providing elite culinary experiences since 2024.</p>
-                        )}
-                      </div>
-                      {settings.sections.welcomeCard.showDeliveryInfo && (
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="bg-slate-50 p-2 rounded-lg text-[8px] font-bold uppercase text-slate-400">15 min wait</div>
-                          <div className="bg-slate-50 p-2 rounded-lg text-[8px] font-bold uppercase text-slate-400">Free delivery</div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {settings.sections.about.visible && (
-                  <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>About Us</h3>
-                    <p className="text-xs opacity-70">Crafting excellence in every dish, sourced locally and inspired globally.</p>
-                  </section>
-                )}
-
-                {settings.sections.menuList.visible && (
-                  <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Our Menu</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="aspect-square bg-slate-100 rounded-2xl" />
-                      <div className="aspect-square bg-slate-100 rounded-2xl" />
-                    </div>
-                  </section>
-                )}
-
-                {settings.sections.gallery.visible && (
-                  <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Gallery</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[1,2,3].map(i => <div key={i} className="aspect-square bg-slate-50 rounded-lg" />)}
-                    </div>
-                  </section>
-                )}
-
-                {settings.sections.testimonials.visible && (
-                  <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Guest Experiences</h3>
-                    <div className="p-4 bg-slate-50 rounded-2xl italic text-[10px]">
-                      "The best dining experience I've had in years. Highly recommended!"
-                    </div>
-                  </section>
-                )}
-
-                {settings.sections.contact.visible && (
-                  <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Get In Touch</h3>
-                    <div className="space-y-2 text-[10px] opacity-70">
-                      <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> +1 234 567 890</p>
-                      <p className="flex items-center gap-2"><MapPin className="h-3 w-3" /> 123 Culinary St, Flavor City</p>
-                    </div>
-                  </section>
-                )}
-
-                {settings.sections.map.visible && (
-                  <section className="px-8">
-                    <div className="h-32 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
-                      <MapIcon className="h-8 w-8" />
-                    </div>
-                  </section>
-                )}
+                      );
+                    case 'about':
+                      return (
+                        <section key="about" className="px-8 space-y-4">
+                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>About Us</h3>
+                          <p className="text-xs opacity-70">Crafting excellence in every dish, sourced locally and inspired globally.</p>
+                        </section>
+                      );
+                    case 'menuList':
+                      return (
+                        <section key="menuList" className="px-8 space-y-4">
+                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Our Menu</h3>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="aspect-square bg-slate-100 rounded-2xl" />
+                            <div className="aspect-square bg-slate-100 rounded-2xl" />
+                          </div>
+                        </section>
+                      );
+                    case 'gallery':
+                      return (
+                        <section key="gallery" className="px-8 space-y-4">
+                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Gallery</h3>
+                          <div className="grid grid-cols-3 gap-2">
+                            {[1,2,3].map(i => <div key={i} className="aspect-square bg-slate-50 rounded-lg" />)}
+                          </div>
+                        </section>
+                      );
+                    case 'testimonials':
+                      return (
+                        <section key="testimonials" className="px-8 space-y-4">
+                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Guest Experiences</h3>
+                          <div className="p-4 bg-slate-50 rounded-2xl italic text-[10px]">
+                            "The best dining experience I've had in years. Highly recommended!"
+                          </div>
+                        </section>
+                      );
+                    case 'contact':
+                      return (
+                        <section key="contact" className="px-8 space-y-4">
+                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Get In Touch</h3>
+                          <div className="space-y-2 text-[10px] opacity-70">
+                            <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> +1 234 567 890</p>
+                            <p className="flex items-center gap-2"><MapPin className="h-3 w-3" /> 123 Culinary St, Flavor City</p>
+                          </div>
+                        </section>
+                      );
+                    case 'map':
+                      return (
+                        <section key="map" className="px-8">
+                          <div className="h-32 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
+                            <MapIcon className="h-8 w-8" />
+                          </div>
+                        </section>
+                      );
+                    default:
+                      return null;
+                  }
+                })}
               </div>
 
               <footer className="py-8 text-center opacity-20 text-[8px] uppercase font-bold tracking-[0.2em]" style={{ backgroundColor: settings.theme.footerColor }}>
