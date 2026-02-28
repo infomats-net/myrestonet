@@ -263,9 +263,9 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Controls */}
-        <aside className="w-[440px] border-r flex flex-col shrink-0">
-          <Tabs defaultValue="theme" className="flex-1 flex flex-col">
-            <div className="px-8 pt-6 pb-2">
+        <aside className="w-[440px] border-r flex flex-col shrink-0 min-h-0">
+          <Tabs defaultValue="theme" className="flex-1 flex flex-col min-h-0">
+            <div className="px-8 pt-6 pb-2 shrink-0">
               <TabsList className="w-full h-14 bg-slate-50 border p-1 rounded-2xl">
                 <TabsTrigger value="theme" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"><Palette className="h-4 w-4" /></TabsTrigger>
                 <TabsTrigger value="layout" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"><Layout className="h-4 w-4" /></TabsTrigger>
@@ -274,8 +274,8 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               </TabsList>
             </div>
 
-            <ScrollArea className="flex-1">
-              <div className="px-8 py-4">
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="px-8 py-4 pb-20">
                 <TabsContent value="theme" className="space-y-6 mt-0 pb-6">
                   {/* AI Section */}
                   <div className="p-5 rounded-2xl bg-white border border-primary/10 shadow-sm relative overflow-hidden group">
@@ -303,8 +303,8 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
 
                   {/* Core Color Palette */}
-                  <div>
-                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4">Brand Colors</h4>
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase">Brand Colors</h4>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                       {[
                         { label: 'Primary', key: 'primary' },
@@ -340,8 +340,8 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
 
                   {/* Interface Colors */}
-                  <div>
-                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4 border-t pt-4">Interface Layout</h4>
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase">Interface Layout</h4>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                       {[
                         { label: 'Header BG', key: 'headerColor' },
@@ -374,8 +374,8 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
 
                   {/* Template Presets */}
-                  <div>
-                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4 border-t pt-4">Template Presets</h4>
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase">Template Presets</h4>
                     <div className="grid grid-cols-2 gap-2">
                       {THEME_PRESETS.map((p) => (
                         <Button 
