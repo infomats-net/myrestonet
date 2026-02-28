@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -146,9 +146,11 @@ function MenuItemManager({
 }
 
 function DashboardContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const impersonateId = searchParams.get('impersonate');
-  const initialTab = searchParams.get('tab') || 'overview';
+  const activeTab = searchParams.get('tab') || 'overview';
+  
   const firestore = useFirestore();
   const { user: authUser, isUserLoading: authLoading } = useUser();
   const { toast } = useToast();
@@ -183,7 +185,6 @@ function DashboardContent() {
 
   const { data: orders, isLoading: loadingOrders } = useCollection(ordersQuery);
 
-  const [activeTab, setActiveTab] = useState(initialTab);
   const [aiInsights, setAiInsights] = useState<AiSalesInsightsOutput | null>(null);
   const [seoResult, setSeoResult] = useState<LocalizedSeoContentOutput | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
@@ -221,11 +222,11 @@ function DashboardContent() {
     locale: 'en-GB'
   });
 
-  useEffect(() => {
-    if (initialTab && initialTab !== activeTab) {
-      setActiveTab(initialTab);
-    }
-  }, [initialTab, activeTab]);
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', value);
+    router.push(`/restaurant-admin/dashboard?${params.toString()}`, { scroll: false });
+  };
 
   useEffect(() => {
     if (restaurant) {
@@ -507,7 +508,7 @@ function DashboardContent() {
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4" onValueChange={setActiveTab} value={activeTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="bg-white border p-1 rounded-xl flex overflow-x-auto no-scrollbar h-auto w-full md:w-auto">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Overview</TabsTrigger>
           <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Orders</TabsTrigger>
