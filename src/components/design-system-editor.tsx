@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
   Palette, 
   Type, 
@@ -29,8 +29,7 @@ import {
   MessageSquare,
   Phone,
   MapPin,
-  X,
-  ChevronRight
+  Star
 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -69,9 +68,9 @@ interface DesignSettings {
 
 const DEFAULT_SETTINGS: DesignSettings = {
   theme: {
-    primary: '#0EA5E9',
+    primary: '#22c55e',
     secondary: '#F0F9FF',
-    accent: '#0284C7',
+    accent: '#16a34a',
     background: '#FFFFFF',
     text: '#0F172A',
     headerColor: '#FFFFFF',
@@ -95,10 +94,10 @@ const DEFAULT_SETTINGS: DesignSettings = {
 };
 
 const THEME_PRESETS = [
-  { name: 'Light', colors: { primary: '#0EA5E9', accent: '#0284C7', background: '#FFFFFF', text: '#0F172A' } },
+  { name: 'Light', colors: { primary: '#22c55e', accent: '#16a34a', background: '#FFFFFF', text: '#0F172A' } },
   { name: 'Dark', colors: { primary: '#38BDF8', accent: '#0284C7', background: '#0F172A', text: '#F8FAFC' } },
   { name: 'Modern', colors: { primary: '#10B981', accent: '#059669', background: '#F0FDFA', text: '#064E3B' } },
-  { name: 'Vibrant', colors: { primary: '#F43F5E', accent: '#E11D48', background: '#FFF1F2', text: '#4C0519' } },
+  { name: 'Elegant', colors: { primary: '#1A1A1A', accent: '#D4AF37', background: '#F9F9F9', text: '#1A1A1A' } },
 ];
 
 const FONT_OPTIONS = [
@@ -163,7 +162,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
         ...settings,
         updatedAt: new Date().toISOString()
       });
-      toast({ title: 'Design Saved', description: 'Your storefront has been updated.' });
+      toast({ title: 'Design Saved', description: 'Your storefront layout has been updated.' });
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
     } finally {
@@ -209,14 +208,14 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
   if (loading) return <div className="p-20 flex justify-center h-full"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
-  const initials = user?.email?.substring(0, 2).toUpperCase() || 'IT';
+  const initials = user?.email?.substring(0, 2).toUpperCase() || 'AD';
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-white overflow-hidden rounded-3xl border shadow-sm">
       {/* Designer Header */}
       <header className="h-20 border-b flex items-center justify-between px-8 shrink-0">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-500 shadow-sm border border-sky-100">
+          <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shadow-sm border border-primary/10">
             <Palette className="h-6 w-6" />
           </div>
           <div>
@@ -237,7 +236,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 onClick={() => setPreviewMode(device.id as any)}
                 className={cn(
                   "p-2.5 rounded-full transition-all",
-                  previewMode === device.id ? "bg-white text-sky-500 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                  previewMode === device.id ? "bg-white text-primary shadow-sm" : "text-slate-400 hover:text-slate-600"
                 )}
               >
                 <device.icon className="h-4 w-4" />
@@ -248,14 +247,14 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
           <Button 
             onClick={handleSave} 
             disabled={saving}
-            className="rounded-2xl h-12 px-6 bg-sky-500 hover:bg-sky-600 text-white font-bold gap-2 shadow-lg shadow-sky-500/20"
+            className="rounded-2xl h-12 px-6 bg-primary hover:bg-primary/90 text-white font-bold gap-2 shadow-lg shadow-primary/20"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Publish Changes
           </Button>
 
           <Avatar className="h-10 w-10 border-2 border-slate-100">
-            <AvatarFallback className="bg-sky-50 text-sky-600 font-bold">{initials}</AvatarFallback>
+            <AvatarFallback className="bg-primary/5 text-primary font-bold">{initials}</AvatarFallback>
           </Avatar>
         </div>
       </header>
@@ -267,7 +266,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
             <div className="px-8 pt-6 pb-2">
               <TabsList className="w-full h-14 bg-slate-50 border p-1 rounded-2xl">
                 <TabsTrigger value="theme" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"><Palette className="h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="gallery" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"><ImageIcon className="h-4 w-4" /></TabsTrigger>
                 <TabsTrigger value="layout" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"><Layout className="h-4 w-4" /></TabsTrigger>
                 <TabsTrigger value="fonts" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"><Type className="h-4 w-4" /></TabsTrigger>
                 <TabsTrigger value="code" className="flex-1 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-sm"><Code className="h-4 w-4" /></TabsTrigger>
@@ -277,10 +275,10 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
             <ScrollArea className="flex-1 px-8 py-6">
               <TabsContent value="theme" className="space-y-10 mt-0 pb-10">
                 {/* AI Section */}
-                <div className="p-6 rounded-3xl bg-white border border-sky-100 shadow-sm relative overflow-hidden group">
+                <div className="p-6 rounded-3xl bg-white border border-primary/10 shadow-sm relative overflow-hidden group">
                   <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className="h-4 w-4 text-sky-500" />
-                    <h3 className="text-[11px] font-bold text-sky-500 tracking-wider uppercase">AI Theme Designer</h3>
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <h3 className="text-[11px] font-bold text-primary tracking-wider uppercase">AI Theme Designer</h3>
                   </div>
                   <div className="bg-slate-50 rounded-2xl border border-slate-100 p-1 mb-4">
                     <Textarea 
@@ -292,7 +290,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
                   <Button 
                     variant="outline" 
-                    className="w-full rounded-full h-12 border-sky-100 text-slate-700 bg-sky-50/50 hover:bg-sky-50 font-bold gap-2"
+                    className="w-full rounded-full h-12 border-primary/10 text-slate-700 bg-primary/5 hover:bg-primary/10 font-bold gap-2"
                     onClick={handleAiGenerate}
                     disabled={generatingAi}
                   >
@@ -329,7 +327,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                           <Input 
                             value={(settings.theme as any)[item.key].toUpperCase()} 
                             onChange={(e) => setSettings({...settings, theme: {...settings.theme, [item.key]: e.target.value}})} 
-                            className="h-11 rounded-xl bg-sky-50/30 border-sky-100/50 font-mono text-xs text-slate-600 focus-visible:ring-sky-500" 
+                            className="h-11 rounded-xl bg-slate-50 border-slate-100 font-mono text-xs text-slate-600 focus-visible:ring-primary" 
                           />
                         </div>
                       </div>
@@ -345,7 +343,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       <Button 
                         key={p.name} 
                         variant="outline" 
-                        className="h-14 rounded-2xl bg-sky-50/30 border-sky-100/50 hover:bg-sky-50 hover:border-sky-200 text-slate-600 font-medium text-sm transition-all"
+                        className="h-14 rounded-2xl bg-slate-50/30 border-slate-100 hover:bg-slate-50 hover:border-primary/20 text-slate-600 font-medium text-sm transition-all"
                         onClick={() => applyPreset(p)}
                       >
                         {p.name}
@@ -355,7 +353,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 </div>
               </TabsContent>
 
-              {/* Other tabs follow the same styling pattern... */}
               <TabsContent value="layout" className="space-y-6 mt-0">
                 <h4 className="text-[11px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-6">Layout & Sections</h4>
                 <div className="space-y-3">
@@ -397,7 +394,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   <div className="space-y-3">
                     <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Heading Typography</Label>
                     <Select value={settings.typography.headingFont} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, headingFont: v}})}>
-                      <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-200 focus:ring-sky-500"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-200 focus:ring-primary"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {FONT_OPTIONS.map(font => (
                           <SelectItem key={font.value} value={font.value}>{font.name}</SelectItem>
@@ -408,7 +405,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   <div className="space-y-3">
                     <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Body Typography</Label>
                     <Select value={settings.typography.fontFamily} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, fontFamily: v}})}>
-                      <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-200 focus:ring-sky-500"><SelectValue /></SelectTrigger>
+                      <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-200 focus:ring-primary"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {FONT_OPTIONS.map(font => (
                           <SelectItem key={font.value} value={font.value}>{font.name}</SelectItem>
@@ -422,10 +419,10 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               <TabsContent value="code" className="space-y-6 mt-0">
                 <div className="flex items-center justify-between mb-4">
                   <h4 className="text-[11px] font-bold text-slate-400 tracking-[0.2em] uppercase">Custom CSS</h4>
-                  <Badge className="rounded-full bg-sky-50 text-sky-600 border-sky-100 font-bold px-3 py-1">ADVANCED</Badge>
+                  <Badge className="rounded-full bg-primary/5 text-primary border-primary/10 font-bold px-3 py-1">ADVANCED</Badge>
                 </div>
                 <Textarea 
-                  className="min-h-[400px] font-mono text-xs bg-[#0F172A] text-slate-300 border-none rounded-3xl p-6 focus-visible:ring-1 focus-visible:ring-sky-500/50 resize-none shadow-xl"
+                  className="min-h-[400px] font-mono text-xs bg-[#0F172A] text-slate-300 border-none rounded-3xl p-6 focus-visible:ring-1 focus-visible:ring-primary/50 resize-none shadow-xl"
                   spellCheck={false}
                   value={settings.customCss}
                   onChange={(e) => setSettings({...settings, customCss: e.target.value})}
@@ -452,16 +449,17 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               {/* Custom CSS */}
               {settings.customCss && <style dangerouslySetInnerHTML={{ __html: settings.customCss }} />}
 
-              <nav className="h-16 flex items-center justify-between px-8 sticky top-0 z-50 bg-white/90 backdrop-blur-md">
+              <nav className="h-16 flex items-center justify-between px-8 sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center">
-                    <ImageIcon className="h-4 w-4 text-sky-500" />
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <UtensilsCrossed className="h-4 w-4 text-primary" />
                   </div>
-                  <span className="font-bold text-sm tracking-tight" style={{ fontFamily: settings.typography.headingFont }}>Meze Kebab and Grill</span>
+                  <span className="font-bold text-sm tracking-tight" style={{ fontFamily: settings.typography.headingFont }}>Signature Dining</span>
                 </div>
                 <div className="hidden sm:flex items-center gap-6 text-[10px] font-bold text-slate-500 tracking-widest uppercase">
                   <span>Menu</span>
                   <span>About</span>
+                  <span>Gallery</span>
                   <span>Contact</span>
                 </div>
               </nav>
@@ -471,44 +469,93 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   <div className="absolute inset-0" style={{ backgroundColor: `${settings.theme.primary}15` }} />
                   <div className="relative z-10 max-w-xl">
                     <h2 className="text-6xl font-black mb-6 leading-tight" style={{ color: settings.theme.text, fontFamily: settings.typography.headingFont }}>
-                      Meze Kebab and Grill
+                      A Taste of Excellence
                     </h2>
-                    <p className="text-lg opacity-70 mb-10 font-medium">Signature culinary experience.</p>
+                    <p className="text-lg opacity-70 mb-10 font-medium">Experience culinary artistry at its finest.</p>
                     <Button 
                       className="rounded-full h-14 px-10 text-base font-bold shadow-xl" 
                       style={{ 
                         backgroundColor: settings.theme.primary,
-                        color: settings.theme.background 
+                        color: '#FFFFFF' 
                       }}
                     >
-                      Order Now
+                      Explore Menu
                     </Button>
                   </div>
                 </section>
               )}
 
               {settings.sections.about.visible && (
-                <section className="py-24 px-12 flex items-center gap-12">
+                <section className="py-24 px-12 flex items-center gap-12 border-b">
                   <div className="flex-1 space-y-6">
-                    <h3 className="text-4xl font-black" style={{ fontFamily: settings.typography.headingFont }}>The Craft Story</h3>
+                    <h3 className="text-4xl font-black" style={{ fontFamily: settings.typography.headingFont }}>Our Story</h3>
                     <p className="text-base opacity-60 leading-relaxed font-medium">
-                      Experience a blend of tradition and modern culinary techniques. We believe in serving authentic flavors using only the freshest local ingredients.
+                      From farm to table, we bring you the freshest ingredients prepared with passion and tradition.
                     </p>
                   </div>
                   <div className="w-48 h-48 bg-slate-50 rounded-3xl flex items-center justify-center text-slate-200 shadow-inner border border-slate-100">
-                    <Layout className="h-16 w-16" />
+                    <User className="h-16 w-16" />
                   </div>
                 </section>
               )}
 
-              <footer className="py-12 text-center opacity-30 border-t mt-20" style={{ backgroundColor: settings.theme.footerColor }}>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em]">© 2024 Meze Kebab and Grill Global</p>
+              {settings.sections.menuList.visible && (
+                <section className="py-24 px-12 text-center bg-slate-50/30 border-b">
+                  <h3 className="text-4xl font-black mb-12" style={{ fontFamily: settings.typography.headingFont }}>Featured Dishes</h3>
+                  <div className="grid grid-cols-2 gap-6">
+                    {[1, 2].map((i) => (
+                      <div key={i} className="bg-white p-6 rounded-3xl shadow-sm border text-left">
+                        <div className="w-full h-32 bg-slate-100 rounded-2xl mb-4" />
+                        <div className="h-4 w-2/3 bg-slate-200 rounded mb-2" />
+                        <div className="h-3 w-1/3 bg-slate-100 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {settings.sections.gallery.visible && (
+                <section className="py-24 px-12 text-center border-b">
+                  <h3 className="text-4xl font-black mb-12" style={{ fontFamily: settings.typography.headingFont }}>Gallery</h3>
+                  <div className="grid grid-cols-3 gap-4 h-48">
+                    <div className="bg-slate-100 rounded-2xl" />
+                    <div className="bg-slate-100 rounded-2xl" />
+                    <div className="bg-slate-100 rounded-2xl" />
+                  </div>
+                </section>
+              )}
+
+              {settings.sections.testimonials.visible && (
+                <section className="py-24 px-12 text-center bg-primary/5 border-b">
+                  <Star className="h-8 w-8 text-primary mx-auto mb-6" />
+                  <p className="text-xl italic font-medium opacity-80 mb-6">"An unforgettable dining experience. Every dish was a masterpiece."</p>
+                  <p className="font-bold uppercase tracking-widest text-xs">- Gastronomy Weekly</p>
+                </section>
+              )}
+
+              {settings.sections.contact.visible && (
+                <section className="py-24 px-12 border-b">
+                  <div className="space-y-6">
+                    <h3 className="text-4xl font-black" style={{ fontFamily: settings.typography.headingFont }}>Get In Touch</h3>
+                    <div className="flex items-center gap-4 text-sm opacity-70">
+                      <Phone className="h-4 w-4" /> <span>+1 (555) 123-4567</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-sm opacity-70">
+                      <MapPin className="h-4 w-4" /> <span>123 Culinary Ave, Foodie City</span>
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {settings.sections.map.visible && (
+                <section className="h-64 bg-slate-200 flex items-center justify-center">
+                  <MapPin className="h-12 w-12 text-slate-400 opacity-50" />
+                </section>
+              )}
+
+              <footer className="py-12 text-center border-t mt-auto" style={{ backgroundColor: settings.theme.footerColor }}>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">© 2024 Powered by MyRestoNet Architecture</p>
               </footer>
-            </div>
-            
-            {/* Scroll indicator for preview */}
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2">
-               <div className="w-1.5 h-16 bg-slate-200/50 rounded-full" />
             </div>
           </div>
         </main>
