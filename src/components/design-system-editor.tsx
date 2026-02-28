@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -331,27 +330,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
             <ScrollArea className="flex-1 min-h-0">
               <div className="px-8 py-4 pb-20">
                 <TabsContent value="theme" className="space-y-8 mt-0">
-                  <div className="space-y-4">
-                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase">Template Presets</h4>
-                    <div className="grid grid-cols-2 gap-3">
-                      {THEME_PRESETS.map((preset) => (
-                        <Button
-                          key={preset.name}
-                          variant="outline"
-                          className={cn(
-                            "h-16 rounded-2xl border-2 transition-all font-bold",
-                            settings.theme.primary === preset.colors.primary && settings.theme.background === preset.colors.background
-                              ? "bg-primary/5 border-primary/20 text-primary shadow-sm"
-                              : "bg-slate-50/50 hover:bg-slate-100 hover:border-slate-200 text-slate-600"
-                          )}
-                          onClick={() => applyPreset(preset)}
-                        >
-                          {preset.name}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-
                   <div className="p-5 rounded-2xl bg-white border border-primary/10 shadow-sm relative overflow-hidden group">
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles className="h-4 w-4 text-primary" />
@@ -372,6 +350,27 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       {generatingAi ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                       Generate Palette
                     </Button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase">Template Presets</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {THEME_PRESETS.map((preset) => (
+                        <Button
+                          key={preset.name}
+                          variant="outline"
+                          className={cn(
+                            "h-16 rounded-2xl border-2 transition-all font-bold",
+                            settings.theme.primary === preset.colors.primary && settings.theme.background === preset.colors.background
+                              ? "bg-primary/5 border-primary/20 text-primary shadow-sm"
+                              : "bg-slate-50/50 hover:bg-slate-100 hover:border-slate-200 text-slate-600"
+                          )}
+                          onClick={() => applyPreset(preset)}
+                        >
+                          {preset.name}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="space-y-4">
