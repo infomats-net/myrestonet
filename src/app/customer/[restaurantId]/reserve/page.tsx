@@ -24,6 +24,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, addHours, startOfHour, setHours, setMinutes } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function CustomerReservationPage({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = use(params);

@@ -57,6 +57,13 @@ service cloud.firestore {
       allow update: if hasPermission(restaurantId, "update_settings");
       allow write: if isSuperAdmin() || (isPartner() && request.resource.data.partnerId == getUser().partnerId);
 
+      match /menus/{menuId} {
+        allow read: if true;
+        match /items/{itemId} {
+          allow read: if true;
+        }
+      }
+
       match /reservations/{reservationId} {
         allow read: if hasPermission(restaurantId, "read");
         allow write: if hasPermission(restaurantId, "update_settings") || isSuperAdmin();

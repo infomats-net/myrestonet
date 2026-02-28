@@ -69,6 +69,28 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       }
     },
+    "Menu": {
+      "title": "Menu",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      }
+    },
+    "MenuItem": {
+      "title": "MenuItem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "imageUrl": { "type": "string" }
+      }
+    },
     "Reservation": {
       "title": "Reservation",
       "type": "object",
@@ -95,6 +117,8 @@
     "/users/{userId}": { "schema": { "$ref": "#/backend/entities/UserProfile" }, "description": "Users." },
     "/partners/{partnerId}": { "schema": { "$ref": "#/backend/entities/Partner" }, "description": "Partners." },
     "/restaurants/{restaurantId}": { "schema": { "$ref": "#/backend/entities/Restaurant" }, "description": "Restaurants." },
+    "/restaurants/{restaurantId}/menus/{menuId}": { "schema": { "$ref": "#/backend/entities/Menu" }, "description": "Restaurant Menus." },
+    "/restaurants/{restaurantId}/menus/{menuId}/items/{itemId}": { "schema": { "$ref": "#/backend/entities/MenuItem" }, "description": "Menu Items." },
     "/restaurants/{restaurantId}/reservations/{resId}": { "schema": { "$ref": "#/backend/entities/Reservation" }, "description": "Reservations." }
   }
 }
