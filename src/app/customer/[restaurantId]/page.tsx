@@ -503,10 +503,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       <section key="map" className="max-w-6xl mx-auto px-6 py-12">
         <div className="rounded-[3.5rem] overflow-hidden shadow-2xl relative h-[500px] group">
           <img 
-            src="https://picsum.photos/seed/map-area/1200/800" 
+            src="https://picsum.photos/seed/city-aerial-map/1200/800" 
             alt="Location Map" 
             className="w-full h-full object-cover grayscale brightness-75 transition-all duration-700"
-            data-ai-hint="aerial view"
+            data-ai-hint="city map"
           />
           <div className="absolute inset-0 bg-black/10" />
           <div className="absolute bottom-6 left-6 right-6 p-8 md:p-10 bg-white/90 backdrop-blur-md rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 border border-white/20">
