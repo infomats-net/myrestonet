@@ -258,7 +258,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           </div>
 
           <div className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
-            {sections.menuList?.visible && <a href="#menu" className="hover:text-primary transition-colors" style={{ '--hover-color': theme.primary } as any}>Menu</a>}
+            {sections.menuList?.visible && <a href="#menu" className="hover:text-primary transition-colors">Menu</a>}
             {sections.about?.visible && <a href="#about" className="hover:text-primary transition-colors">About</a>}
             {sections.contact?.visible && <a href="#contact" className="hover:text-primary transition-colors">Contact</a>}
           </div>
@@ -638,7 +638,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 <Button size="lg" className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl" style={{ backgroundColor: theme.primary }}>
                   <ShoppingBag className="h-5 w-5" /> Checkout ({cart.length})
                 </Button>
-              </SheetTrigger>
+              </Trigger>
               <SheetContent side="right" className="w-full sm:max-w-md rounded-l-[3rem] p-0 flex flex-col h-full border-none">
                 <SheetHeader className="p-8 bg-slate-50/50 shrink-0">
                   <SheetTitle className="text-3xl font-black" style={headingStyle}>Your Order</SheetTitle>
