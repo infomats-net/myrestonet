@@ -28,7 +28,8 @@ import {
   Mail,
   CreditCard,
   Truck,
-  Palette
+  Palette,
+  ShieldAlert
 } from 'lucide-react';
 import {
   Dialog,
@@ -164,7 +165,10 @@ function DashboardContent() {
   
   const { data: userProfile, isLoading: loadingProfile } = useDoc(userProfileRef);
   
-  const effectiveRestaurantId = impersonateId || (userProfile?.role?.toLowerCase() === 'restaurant_admin' ? userProfile.restaurantId : null);
+  const isRestaurantAdmin = userProfile?.role?.toLowerCase() === 'restaurant_admin' || userProfile?.role?.toLowerCase() === 'restaurantadmin';
+  const isSuperAdmin = userProfile?.role?.toLowerCase() === 'super_admin' || userProfile?.role?.toLowerCase() === 'superadmin';
+  
+  const effectiveRestaurantId = impersonateId || (isRestaurantAdmin ? userProfile.restaurantId : null);
 
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
@@ -479,14 +483,56 @@ function DashboardContent() {
     }
   };
 
-  const isTrulyLoading = authLoading || (!!authUser && loadingProfile) || (!!effectiveRestaurantId && loadingRes && !restaurant);
+  const isTrulyLoading = authLoading || (!!authUser && loadingProfile);
 
   if (isTrulyLoading) {
     return <div className="flex flex-col items-center justify-center p-20 space-y-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="text-muted-foreground animate-pulse font-medium">Validating Merchant Credentials...</p></div>;
   }
 
-  if (!restaurant) {
-    return <div className="p-20 text-center max-w-md mx-auto space-y-6"><div className="bg-destructive/10 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto text-destructive"><Info className="h-10 w-10" /></div><div className="space-y-2"><h2 className="text-2xl font-bold text-primary">Access Restriction</h2><p className="text-muted-foreground">Access Restrictions could not connect with your restaurant.</p></div><Button variant="outline" asChild className="w-full"><Link href="/auth/login">Return to Login</Link></Button></div>;
+  // Handle case where user is a Super Admin and hasn't picked a tenant to impersonate
+  if (isSuperAdmin && !impersonateId) {
+    return (
+      <div className="p-20 text-center max-w-lg mx-auto space-y-6">
+        <div className="bg-primary/10 p-6 rounded-full w-24 h-24 flex items-center justify-center mx-auto text-primary">
+          <ShieldAlert className="h-12 w-12" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-3xl font-headline font-bold text-primary">Global Control Required</h2>
+          <p className="text-muted-foreground">
+            As a Super Admin, you must select a restaurant tenant from the management panel to access its specific dashboard tools.
+          </p>
+        </div>
+        <Button className="w-full h-12 text-lg font-bold" asChild>
+          <Link href="/super-admin/tenants">Go to Tenant Management</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  // Final check for restaurant data
+  if (!restaurant && !loadingRes) {
+    return (
+      <div className="p-20 text-center max-w-md mx-auto space-y-6">
+        <div className="bg-destructive/10 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto text-destructive">
+          <Info className="h-10 w-10" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-2xl font-bold text-primary">Restaurant Connection Failed</h2>
+          <p className="text-muted-foreground">
+            {isRestaurantAdmin 
+              ? "We couldn't find a restaurant linked to your admin profile. Please contact platform support."
+              : "The requested restaurant instance could not be retrieved."}
+          </p>
+        </div>
+        <Button variant="outline" asChild className="w-full">
+          <Link href="/auth/login">Return to Login</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (loadingRes) {
+    return <div className="flex flex-col items-center justify-center p-20 space-y-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="text-muted-foreground animate-pulse font-medium">Connecting to Store Instance...</p></div>;
   }
 
   const currencySymbol = restaurant?.baseCurrency === 'GBP' ? '£' : '$';
