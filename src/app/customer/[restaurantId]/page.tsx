@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, use as reactUse, useEffect } from 'react';
@@ -113,8 +114,8 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const activeMenu = menus?.find(m => m.id === activeMenuId);
 
   const designStyles = {
-    '--primary': design?.theme?.primary || '#42668A',
-    '--accent': design?.theme?.accent || '#53C683',
+    '--primary': design?.theme?.primary || '#22c55e',
+    '--accent': design?.theme?.accent || '#16a34a',
     '--background': design?.theme?.background || '#FFFFFF',
     '--text': design?.theme?.text || '#1A1A1A',
     '--font-family': design?.typography?.fontFamily || 'Inter',
@@ -137,6 +138,11 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
             alt="Restaurant Cover" 
             className="w-full h-full object-cover brightness-75"
           />
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+             <h1 className="text-white text-4xl md:text-5xl font-black text-center px-4" style={{ fontFamily: designStyles['--heading-font'] as string }}>
+               {restaurant?.name}
+             </h1>
+          </div>
         </div>
       )}
 
@@ -163,7 +169,7 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
           </CardContent>
         </Card>
 
-        {design?.sections?.about?.visible && (
+        {design?.sections?.about?.visible !== false && (
           <div className="mb-10 px-4 py-8 bg-white rounded-2xl border shadow-sm text-center about-section">
             <h2 className="text-xl font-bold mb-4" style={{ color: designStyles['--primary'] as string, fontFamily: designStyles['--heading-font'] as string }}>Our Story</h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl mx-auto">
