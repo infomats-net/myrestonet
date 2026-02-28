@@ -8,16 +8,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { ShoppingBag, Loader2 } from 'lucide-react';
+import { ShoppingBag, Loader2, AlertCircle } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { auth, firestore } = useFirebase();
   const { toast } = useToast();
@@ -27,44 +29,42 @@ export default function LoginPage() {
     if (!auth || !firestore) return;
 
     setLoading(true);
+    setError(null);
     
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fetch user role from the strict users collection
+      // Fetch user role from the strict global users collection
       const userDoc = await getDoc(doc(firestore, 'users', user.uid));
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
         const role = userData.role?.toLowerCase();
 
+        toast({
+          title: "Welcome back",
+          description: `Signed in as ${role?.replace('_', ' ')}.`,
+        });
+
         if (role === 'super_admin') {
           router.push('/super-admin/dashboard');
         } else if (role === 'restaurant_admin' || role === 'staff') {
           router.push('/restaurant-admin/dashboard');
         } else {
-          // Fallback if no specific dashboard exists for the role
+          // Fallback for regular customers or unknown roles
           router.push(`/customer/${userData.restaurantId || 'demo'}`);
         }
       } else {
-        toast({
-          variant: "destructive",
-          title: "Profile not found",
-          description: "Your user profile is missing. Please contact a Super Admin.",
-        });
+        setError("Your user profile was not found in the platform database. Please contact a Super Admin.");
       }
-
-      toast({
-        title: "Welcome back",
-        description: "Successfully signed in.",
-      });
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Login failed",
         description: error.message || "Invalid email or password.",
       });
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -79,11 +79,20 @@ export default function LoginPage() {
               <ShoppingBag className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-headline font-bold text-primary">MyRestoNet</CardTitle>
+          <CardTitle className="text-3xl font-black text-primary tracking-tight">MyRestoNet</CardTitle>
           <CardDescription>Enter your credentials to access the platform</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive" className="rounded-xl">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Authentication Error</AlertTitle>
+                <AlertDescription className="text-xs">
+                  {error}
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input 
@@ -110,11 +119,11 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button className="w-full text-lg h-12" type="submit" disabled={loading}>
+            <Button className="w-full text-lg h-12 rounded-xl" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Sign In"}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
-              Don't have an account? <Link href="/auth/signup" className="text-primary hover:underline">Initialize Platform</Link>
+              New to the platform? <Link href="/auth/signup" className="text-primary hover:underline font-bold">Initialize Super Admin</Link>
             </p>
           </CardFooter>
         </form>

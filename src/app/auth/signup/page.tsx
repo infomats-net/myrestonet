@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -31,27 +32,28 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Create global user profile
+      // Create global user profile as a Super Admin
+      // This is the primary initialization step for a new Platform Owner
       const userDocRef = doc(firestore, 'users', user.uid);
       await setDoc(userDocRef, {
         id: user.uid,
         email: email,
         role: 'super_admin',
-        restaurantId: null,
+        restaurantId: null, // Super Admins have global access, not tied to a single tenant
         createdAt: new Date().toISOString(),
       });
 
       toast({
         title: "Platform Initialized",
-        description: "Super Admin account created.",
+        description: "Your Super Admin account has been created successfully.",
       });
 
       router.push('/super-admin/dashboard');
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Signup failed",
-        description: error.message || "An error occurred during registration.",
+        title: "Setup failed",
+        description: error.message || "An error occurred during platform initialization.",
       });
     } finally {
       setLoading(false);
@@ -67,23 +69,41 @@ export default function SignupPage() {
               <ShieldCheck className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-headline font-bold text-primary">Platform Admin Setup</CardTitle>
-          <CardDescription>Initialize your MyRestoNet Super Admin account.</CardDescription>
+          <CardTitle className="text-3xl font-black text-primary tracking-tight">Platform Initialization</CardTitle>
+          <CardDescription>Create the root Super Admin account for MyRestoNet.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input id="email" type="email" placeholder="admin@myrestonet.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="admin@myrestonet.com" 
+                required 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Secure Password</Label>
-              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Input 
+                id="password" 
+                type="password" 
+                required 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+              />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button className="w-full text-lg h-12" type="submit" disabled={loading}>
+            <Button className="w-full text-lg h-12 rounded-xl" type="submit" disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Complete Setup"}
+            </Button>
+            <Button variant="ghost" asChild className="w-full rounded-xl">
+              <Link href="/auth/login">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Login
+              </Link>
             </Button>
           </CardFooter>
         </form>
