@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -34,7 +35,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/flows/localized-seo-content';
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection } from 'firebase/firestore';
+import { doc, collection, addDoc } from 'firebase/firestore';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
+import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DesignSystemEditor } from '@/components/design-system-editor';
 
@@ -44,6 +48,7 @@ function DashboardContent() {
   const initialTab = searchParams.get('tab') || 'overview';
   const firestore = useFirestore();
   const { user: authUser, isUserLoading: authLoading } = useUser();
+  const { toast } = useToast();
   
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !authUser?.uid) return null;
@@ -141,6 +146,36 @@ function DashboardContent() {
     } finally {
       setLoadingSeo(false);
     }
+  };
+
+  const handleCreateMenu = () => {
+    if (!firestore || !effectiveRestaurantId) return;
+
+    const menusColRef = collection(firestore, 'restaurants', effectiveRestaurantId, 'menus');
+    const newMenuData = {
+      restaurantId: effectiveRestaurantId,
+      name: "Main Dining Menu",
+      description: "Our signature selection of appetizers, entrees, and desserts.",
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    addDoc(menusColRef, newMenuData)
+      .then(() => {
+        toast({
+          title: "Menu Created",
+          description: `${newMenuData.name} has been added to your catalog.`,
+        });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: menusColRef.path,
+          operation: 'create',
+          requestResourceData: newMenuData
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
   /**
@@ -397,7 +432,10 @@ function DashboardContent() {
                 <CardTitle className="font-headline">Menu Catalog</CardTitle>
                 <CardDescription>Manage your active menus and digital catalogue.</CardDescription>
               </div>
-              <Button className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm w-full md:w-auto">
+              <Button 
+                className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm w-full md:w-auto"
+                onClick={handleCreateMenu}
+              >
                 <Plus className="mr-2 h-4 w-4" /> Create Menu
               </Button>
             </CardHeader>
@@ -431,7 +469,7 @@ function DashboardContent() {
               ) : (
                 <div className="text-center py-20 border-2 border-dashed rounded-xl space-y-4">
                   <p className="text-muted-foreground">You haven't created any menus yet.</p>
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={handleCreateMenu}>
                     <Plus className="mr-2 h-4 w-4" /> Start Initial Menu
                   </Button>
                 </div>
