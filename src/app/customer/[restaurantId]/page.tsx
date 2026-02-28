@@ -239,6 +239,36 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   return (
     <div className="min-h-screen pb-24" style={globalStyle}>
+      {/* Navigation Bar */}
+      <nav className="sticky top-0 z-[100] w-full border-b backdrop-blur-md transition-all h-20 flex items-center bg-white/90">
+        <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
+          <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2 group">
+            <div className="bg-primary rounded-lg p-1.5 transition-transform group-hover:scale-110" style={{ backgroundColor: theme.primary }}>
+              <UtensilsCrossed className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
+          </Link>
+
+          <div className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            {sections.menuList?.visible && <a href="#menu" className="hover:text-primary transition-colors" style={{ '--hover-color': theme.primary } as any}>Menu</a>}
+            {sections.about?.visible && <a href="#about" className="hover:text-primary transition-colors">About</a>}
+            {sections.contact?.visible && <a href="#contact" className="hover:text-primary transition-colors">Contact</a>}
+          </div>
+
+          <div className="flex items-center gap-4">
+             <Button className="hidden sm:flex rounded-xl font-black text-xs uppercase h-10 px-6 shadow-lg shadow-primary/20" style={{ backgroundColor: theme.primary }} asChild>
+                <Link href={`/customer/${restaurantId}/reserve`}>Reserve Now</Link>
+             </Button>
+             {cart.length > 0 && (
+               <button className="relative p-2 text-slate-600 hover:text-slate-900 transition-colors" onClick={() => setIsCheckoutOpen(true)}>
+                 <ShoppingBag className="h-6 w-6" />
+                 <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black shadow-md border-2 border-white" style={{ backgroundColor: theme.primary }}>{cart.length}</span>
+               </button>
+             )}
+          </div>
+        </div>
+      </nav>
+
       {/* 1. Hero Section */}
       {sections.hero?.visible && (
         <section className="relative h-[60vh] flex items-center justify-center text-center px-6 overflow-hidden">
@@ -335,7 +365,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
         {/* 3. About Section */}
         {sections.about?.visible && (
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+          <section id="about" className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center scroll-mt-24">
             <div className="space-y-6">
               <h2 className="text-4xl font-black tracking-tight" style={headingStyle}>About Our Culinary Vision</h2>
               <p className="text-lg leading-relaxed opacity-70">
@@ -380,7 +410,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
         {/* 4. Menu Section */}
         {sections.menuList?.visible && (
-          <section id="menu" className="space-y-12">
+          <section id="menu" className="space-y-12 scroll-mt-24">
             <div className="text-center space-y-4">
               <h2 className="text-5xl font-black tracking-tight" style={headingStyle}>Our Signature Menu</h2>
               <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of dishes, designed to delight and satisfy.</p>
@@ -492,7 +522,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
         {/* 7. Contact Section */}
         {sections.contact?.visible && (
-          <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <section id="contact" className="grid grid-cols-1 lg:grid-cols-3 gap-8 scroll-mt-24">
             <Card className="rounded-[3rem] border-none shadow-2xl bg-white text-slate-900 p-12 space-y-8 lg:col-span-1">
               <h2 className="text-3xl font-black" style={headingStyle}>Connect With Us</h2>
               <div className="space-y-6">
