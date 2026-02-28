@@ -9,7 +9,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -27,14 +27,15 @@ import {
   Search,
   Check,
   X,
-  UtensilsCrossed
+  UtensilsCrossed,
+  MapPin
 } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, doc, setDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
 import { cn } from '@/lib/utils';
@@ -107,13 +108,17 @@ export default function NewTenantPage() {
 
     let secondaryApp;
     try {
+      // 1. Initialize a secondary Firebase app to create the new Auth user 
+      // without kicking the Super Admin out of their current session.
       const secondaryAppName = `tenant-gen-${Date.now()}`;
       secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
       
+      // 2. Create the Auth User (Immediate login capability)
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, values.adminEmail, values.password);
       const adminUid = userCredential.user.uid;
 
+      // 3. Create the Restaurant Document
       const restaurantRef = doc(collection(firestore, 'restaurants'));
       const restaurantId = restaurantRef.id;
 
@@ -142,26 +147,38 @@ export default function NewTenantPage() {
           deliveryCharge: 5.00,
           freeDeliveryAbove: 50.00
         },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
 
+      // 4. Create the Users Collection mapping (Required for Security Rules)
       await setDoc(doc(firestore, 'users', adminUid), {
         id: adminUid,
         email: values.adminEmail,
         role: 'restaurant_admin',
         restaurantId: restaurantId,
-        createdAt: new Date().toISOString(),
+        createdAt: serverTimestamp(),
       });
 
+      // 5. Cleanup secondary session
       await signOut(secondaryAuth);
       await deleteApp(secondaryApp);
 
-      toast({ title: "Tenant Created", description: "Restaurant instance initialized." });
+      toast({ 
+        title: "Restaurant Initialized", 
+        description: "The admin account can now log in immediately." 
+      });
+      
       router.push('/super-admin/tenants');
     } catch (error: any) {
-      if (secondaryApp) await deleteApp(secondaryApp);
-      toast({ variant: "destructive", title: "Setup Failed", description: error.message });
+      if (secondaryApp) {
+        try { await deleteApp(secondaryApp); } catch(e) {}
+      }
+      toast({ 
+        variant: "destructive", 
+        title: "Setup Failed", 
+        description: error.message || "An error occurred during restaurant initialization." 
+      });
     } finally {
       setLoading(false);
     }
@@ -173,19 +190,24 @@ export default function NewTenantPage() {
 
   return (
     <div className="p-8 w-full space-y-8 bg-slate-50/30 min-h-screen">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild className="rounded-full bg-white shadow-sm border">
-          <Link href="/super-admin/tenants"><ChevronLeft /></Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Restaurant Profile</h1>
-          <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1">Core details and global market configuration.</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild className="rounded-full bg-white shadow-sm border">
+            <Link href="/super-admin/tenants"><ChevronLeft /></Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">New Restaurant Instance</h1>
+            <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1">Configure global market parameters and tenant isolation.</p>
+          </div>
         </div>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <Card className="rounded-[2rem] border-none shadow-xl overflow-hidden">
+            <CardHeader className="bg-slate-50/50 border-b px-10 py-6">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Basic Information</h3>
+            </CardHeader>
             <CardContent className="p-10 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <FormField control={form.control} name="restaurantName" render={({ field }) => (
@@ -396,7 +418,12 @@ export default function NewTenantPage() {
                 <FormField control={form.control} name="address" render={({ field }) => (
                   <FormItem>
                     <Label className="font-bold text-slate-700">Street Address</Label>
-                    <FormControl><Input placeholder="123 Signature Way" className="h-12 bg-slate-50 border-slate-100 rounded-xl" {...field} /></FormControl>
+                    <FormControl>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input placeholder="123 Signature Way" className="h-12 bg-slate-50 border-slate-100 rounded-xl pl-12" {...field} />
+                      </div>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
@@ -447,7 +474,7 @@ export default function NewTenantPage() {
           </Card>
 
           <Button type="submit" className="w-full h-16 text-xl font-black rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.01]" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : "Initialize Restaurant"}
+            {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : "Initialize Global Instance"}
           </Button>
         </form>
       </Form>

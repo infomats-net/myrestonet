@@ -32,9 +32,8 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if request.auth.uid == userId || isSuperAdmin();
-      // Creation is now restricted to Super Admins only after initialization
-      allow create: if isSuperAdmin();
-      allow update, delete: if isSuperAdmin();
+      // Only Super Admins can manage users in a multi-tenant SaaS
+      allow write: if isSuperAdmin();
     }
   }
 }
