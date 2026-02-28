@@ -3,7 +3,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, addDoc, getDocs } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { 
   Loader2, 
@@ -16,7 +16,8 @@ import {
   CreditCard, 
   Truck, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  ChevronDown
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,24 +61,44 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   }, [firestore, restaurantId]);
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
 
-  // 2. Fetch Menu Items
-  const menuQuery = useMemoFirebase(() => {
+  // 2. Fetch All Menus
+  const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
-    return collection(firestore, 'restaurants', restaurantId, 'menu');
+    return collection(firestore, 'restaurants', restaurantId, 'menus');
   }, [firestore, restaurantId]);
-  const { data: menuItems, isLoading: loadingMenu } = useCollection(menuQuery);
+  const { data: menus, isLoading: loadingMenus } = useCollection(menusQuery);
 
-  // Sign in anonymously for checkout identity
+  const [allMenuItems, setAllMenuItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+
+  // 3. Fetch Items for all menus
+  useEffect(() => {
+    if (!firestore || !restaurantId || !menus) return;
+    
+    const fetchAllItems = async () => {
+      setLoadingItems(true);
+      const items: any[] = [];
+      for (const menu of menus) {
+        const querySnapshot = await getDocs(collection(firestore, 'restaurants', restaurantId, 'menus', menu.id, 'items'));
+        querySnapshot.forEach((doc) => {
+          items.push({ ...doc.data(), id: doc.id, menuId: menu.id, menuName: menu.name });
+        });
+      }
+      setAllMenuItems(items);
+      setLoadingItems(false);
+    };
+
+    fetchAllItems();
+  }, [firestore, restaurantId, menus]);
+
   useEffect(() => {
     if (auth) signInAnonymously(auth);
   }, [auth]);
 
-  // Set default payment method when restaurant loads
   useEffect(() => {
     if (restaurant?.paymentSettings) {
       const settings = restaurant.paymentSettings;
-      if (settings.stripe?.enabled) setPaymentMethod('stripe');
-      else if (settings.paypal?.enabled) setPaymentMethod('paypal');
+      if (settings.paypal?.enabled) setPaymentMethod('paypal');
       else if (settings.cod?.enabled) setPaymentMethod('cod');
     }
   }, [restaurant]);
@@ -93,10 +114,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     toast({ title: "Added to cart", description: `${item.name} added.` });
   };
 
-  const removeFromCart = (itemId: string) => {
-    setCart(prev => prev.filter(i => i.id !== itemId));
-  };
-
   const updateQuantity = (itemId: string, delta: number) => {
     setCart(prev => prev.map(i => {
       if (i.id === itemId) {
@@ -104,20 +121,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         return { ...i, quantity: newQty };
       }
       return i;
-    }));
+    }).filter(i => i.quantity > 0));
   };
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  // Delivery calculation
   const deliveryEnabled = restaurant?.deliverySettings?.deliveryEnabled ?? true;
   const baseDeliveryCharge = restaurant?.deliverySettings?.deliveryCharge || 0;
   const freeThreshold = restaurant?.deliverySettings?.freeDeliveryAbove;
-  
-  const deliveryCharge = (deliveryEnabled && (freeThreshold === null || subtotal < (freeThreshold || 0))) 
-    ? baseDeliveryCharge 
-    : 0;
-
+  const deliveryCharge = (deliveryEnabled && (freeThreshold === null || subtotal < (freeThreshold || 0))) ? baseDeliveryCharge : 0;
   const total = subtotal + deliveryCharge;
 
   const handleCheckout = async () => {
@@ -131,11 +142,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         deliveryCharge,
         totalAmount: total,
         paymentMethod,
-        paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid', // Simplified for prototype
+        paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
         status: 'pending',
         createdAt: new Date().toISOString()
       };
-
       await addDoc(collection(firestore, 'restaurants', restaurantId, 'orders'), orderData);
       setCart([]);
       setOrderComplete(true);
@@ -147,10 +157,8 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     }
   };
 
-  if (loadingRes || loadingMenu) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <Loader2 className="animate-spin h-10 w-10 text-primary" />
-    </div>
+  if (loadingRes || loadingMenus || loadingItems) return (
+    <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
   );
 
   if (!restaurant) return (
@@ -161,11 +169,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       </Card>
     </div>
   );
-
-  const anyPaymentEnabled = 
-    restaurant.paymentSettings?.stripe?.enabled || 
-    restaurant.paymentSettings?.paypal?.enabled || 
-    restaurant.paymentSettings?.cod?.enabled;
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20">
@@ -183,132 +186,109 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         </header>
 
         {orderComplete && (
-          <div className="bg-emerald-50 border border-emerald-100 p-8 rounded-[2.5rem] text-center animate-in zoom-in-95 duration-500">
+          <div className="bg-emerald-50 border border-emerald-100 p-8 rounded-[2.5rem] text-center">
             <CheckCircle2 className="h-16 w-16 text-emerald-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-black text-emerald-900">Order Placed Successfully!</h2>
-            <p className="text-emerald-700 mt-2">Your kitchen is now preparing your delicious meal.</p>
+            <h2 className="text-2xl font-black text-emerald-900">Order Placed!</h2>
             <Button className="mt-6 bg-emerald-600 hover:bg-emerald-700" onClick={() => setOrderComplete(false)}>Order More</Button>
           </div>
         )}
 
-        <section className="space-y-8">
-          <div className="flex items-center justify-between border-b pb-4">
-            <h2 className="text-2xl font-black text-slate-900">Our Menu</h2>
-            <Badge variant="outline" className="font-bold uppercase tracking-widest text-[10px]">{menuItems?.length || 0} Items</Badge>
-          </div>
-          
-          <div className="grid gap-6 sm:grid-cols-2">
-            {menuItems?.map(item => (
-              <Card key={item.id} className="overflow-hidden border-none shadow-md rounded-[2rem] group hover:shadow-xl transition-all">
-                <CardContent className="p-8 flex justify-between items-center">
-                  <div className="space-y-2">
-                    <h3 className="font-black text-xl text-slate-900 group-hover:text-primary transition-colors">{item.name}</h3>
-                    <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold uppercase text-[9px] tracking-wider">
-                      {item.category}
-                    </Badge>
-                  </div>
-                  <div className="text-right space-y-3">
-                    <p className="font-black text-2xl text-primary">${item.price}</p>
-                    <Button size="sm" className="rounded-full w-10 h-10 p-0" onClick={() => addToCart(item)}>
-                      <Plus className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        <section className="space-y-12">
+          {menus?.map(menu => (
+            <div key={menu.id} className="space-y-6">
+              <div className="flex items-center justify-between border-b pb-4">
+                <h2 className="text-3xl font-black text-slate-900">{menu.name}</h2>
+                <Badge variant="outline" className="font-bold uppercase tracking-widest text-[10px]">
+                  {allMenuItems.filter(i => i.menuId === menu.id).length} Items
+                </Badge>
+              </div>
+              <div className="grid gap-6 sm:grid-cols-2">
+                {allMenuItems.filter(i => i.menuId === menu.id).map(item => (
+                  <Card key={item.id} className="overflow-hidden border-none shadow-md rounded-[2rem] group hover:shadow-xl transition-all">
+                    <CardContent className="p-8 flex justify-between items-center">
+                      <div className="space-y-2">
+                        <h3 className="font-black text-xl text-slate-900 group-hover:text-primary transition-colors">{item.name}</h3>
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold uppercase text-[9px] tracking-wider">
+                          {item.category}
+                        </Badge>
+                      </div>
+                      <div className="text-right space-y-3">
+                        <p className="font-black text-2xl text-primary">${item.price}</p>
+                        <Button size="sm" className="rounded-full w-10 h-10 p-0" onClick={() => addToCart(item)}>
+                          <Plus className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ))}
         </section>
       </div>
 
-      {/* Cart Summary Bar */}
       {cart.length > 0 && !orderComplete && (
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t animate-in slide-in-from-bottom-full duration-300">
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Cart Total</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Total</p>
               <p className="text-2xl font-black text-slate-900">${total.toFixed(2)}</p>
             </div>
             
             <Sheet open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
               <SheetTrigger asChild>
-                <Button size="lg" className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl shadow-primary/20">
-                  <ShoppingBag className="h-5 w-5" /> Checkout Now
+                <Button size="lg" className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl">
+                  <ShoppingBag className="h-5 w-5" /> Checkout
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:max-w-md rounded-l-[3rem] border-none p-0 flex flex-col h-full shadow-2xl">
+              <SheetContent side="right" className="w-full sm:max-w-md rounded-l-[3rem] p-0 flex flex-col h-full border-none">
                 <SheetHeader className="p-8 bg-slate-50/50 shrink-0">
                   <SheetTitle className="text-3xl font-black">Your Order</SheetTitle>
                 </SheetHeader>
                 
                 <div className="flex-1 overflow-y-auto px-8 py-4 space-y-8 no-scrollbar">
-                  {/* Items List */}
                   <div className="space-y-4">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Items</h4>
                     {cart.map(item => (
-                      <div key={item.id} className="flex items-center justify-between group">
-                        <div className="space-y-0.5">
+                      <div key={item.id} className="flex items-center justify-between">
+                        <div>
                           <p className="font-bold text-slate-900">{item.name}</p>
-                          <p className="text-xs text-muted-foreground">${item.price.toFixed(2)} each</p>
+                          <p className="text-xs text-muted-foreground">${item.price.toFixed(2)}</p>
                         </div>
                         <div className="flex items-center gap-3 bg-slate-100 rounded-xl p-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-white" onClick={() => updateQuantity(item.id, -1)}><Minus className="h-3 w-3" /></Button>
-                          <span className="font-black text-sm w-4 text-center">{item.quantity}</span>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-white" onClick={() => updateQuantity(item.id, 1)}><Plus className="h-3 w-3" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-white text-destructive" onClick={() => removeFromCart(item.id)}><X className="h-3 w-3" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.id, -1)}><Minus className="h-3 w-3" /></Button>
+                          <span className="font-black text-sm">{item.quantity}</span>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateQuantity(item.id, 1)}><Plus className="h-3 w-3" /></Button>
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  {/* Payment Selection */}
                   <div className="space-y-4">
-                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Payment Method</h4>
-                    {!anyPaymentEnabled ? (
-                      <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center gap-3">
-                        <AlertCircle className="h-5 w-5 text-amber-600" />
-                        <p className="text-xs font-bold text-amber-900 italic">This restaurant is not currently accepting online orders.</p>
-                      </div>
-                    ) : (
-                      <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-2">
-                        {restaurant.paymentSettings?.stripe?.enabled && (
-                          <div className="flex items-center space-x-2 border p-4 rounded-2xl cursor-pointer hover:bg-slate-50">
-                            <RadioGroupItem value="stripe" id="stripe" />
-                            <Label htmlFor="stripe" className="flex items-center gap-2 cursor-pointer w-full font-bold">
-                              <CreditCard className="h-4 w-4" /> Credit Card (Stripe)
-                            </Label>
-                          </div>
-                        )}
-                        {restaurant.paymentSettings?.paypal?.enabled && (
-                          <div className="flex items-center space-x-2 border p-4 rounded-2xl cursor-pointer hover:bg-slate-50">
-                            <RadioGroupItem value="paypal" id="paypal" />
-                            <Label htmlFor="paypal" className="flex items-center gap-2 cursor-pointer w-full font-bold">
-                              <DollarSign className="h-4 w-4" /> PayPal
-                            </Label>
-                          </div>
-                        )}
-                        {restaurant.paymentSettings?.cod?.enabled && (
-                          <div className="flex items-center space-x-2 border p-4 rounded-2xl cursor-pointer hover:bg-slate-50">
-                            <RadioGroupItem value="cod" id="cod" />
-                            <Label htmlFor="cod" className="flex items-center gap-2 cursor-pointer w-full font-bold">
-                              <Truck className="h-4 w-4" /> Cash on Delivery
-                            </Label>
-                          </div>
-                        )}
-                      </RadioGroup>
-                    )}
+                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Payment</h4>
+                    <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="space-y-2">
+                      {restaurant.paymentSettings?.paypal?.enabled && (
+                        <div className="flex items-center space-x-2 border p-4 rounded-2xl">
+                          <RadioGroupItem value="paypal" id="paypal" />
+                          <Label htmlFor="paypal" className="font-bold">PayPal</Label>
+                        </div>
+                      )}
+                      {restaurant.paymentSettings?.cod?.enabled && (
+                        <div className="flex items-center space-x-2 border p-4 rounded-2xl">
+                          <RadioGroupItem value="cod" id="cod" />
+                          <Label htmlFor="cod" className="font-bold">Cash on Delivery</Label>
+                        </div>
+                      )}
+                    </RadioGroup>
                   </div>
 
-                  {/* Summary */}
-                  <div className="space-y-3 bg-slate-50 p-6 rounded-3xl border border-slate-100">
+                  <div className="space-y-3 bg-slate-50 p-6 rounded-3xl border">
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Subtotal</span>
                       <span className="font-bold">${subtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Delivery</span>
-                      <span className="font-bold">
-                        {deliveryCharge === 0 ? <span className="text-emerald-500 font-black">FREE</span> : `$${deliveryCharge.toFixed(2)}`}
-                      </span>
+                      <span className="font-bold">{deliveryCharge === 0 ? "FREE" : `$${deliveryCharge.toFixed(2)}`}</span>
                     </div>
                     <div className="pt-3 border-t flex justify-between items-center">
                       <span className="text-lg font-black">Total</span>
@@ -319,11 +299,11 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
                 <SheetFooter className="p-8 border-t shrink-0">
                   <Button 
-                    className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-xl shadow-primary/20" 
-                    disabled={isProcessing || cart.length === 0 || !anyPaymentEnabled || !paymentMethod}
+                    className="w-full h-16 rounded-[1.5rem] font-black text-xl" 
+                    disabled={isProcessing || cart.length === 0 || !paymentMethod}
                     onClick={handleCheckout}
                   >
-                    {isProcessing ? <Loader2 className="animate-spin" /> : `Place Order • $${total.toFixed(2)}`}
+                    {isProcessing ? <Loader2 className="animate-spin" /> : "Place Order"}
                   </Button>
                 </SheetFooter>
               </SheetContent>

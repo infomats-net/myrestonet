@@ -22,9 +22,14 @@ service cloud.firestore {
       allow get: if true;
       allow read, write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
 
-      match /menu/{menuItemId} {
+      match /menus/{menuId} {
         allow read: if true;
         allow write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
+
+        match /items/{itemId} {
+          allow read: if true;
+          allow write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
+        }
       }
 
       match /orders/{orderId} {
@@ -32,7 +37,7 @@ service cloud.firestore {
         allow create: if request.auth != null;
         // Admins can manage all orders in their tenant
         allow read, write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
-        // Optional: allow users to read their own orders
+        // Users can read their own orders
         allow read: if request.auth.uid == resource.data.customerId;
       }
 

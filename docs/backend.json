@@ -31,14 +31,6 @@
         "paymentSettings": {
           "type": "object",
           "properties": {
-            "stripe": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "publishableKey": { "type": "string" },
-                "accountId": { "type": "string" }
-              }
-            },
             "paypal": {
               "type": "object",
               "properties": {
@@ -67,21 +59,17 @@
       },
       "required": ["id", "name", "adminUserId"]
     },
-    "Order": {
-      "title": "Order",
+    "Menu": {
+      "title": "Menu",
+      "description": "A container for a set of dishes (e.g., Main Menu, Drinks).",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "customerId": { "type": "string" },
-        "status": { "type": "string" },
-        "subtotal": { "type": "number" },
-        "deliveryCharge": { "type": "number" },
-        "totalAmount": { "type": "number" },
-        "paymentMethod": { "type": "string", "enum": ["stripe", "paypal", "cod"] },
-        "paymentStatus": { "type": "string" },
-        "items": { "type": "array" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "isAvailable": { "type": "boolean" }
+      },
+      "required": ["id", "name"]
     },
     "MenuItem": {
       "title": "MenuItem",
@@ -92,6 +80,22 @@
         "price": { "type": "number" },
         "category": { "type": "string" },
         "isAvailable": { "type": "boolean" }
+      }
+    },
+    "Order": {
+      "title": "Order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "status": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "deliveryCharge": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["paypal", "cod"] },
+        "paymentStatus": { "type": "string" },
+        "items": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
       }
     }
   },
@@ -107,13 +111,17 @@
       "schema": { "$ref": "#/backend/entities/Restaurant" },
       "description": "Tenant root document."
     },
+    "/restaurants/{restaurantId}/menus/{menuId}": {
+      "schema": { "$ref": "#/backend/entities/Menu" },
+      "description": "Tenant-specific menu containers."
+    },
+    "/restaurants/{restaurantId}/menus/{menuId}/items/{itemId}": {
+      "schema": { "$ref": "#/backend/entities/MenuItem" },
+      "description": "Dishes within a specific menu."
+    },
     "/restaurants/{restaurantId}/orders/{orderId}": {
       "schema": { "$ref": "#/backend/entities/Order" },
       "description": "Tenant-specific orders subcollection."
-    },
-    "/restaurants/{restaurantId}/menu/{menuItemId}": {
-      "schema": { "$ref": "#/backend/entities/MenuItem" },
-      "description": "Tenant-specific menu subcollection."
     }
   }
 }
