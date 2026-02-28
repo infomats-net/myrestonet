@@ -24,21 +24,26 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
     }
 
-    function getAuthProfile() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
-    function isRestaurantAdminLookup(restaurantId) {
+    // Comprehensive check for restaurant admin rights
+    function isRestaurantAdmin(restaurantId) {
       if (!isSignedIn()) return false;
       if (isSuperAdmin()) return true;
       
-      // Check user profile for role and matching restaurantId
-      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-      let isRestAdmin = profile.role in ['restaurant_admin', 'restaurantadmin'];
-      if (isRestAdmin && profile.restaurantId == restaurantId) return true;
+      // Method 1: Check user profile document
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let userProfile = exists(userPath) ? get(userPath).data : null;
+      
+      if (userProfile != null) {
+        let role = userProfile.get('role', 'none').lower();
+        let isRoleMatch = role == 'restaurant_admin' || role == 'restaurantadmin';
+        if (isRoleMatch && userProfile.get('restaurantId', '') == restaurantId) return true;
+      }
 
-      // Fallback check on the restaurant document itself
-      return request.auth.uid in get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.adminUserIds;
+      // Method 2: Fallback check on the restaurant document itself
+      let restPath = /databases/$(database)/documents/restaurants/$(restaurantId);
+      let restaurant = exists(restPath) ? get(restPath).data : null;
+      
+      return restaurant != null && request.auth.uid in restaurant.get('adminUserIds', []);
     }
 
     // --- Collection Rules ---
@@ -47,42 +52,49 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isSuperAdmin();
       allow list: if isSuperAdmin();
       allow create: if isSignedIn() && request.resource.data.id == userId;
-      allow update: if (isOwner(userId) || isSuperAdmin()) && resource != null;
+      allow update: if isOwner(userId) || isSuperAdmin();
       allow delete: if isSuperAdmin();
     }
 
     match /restaurants/{restaurantId} {
       allow get, list: if true;
-      allow create: if isSuperAdmin();
-      allow update: if isRestaurantAdminLookup(restaurantId);
-      allow delete: if isSuperAdmin();
-    }
+      allow create, delete: if isSuperAdmin();
+      allow update: if isRestaurantAdmin(restaurantId);
 
-    match /restaurants/{restaurantId}/design/settings {
-      allow get: if true;
-      allow write: if isRestaurantAdminLookup(restaurantId);
-    }
+      // Design and Config are public for storefront, admin-only for writes
+      match /design/{docId} {
+        allow read: if true;
+        allow write: if isRestaurantAdmin(restaurantId);
+      }
+      match /config/{docId} {
+        allow read: if true;
+        allow write: if isRestaurantAdmin(restaurantId);
+      }
 
-    match /restaurants/{restaurantId}/config/{configId} {
-      allow get: if true;
-      allow write: if isRestaurantAdminLookup(restaurantId);
-    }
+      // Menus and items are public for browsing
+      match /menus/{menuId} {
+        allow get, list: if true;
+        allow create, update, delete: if isRestaurantAdmin(restaurantId);
 
-    match /restaurants/{restaurantId}/menus/{menuId} {
-      allow get, list: if true;
-      allow create, update, delete: if isRestaurantAdminLookup(restaurantId);
-    }
+        match /menuItems/{itemId} {
+          allow get, list: if true;
+          allow create, update, delete: if isRestaurantAdmin(restaurantId);
+        }
+      }
 
-    match /restaurants/{restaurantId}/menus/{menuId}/menuItems/{menuItemId} {
-      allow get, list: if true;
-      allow create, update, delete: if isRestaurantAdminLookup(restaurantId);
-    }
-
-    match /restaurants/{restaurantId}/orders/{orderId} {
-      allow create: if isSignedIn();
-      allow get: if isSignedIn() && (isOwner(resource.data.customerId) || isRestaurantAdminLookup(restaurantId));
-      allow list: if isSignedIn() && isRestaurantAdminLookup(restaurantId);
-      allow update: if isRestaurantAdminLookup(restaurantId);
+      // Orders: High security required
+      match /orders/{orderId} {
+        // Anyone signed in (including anonymous) can place an order
+        allow create: if isSignedIn();
+        // Only the customer who placed it OR the restaurant admin can view it
+        allow get: if isSignedIn() && (isOwner(resource.data.customerId) || isRestaurantAdmin(restaurantId));
+        // Only the restaurant admin can list all orders for processing
+        allow list: if isRestaurantAdmin(restaurantId);
+        // Only the restaurant admin can update status (Accepted, Preparing, etc)
+        allow update: if isRestaurantAdmin(restaurantId);
+        // Orders are generally preserved for auditing
+        allow delete: if false;
+      }
     }
 
     match /superAdmins/{userId} {
