@@ -14,12 +14,12 @@ service cloud.firestore {
       );
     }
 
-    function isRestaurantAdmin(adminId) {
-      return isSignedIn() && request.auth.uid == adminId;
+    function getRestaurantAdminId(restaurantId) {
+      return get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.adminUserId;
     }
 
-    function isDataAdmin(data) {
-      return isSignedIn() && (request.auth.uid == data.adminUserId || isSuperAdmin());
+    function isRestaurantOwner(restaurantId) {
+      return isSignedIn() && (isSuperAdmin() || request.auth.uid == getRestaurantAdminId(restaurantId));
     }
 
     match /{document=**} {
@@ -36,28 +36,27 @@ service cloud.firestore {
     match /restaurants/{restaurantId} {
       allow get, list: if true;
       allow create: if isSuperAdmin();
-      allow update, delete: if isSuperAdmin() || (resource != null && isDataAdmin(resource.data));
+      allow update, delete: if isRestaurantOwner(restaurantId);
 
-      match /design/{designId} {
+      match /design/{document=**} {
         allow get: if true;
-        allow write: if isSuperAdmin() || isRestaurantAdmin(get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.adminUserId);
+        allow write: if isRestaurantOwner(restaurantId);
       }
 
       match /menus/{menuId} {
         allow get, list: if true;
-        allow create, update, delete: if isSuperAdmin() || isRestaurantAdmin(request.resource.data.adminUserId);
+        allow write: if isRestaurantOwner(restaurantId);
 
         match /menuItems/{menuItemId} {
           allow get, list: if true;
-          allow create, update, delete: if isSuperAdmin() || isRestaurantAdmin(request.resource.data.adminUserId);
+          allow write: if isRestaurantOwner(restaurantId);
         }
       }
 
       match /orders/{orderId} {
-        allow get: if isSignedIn();
-        allow list: if isSignedIn();
+        allow read: if isRestaurantOwner(restaurantId) || (isSignedIn() && resource.data.userId == request.auth.uid);
         allow create: if isSignedIn();
-        allow update: if isSignedIn();
+        allow update: if isRestaurantOwner(restaurantId) || (isSignedIn() && resource.data.userId == request.auth.uid);
       }
     }
   }
