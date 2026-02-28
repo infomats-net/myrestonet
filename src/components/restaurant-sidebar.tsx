@@ -157,7 +157,7 @@ function SidebarLinks() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild tooltip="Settings" isActive={isTabActive('settings')}>
-              <Link href={getHref('overview')}>
+              <Link href={getHref('settings')}>
                 <Settings />
                 <span>Store Settings</span>
               </Link>
@@ -167,7 +167,7 @@ function SidebarLinks() {
             <SidebarMenuButton 
               tooltip="Sign Out" 
               onClick={handleSignOut}
-              className="text-destructive hover:bg-destructive/10"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               <LogOut />
               <span>Sign Out</span>

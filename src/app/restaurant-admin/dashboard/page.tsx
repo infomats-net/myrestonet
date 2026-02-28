@@ -29,7 +29,10 @@ import {
   Trash2,
   ChevronDown,
   Wand2,
-  Pencil
+  Pencil,
+  MapPin,
+  Phone,
+  Mail
 } from 'lucide-react';
 import {
   Dialog,
@@ -194,6 +197,7 @@ function DashboardContent() {
   const [loadingAi, setLoadingAi] = useState(false);
   const [loadingSeo, setLoadingSeo] = useState(false);
   const [generatingDescription, setGeneratingDescription] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   // Dialog States
   const [isMenuDialogOpen, setIsMenuDialogOpen] = useState(false);
@@ -201,6 +205,18 @@ function DashboardContent() {
   const [targetMenuId, setTargetMenuId] = useState<string | null>(null);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+
+  // Profile Form State
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    description: '',
+    address: '',
+    city: '',
+    country: '',
+    contactPhone: '',
+    contactEmail: '',
+    cuisine: ''
+  });
 
   // Menu Form State
   const [menuForm, setMenuForm] = useState({ name: '', description: '', isActive: true });
@@ -234,6 +250,17 @@ function DashboardContent() {
 
   useEffect(() => {
     if (restaurant) {
+      setProfileForm({
+        name: restaurant.name || '',
+        description: restaurant.description || '',
+        address: restaurant.address || '',
+        city: restaurant.city || '',
+        country: restaurant.country || '',
+        contactPhone: restaurant.contactPhone || '',
+        contactEmail: restaurant.contactEmail || '',
+        cuisine: Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : (restaurant.cuisine || '')
+      });
+
       setSeoForm({
         restaurantName: restaurant.name || '',
         cuisineType: Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : '',
@@ -304,6 +331,32 @@ function DashboardContent() {
       });
     } finally {
       setGeneratingDescription(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!firestore || !effectiveRestaurantId) return;
+    setSavingSettings(true);
+    try {
+      const restRef = doc(firestore, 'restaurants', effectiveRestaurantId);
+      const updateData = {
+        name: profileForm.name,
+        description: profileForm.description,
+        address: profileForm.address,
+        city: profileForm.city,
+        country: profileForm.country,
+        contactPhone: profileForm.contactPhone,
+        contactEmail: profileForm.contactEmail,
+        cuisine: profileForm.cuisine.split(',').map(c => c.trim()),
+        updatedAt: new Date().toISOString()
+      };
+
+      await updateDoc(restRef, updateData);
+      toast({ title: "Settings Saved", description: "Your restaurant profile has been updated successfully." });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Save Failed", description: error.message });
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -524,7 +577,7 @@ function DashboardContent() {
               <ShoppingCart className="mr-2 h-4 w-4" /> View Storefront
             </Link>
           </Button>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button className="bg-primary hover:bg-primary/90" onClick={() => handleTabChange('settings')}>
             <Settings className="mr-2 h-4 w-4" /> Store Settings
           </Button>
         </div>
@@ -543,6 +596,7 @@ function DashboardContent() {
           </TabsTrigger>
           <TabsTrigger value="seo" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">SEO Engine</TabsTrigger>
           <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">AI Insights</TabsTrigger>
+          <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 pt-4">
@@ -586,6 +640,97 @@ function DashboardContent() {
 
         <TabsContent value="hours" className="pt-4">
           <OperatingHoursEditor restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-6 pt-4">
+          <Card className="border-none shadow-lg max-w-4xl">
+            <CardHeader>
+              <CardTitle className="font-headline">Store Settings</CardTitle>
+              <CardDescription>Manage your restaurant's profile and contact information.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label>Restaurant Name</Label>
+                  <Input 
+                    value={profileForm.name} 
+                    onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cuisines (Comma separated)</Label>
+                  <Input 
+                    value={profileForm.cuisine} 
+                    onChange={(e) => setProfileForm({...profileForm, cuisine: e.target.value})} 
+                    placeholder="Italian, Pizza, Dessert"
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Public Description</Label>
+                  <Textarea 
+                    value={profileForm.description} 
+                    onChange={(e) => setProfileForm({...profileForm, description: e.target.value})} 
+                    className="min-h-[100px]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contact Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      className="pl-10"
+                      value={profileForm.contactEmail} 
+                      onChange={(e) => setProfileForm({...profileForm, contactEmail: e.target.value})} 
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Contact Phone</Label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      className="pl-10"
+                      value={profileForm.contactPhone} 
+                      onChange={(e) => setProfileForm({...profileForm, contactPhone: e.target.value})} 
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Street Address</Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      className="pl-10"
+                      value={profileForm.address} 
+                      onChange={(e) => setProfileForm({...profileForm, address: e.target.value})} 
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Input 
+                    value={profileForm.city} 
+                    onChange={(e) => setProfileForm({...profileForm, city: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Input 
+                    value={profileForm.country} 
+                    onChange={(e) => setProfileForm({...profileForm, country: e.target.value})} 
+                  />
+                </div>
+              </div>
+              <Button 
+                className="w-full md:w-auto px-12 bg-primary hover:bg-primary/90 text-white shadow-lg h-12 rounded-xl font-bold"
+                onClick={handleSaveProfile}
+                disabled={savingSettings}
+              >
+                {savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Store Settings
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="orders" className="space-y-6 pt-4">
