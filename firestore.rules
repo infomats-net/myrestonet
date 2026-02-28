@@ -7,67 +7,36 @@ service cloud.firestore {
      * This ruleset implements a multi-tenant restaurant management and ordering system. 
      * Security is enforced through a combination of global roles (Super Admin), 
      * shared administrative access (Restaurant Admins), and individual ownership (Customers).
-     *
-     * DATA STRUCTURE
-     * - /user_profiles/{userId}: Flat collection for all users (Admins and Customers).
-     * - /restaurants/{restaurantId}: Top-level collection for restaurant entities.
-     *   - /menus/{menuId}: Subcollection for restaurant menus.
-     *     - /menuItems/{menuItemId}: Sub-subcollection for specific food items.
-     *   - /orders/{orderId}: Subcollection for customer orders.
-     *     - /orderItems/{orderItemId}: Sub-subcollection for items within an order.
-     *
-     * KEY SECURITY DECISIONS
-     * 1. Authorization Independence: Critical authorization data (adminUserIds, customerId) is 
-     *    denormalized into subcollections to allow atomic rules without expensive parent lookups.
-     * 2. Role Verification: The 'super_admin' role is verified by performing a get() on the 
-     *    requesting user's profile document.
-     * 3. Prototyping Flexibility: Schema validation is limited to relational integrity and 
-     *    authorization fields (e.g., matching IDs or ownership links).
-     * 4. Public Access: Restaurant details, menus, and menu items are publicly readable to 
-     *    facilitate browsing, while writes are strictly guarded by admin permissions.
      */
 
     // --- Global Helper Functions ---
 
-    /** Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** Retrieves the user profile data for the currently authenticated user. */
     function getAuthProfile() {
       return get(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data;
     }
 
-    /** Checks if the current user has the 'super_admin' role. */
     function isSuperAdmin() {
       return isSignedIn() && getAuthProfile().role == 'super_admin';
     }
 
-    /** Checks if the user is in a provided list of admin IDs or is a super admin. */
     function hasAdminAccess(adminIds) {
       return isSignedIn() && (request.auth.uid in adminIds || isSuperAdmin());
     }
 
-    /** Checks if the user is an admin of a specific restaurant via lookup. */
     function isRestaurantAdminLookup(restaurantId) {
       return isSignedIn() && (request.auth.uid in get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.adminUserIds || isSuperAdmin());
     }
 
     // --- Collection Rules ---
 
-    /**
-     * @description Rules for user profiles. Users can manage their own profile; Super Admins have full access.
-     * @path /user_profiles/{userId}
-     * @allow (create) if User A creates profile with ID matching their UID.
-     * @deny (delete) if User A tries to delete User B's profile.
-     * @principle Validates self-creation and individual ownership of profile data.
-     */
     match /user_profiles/{userId} {
       allow get: if isOwner(userId) || isSuperAdmin();
       allow list: if isSuperAdmin();
@@ -76,13 +45,6 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() && resource != null;
     }
 
-    /**
-     * @description Top-level restaurant data. Publicly readable. Admins manage settings (payments, delivery charges).
-     * @path /restaurants/{restaurantId}
-     * @allow (update) if a Restaurant Admin updates 'enabledPaymentMethods' or 'deliveryChargeAmount'.
-     * @deny (update) if a Customer tries to change a restaurant's delivery charge.
-     * @principle Grants shared access via denormalized 'adminUserIds' map/array.
-     */
     match /restaurants/{restaurantId} {
       allow get, list: if true;
       allow create: if isSuperAdmin();
@@ -90,41 +52,32 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() && resource != null;
     }
 
-    /**
-     * @description Menus for a restaurant. Denormalizes admin access for authorization independence.
-     * @path /restaurants/{restaurantId}/menus/{menuId}
-     * @allow (list) if any user browses the menu list for a restaurant.
-     * @deny (create) if a user attempts to create a menu for a restaurant they don't admin.
-     * @principle Uses denormalized admin IDs to secure subcollections without parent lookups.
-     */
+    // Design settings subcollection
+    match /restaurants/{restaurantId}/design/settings {
+      allow get: if true;
+      allow write: if isRestaurantAdminLookup(restaurantId);
+    }
+
+    // Config subcollection (Operating hours, etc)
+    match /restaurants/{restaurantId}/config/{configId} {
+      allow get: if true;
+      allow write: if isRestaurantAdminLookup(restaurantId);
+    }
+
     match /restaurants/{restaurantId}/menus/{menuId} {
       allow get, list: if true;
       allow create: if hasAdminAccess(request.resource.data.adminUserIds) && request.resource.data.restaurantId == restaurantId;
-      allow update: if hasAdminAccess(resource.data.adminUserIds) && resource != null && request.resource.data.restaurantId == resource.data.restaurantId;
+      allow update: if hasAdminAccess(request.resource.data.adminUserIds) && resource != null && request.resource.data.restaurantId == resource.data.restaurantId;
       allow delete: if hasAdminAccess(resource.data.adminUserIds) && resource != null;
     }
 
-    /**
-     * @description Individual items within a menu.
-     * @path /restaurants/{restaurantId}/menus/{menuId}/menuItems/{menuItemId}
-     * @allow (get) if a guest views a specific menu item.
-     * @deny (update) if an unauthorized user tries to change item price or availability.
-     * @principle Ensures hierarchical consistency by checking path-based IDs.
-     */
     match /restaurants/{restaurantId}/menus/{menuId}/menuItems/{menuItemId} {
       allow get, list: if true;
       allow create: if hasAdminAccess(request.resource.data.adminUserIds) && request.resource.data.menuId == menuId;
-      allow update: if hasAdminAccess(resource.data.adminUserIds) && resource != null && request.resource.data.menuId == resource.data.menuId;
+      allow update: if hasAdminAccess(request.resource.data.adminUserIds) && resource != null && request.resource.data.menuId == resource.data.menuId;
       allow delete: if hasAdminAccess(resource.data.adminUserIds) && resource != null;
     }
 
-    /**
-     * @description Customer orders. Accessible by the customer who placed it or the restaurant's admins.
-     * @path /restaurants/{restaurantId}/orders/{orderId}
-     * @allow (create) if a signed-in customer places an order for themselves.
-     * @deny (list) if a customer tries to list all orders for a restaurant (not their own).
-     * @principle Validates relational link (customerId) to enforce private data ownership.
-     */
     match /restaurants/{restaurantId}/orders/{orderId} {
       allow get: if isSignedIn() && (request.auth.uid == resource.data.customerId || hasAdminAccess(resource.data.adminUserIds));
       allow list: if isRestaurantAdminLookup(restaurantId);
@@ -133,13 +86,6 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() && resource != null;
     }
 
-    /**
-     * @description Detailed items within a specific order.
-     * @path /restaurants/{restaurantId}/orders/{orderId}/orderItems/{orderItemId}
-     * @allow (get) if a customer views the details of their own order.
-     * @deny (create) if a user tries to add items to an order belonging to someone else.
-     * @principle Extends parent authorization via denormalized ownership fields.
-     */
     match /restaurants/{restaurantId}/orders/{orderId}/orderItems/{orderItemId} {
       allow get: if isSignedIn() && (request.auth.uid == resource.data.customerId || hasAdminAccess(resource.data.adminUserIds));
       allow list: if isSignedIn() && (isRestaurantAdminLookup(restaurantId) || (get(/databases/$(database)/documents/restaurants/$(restaurantId)/orders/$(orderId)).data.customerId == request.auth.uid));
@@ -148,11 +94,6 @@ service cloud.firestore {
       allow delete: if isSuperAdmin() && resource != null;
     }
 
-    /**
-     * @description Support for Collection Group queries on 'orders' to allow customers to see their history across all restaurants.
-     * @path /{path=**}/orders/{orderId}
-     * @principle Required for cross-restaurant order history queries using collectionGroup.
-     */
     match /{path=**}/orders/{orderId} {
        allow list: if isSignedIn() && (resource.data.customerId == request.auth.uid || hasAdminAccess(resource.data.adminUserIds));
     }
