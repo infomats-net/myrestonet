@@ -39,7 +39,7 @@ export default function SignupPage() {
         id: user.uid,
         email: email,
         role: 'super_admin',
-        restaurantId: null, // Super Admins have global access, not tied to a single tenant
+        restaurantId: null, // Super Admins have global access
         createdAt: new Date().toISOString(),
       });
 
@@ -69,8 +69,8 @@ export default function SignupPage() {
               <ShieldCheck className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-black text-primary tracking-tight">Platform Initialization</CardTitle>
-          <CardDescription>Create the root Super Admin account for MyRestoNet.</CardDescription>
+          <CardTitle className="text-3xl font-black text-primary tracking-tight text-center">Platform Initialization</CardTitle>
+          <CardDescription className="text-center">Create the root Super Admin account for MyRestoNet.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">

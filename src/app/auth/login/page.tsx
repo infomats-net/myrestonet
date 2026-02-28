@@ -52,11 +52,11 @@ export default function LoginPage() {
         } else if (role === 'restaurant_admin' || role === 'staff') {
           router.push('/restaurant-admin/dashboard');
         } else {
-          // Fallback for regular customers or unknown roles
+          // Fallback
           router.push(`/customer/${userData.restaurantId || 'demo'}`);
         }
       } else {
-        setError("Your user profile was not found in the platform database. Please contact a Super Admin.");
+        setError("Your user profile was not found. Please contact support.");
       }
     } catch (error: any) {
       toast({
@@ -79,8 +79,8 @@ export default function LoginPage() {
               <ShoppingBag className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-black text-primary tracking-tight">MyRestoNet</CardTitle>
-          <CardDescription>Enter your credentials to access the platform</CardDescription>
+          <CardTitle className="text-3xl font-black text-primary tracking-tight text-center">MyRestoNet</CardTitle>
+          <CardDescription className="text-center">Enter your credentials to access the platform</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">

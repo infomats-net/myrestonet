@@ -18,37 +18,23 @@ service cloud.firestore {
     }
 
     match /restaurants/{restaurantId} {
-      // Public read for storefront (menu display, checkouts)
+      // Public read for storefront
       allow get: if true;
       allow read, write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
 
-      match /menus/{menuId} {
-        allow read: if true;
-        allow write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
-
-        match /items/{itemId} {
-          allow read: if true;
-          allow write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
-        }
-      }
-
-      match /orders/{orderId} {
-        // Customers can create orders (anonymous auth)
-        allow create: if request.auth != null;
-        // Admins can manage all orders in their tenant
-        allow read, write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
-        // Users can read their own orders
-        allow read: if request.auth.uid == resource.data.customerId;
-      }
-
       match /{subcollection=**} {
+        // Public read for menu items and public config
+        allow get: if true;
+        allow list: if true;
         allow read, write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
       }
     }
 
     match /users/{userId} {
       allow read: if request.auth.uid == userId || isSuperAdmin();
-      allow write: if isSuperAdmin();
+      // Temporarily allow create for platform initialization
+      allow create: if request.auth.uid == userId;
+      allow update, delete: if isSuperAdmin();
     }
   }
 }
