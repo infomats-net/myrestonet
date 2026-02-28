@@ -20,25 +20,61 @@
     },
     {
       "id": "food-pizza",
-      "description": "Gourmet Margherita Pizza",
+      "description": "Gourmet Pizzas and Flatbreads",
       "imageUrl": "https://images.unsplash.com/photo-1763478156969-4d7c0ab35590?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxnb3VybWV0JTIwcGl6emF8ZW58MHx8fHwxNzcyMTE5NjgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "gourmet pizza"
     },
     {
       "id": "food-sushi",
-      "description": "Premium Sushi Platter",
+      "description": "Premium Sushi and Sashimi",
       "imageUrl": "https://images.unsplash.com/photo-1611143669185-af224c5e3252?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxzdXNoaSUyMHBsYXR0ZXJ8ZW58MHx8fHwxNzcyMTE5NjgxfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "sushi platter"
     },
     {
       "id": "food-burger",
-      "description": "Artisan Beef Burger",
+      "description": "Artisan Burgers and Sandwiches",
       "imageUrl": "https://images.unsplash.com/photo-1637771622300-6f968a373415?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxhcnRpc2FuJTIwYnVyZ2VyfGVufDB8fHx8MTc3MjExOTY4MXww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "artisan burger"
     },
     {
+      "id": "food-pasta",
+      "description": "Traditional Italian Pasta and Mains",
+      "imageUrl": "https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?q=80&w=1080",
+      "imageHint": "italian pasta"
+    },
+    {
+      "id": "food-salad",
+      "description": "Fresh Salads and Healthy Greens",
+      "imageUrl": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&w=1080",
+      "imageHint": "fresh salad"
+    },
+    {
+      "id": "food-steak",
+      "description": "Grilled Steaks and Roasted Meats",
+      "imageUrl": "https://images.unsplash.com/photo-1546964124-0cce460f38ef?q=80&w=1080",
+      "imageHint": "grilled steak"
+    },
+    {
+      "id": "food-dessert",
+      "description": "Sweet Treats and Gourmet Desserts",
+      "imageUrl": "https://images.unsplash.com/photo-1551024506-0bccd828d307?q=80&w=1080",
+      "imageHint": "chocolate dessert"
+    },
+    {
+      "id": "food-drink",
+      "description": "Beverages, Coffee and Refreshing Drinks",
+      "imageUrl": "https://images.unsplash.com/photo-1541167760496-162955ed8a9f?q=80&w=1080",
+      "imageHint": "coffee drink"
+    },
+    {
+      "id": "food-seafood",
+      "description": "Fresh Seafood and Fish Specialities",
+      "imageUrl": "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=1080",
+      "imageHint": "seafood dish"
+    },
+    {
       "id": "hero-restaurant",
-      "description": "Luxury Dining Atmosphere",
+      "description": "Luxury Fine Dining Atmosphere",
       "imageUrl": "https://images.unsplash.com/photo-1627900429100-3ed333915540?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxmaW5lJTIwZGluaW5nfGVufDB8fHx8MTc3MjEwNjU5OHww&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "fine dining"
     }

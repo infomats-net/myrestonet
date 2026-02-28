@@ -46,6 +46,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/flows/localized-seo-content';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
+import { selectPlaceholder } from '@/ai/flows/select-placeholder';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection, addDoc, query, where, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -336,9 +338,27 @@ function DashboardContent() {
       .finally(() => setIsCreating(false));
   };
 
-  const handleSaveMenuItem = () => {
+  const handleSaveMenuItem = async () => {
     if (!firestore || !effectiveRestaurantId || !targetMenuId || !itemForm.name) return;
     setIsCreating(true);
+
+    let finalImageUrl = itemForm.imageUrl;
+
+    // Auto-select a resembling image if none is provided
+    if (!finalImageUrl) {
+      try {
+        const { placeholderId } = await selectPlaceholder({ itemName: itemForm.name });
+        const match = PlaceHolderImages.find(img => img.id === placeholderId);
+        if (match) {
+          finalImageUrl = match.imageUrl;
+        }
+      } catch (e) {
+        console.warn("AI Placeholder selection failed, using generic fallback.", e);
+        // Standard fallback to restaurant hero
+        const fallback = PlaceHolderImages.find(img => img.id === 'hero-restaurant');
+        if (fallback) finalImageUrl = fallback.imageUrl;
+      }
+    }
 
     const newItemData = {
       menuId: targetMenuId,
@@ -348,7 +368,7 @@ function DashboardContent() {
       currency: restaurant?.baseCurrency || "USD",
       inventoryLevel: 100,
       category: itemForm.category,
-      imageUrl: itemForm.imageUrl || `https://picsum.photos/seed/${Date.now()}/600/400`,
+      imageUrl: finalImageUrl,
       isAvailable: itemForm.isAvailable,
       updatedAt: new Date().toISOString(),
     };
