@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, use as reactUse, useEffect } from 'react';
@@ -168,30 +169,32 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
       )}
 
       <div className="container max-w-6xl mx-auto px-4 relative z-10">
-        {/* Info Card Overlay */}
-        <Card className="border-none shadow-2xl -mt-20 mb-16 overflow-hidden bg-white/95 backdrop-blur-sm">
-          <CardContent className="p-8 md:p-12">
-            <div className="flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
-              <div className="space-y-4">
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                  <Badge variant="secondary" className="bg-primary/10 text-primary font-bold px-3 py-1">Open Now</Badge>
-                  <Badge variant="outline" className="font-bold border-primary/20 text-primary px-3 py-1">Michelin Recommended</Badge>
+        {/* Info Card Overlay (Welcome & Info Card) */}
+        {design?.sections?.welcomeCard?.visible !== false && (
+          <Card className="border-none shadow-2xl -mt-20 mb-16 overflow-hidden bg-white/95 backdrop-blur-sm">
+            <CardContent className="p-8 md:p-12">
+              <div className="flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+                    <Badge variant="secondary" className="bg-primary/10 text-primary font-bold px-3 py-1">Open Now</Badge>
+                    <Badge variant="outline" className="font-bold border-primary/20 text-primary px-3 py-1">Michelin Recommended</Badge>
+                  </div>
+                  <h2 className="text-4xl font-bold" style={{ color: designStyles['--text'] as string, fontFamily: designStyles['--heading-font'] as string }}>Welcome to {restaurant?.name}</h2>
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm">
+                    <span className="flex items-center font-bold" style={{ color: designStyles['--accent'] as string }}><Star className="h-5 w-5 fill-current mr-2" /> 4.9 (500+ Reviews)</span>
+                    <span className="flex items-center text-muted-foreground"><Clock className="h-5 w-5 mr-2" /> 15-25 min delivery</span>
+                    <span className="flex items-center text-muted-foreground"><MapPin className="h-5 w-5 mr-2" /> {restaurant?.address}</span>
+                  </div>
                 </div>
-                <h2 className="text-4xl font-bold" style={{ color: designStyles['--text'] as string, fontFamily: designStyles['--heading-font'] as string }}>Welcome to {restaurant?.name}</h2>
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm">
-                  <span className="flex items-center font-bold" style={{ color: designStyles['--accent'] as string }}><Star className="h-5 w-5 fill-current mr-2" /> 4.9 (500+ Reviews)</span>
-                  <span className="flex items-center text-muted-foreground"><Clock className="h-5 w-5 mr-2" /> 15-25 min delivery</span>
-                  <span className="flex items-center text-muted-foreground"><MapPin className="h-5 w-5 mr-2" /> {restaurant?.address}</span>
+                <div className="flex flex-col items-center md:items-end gap-3">
+                  <p className="text-xs uppercase text-muted-foreground font-black tracking-widest">Global Ranking</p>
+                  <div className="text-5xl font-black text-primary">#14</div>
+                  <p className="text-xs font-bold text-muted-foreground uppercase">Local Favorites</p>
                 </div>
               </div>
-              <div className="flex flex-col items-center md:items-end gap-3">
-                <p className="text-xs uppercase text-muted-foreground font-black tracking-widest">Global Ranking</p>
-                <div className="text-5xl font-black text-primary">#14</div>
-                <p className="text-xs font-bold text-muted-foreground uppercase">Local Favorites</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* About Section */}
         {design?.sections?.about?.visible !== false && (

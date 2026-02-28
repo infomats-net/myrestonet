@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -29,7 +30,8 @@ import {
   MessageSquare,
   Phone,
   MapPin,
-  Star
+  Star,
+  Info
 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -56,6 +58,7 @@ interface DesignSettings {
   };
   sections: {
     hero: { visible: boolean; height: string };
+    welcomeCard: { visible: boolean };
     about: { visible: boolean };
     menuList: { visible: boolean };
     gallery: { visible: boolean };
@@ -83,6 +86,7 @@ const DEFAULT_SETTINGS: DesignSettings = {
   },
   sections: {
     hero: { visible: true, height: '400px' },
+    welcomeCard: { visible: true },
     about: { visible: true },
     menuList: { visible: true },
     gallery: { visible: true },
@@ -358,6 +362,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 <div className="space-y-3">
                   {[
                     { id: 'hero', label: 'Hero Header', icon: Monitor, visibilityKey: 'hero' },
+                    { id: 'welcomeCard', label: 'Welcome & Info Card', icon: Info, visibilityKey: 'welcomeCard' },
                     { id: 'about', label: 'About Section', icon: User, visibilityKey: 'about' },
                     { id: 'menuList', label: 'Menu List', icon: UtensilsCrossed, visibilityKey: 'menuList' },
                     { id: 'gallery', label: 'Gallery', icon: ImageIcon, visibilityKey: 'gallery' },
@@ -483,6 +488,28 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                     </Button>
                   </div>
                 </section>
+              )}
+
+              {settings.sections.welcomeCard.visible && (
+                <div className="px-12 -mt-10 mb-16">
+                  <div className="bg-white rounded-[2rem] p-8 shadow-xl border flex justify-between items-center">
+                    <div>
+                      <div className="flex gap-2 mb-2">
+                        <Badge variant="secondary" className="bg-primary/10 text-primary">Open Now</Badge>
+                        <Badge variant="outline">Michelin Recommended</Badge>
+                      </div>
+                      <h3 className="text-2xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Welcome to Signature Dining</h3>
+                      <div className="flex gap-4 text-xs text-slate-400 mt-2">
+                        <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-primary text-primary" /> 4.9</span>
+                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> 123 Culinary Ave</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest">Ranking</p>
+                      <p className="text-4xl font-black text-primary">#14</p>
+                    </div>
+                  </div>
+                </div>
               )}
 
               {settings.sections.about.visible && (

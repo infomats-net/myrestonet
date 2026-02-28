@@ -274,6 +274,7 @@
           "type": "object",
           "properties": {
             "hero": { "type": "object", "properties": { "visible": { "type": "boolean" }, "height": { "type": "string" } } },
+            "welcomeCard": { "type": "object", "properties": { "visible": { "type": "boolean" } } },
             "about": { "type": "object", "properties": { "visible": { "type": "boolean" } } },
             "gallery": { "type": "object", "properties": { "visible": { "type": "boolean" } } },
             "reviews": { "type": "object", "properties": { "visible": { "type": "boolean" } } }
