@@ -29,11 +29,20 @@ import {
   Trash2,
   ChevronDown
 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/flows/localized-seo-content';
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
@@ -46,7 +55,7 @@ import { DesignSystemEditor } from '@/components/design-system-editor';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Sub-component to manage items for a specific menu
-function MenuItemManager({ restaurantId, menuId, currency }: { restaurantId: string, menuId: string, currency: string }) {
+function MenuItemManager({ restaurantId, menuId, currency, onAddItem }: { restaurantId: string, menuId: string, currency: string, onAddItem: (menuId: string) => void }) {
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -158,6 +167,24 @@ function DashboardContent() {
   const [loadingAi, setLoadingAi] = useState(false);
   const [loadingSeo, setLoadingSeo] = useState(false);
 
+  // Dialog States
+  const [isMenuDialogOpen, setIsMenuDialogOpen] = useState(false);
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+  const [targetMenuId, setTargetMenuId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Menu Form State
+  const [menuForm, setMenuForm] = useState({ name: '', description: '', isActive: true });
+  // Item Form State
+  const [itemForm, setItemForm] = useState({ 
+    name: '', 
+    description: '', 
+    price: '', 
+    category: 'Main Course', 
+    imageUrl: '', 
+    isAvailable: true 
+  });
+
   const [seoForm, setSeoForm] = useState({
     restaurantName: '',
     cuisineType: '',
@@ -220,14 +247,15 @@ function DashboardContent() {
   };
 
   const handleCreateMenu = () => {
-    if (!firestore || !effectiveRestaurantId) return;
+    if (!firestore || !effectiveRestaurantId || !menuForm.name) return;
+    setIsCreating(true);
 
     const menusColRef = collection(firestore, 'restaurants', effectiveRestaurantId, 'menus');
     const newMenuData = {
       restaurantId: effectiveRestaurantId,
-      name: "Main Dining Menu",
-      description: "Our signature selection of appetizers, entrees, and desserts.",
-      isActive: true,
+      name: menuForm.name,
+      description: menuForm.description,
+      isActive: menuForm.isActive,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -238,31 +266,34 @@ function DashboardContent() {
           title: "Menu Created",
           description: `${newMenuData.name} has been added to your catalog.`,
         });
+        setIsMenuDialogOpen(false);
+        setMenuForm({ name: '', description: '', isActive: true });
       })
       .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: menusColRef.path,
           operation: 'create',
           requestResourceData: newMenuData
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+        }));
+      })
+      .finally(() => setIsCreating(false));
   };
 
-  const handleCreateMenuItem = (menuId: string) => {
-    if (!firestore || !effectiveRestaurantId) return;
+  const handleCreateMenuItem = () => {
+    if (!firestore || !effectiveRestaurantId || !targetMenuId || !itemForm.name) return;
+    setIsCreating(true);
 
-    const itemsColRef = collection(firestore, 'restaurants', effectiveRestaurantId, 'menus', menuId, 'menuItems');
+    const itemsColRef = collection(firestore, 'restaurants', effectiveRestaurantId, 'menus', targetMenuId, 'menuItems');
     const newItemData = {
-      menuId: menuId,
-      name: "New Culinary Creation",
-      description: "A delicious house specialty made with premium local ingredients.",
-      price: 18.50,
+      menuId: targetMenuId,
+      name: itemForm.name,
+      description: itemForm.description,
+      price: parseFloat(itemForm.price) || 0,
       currency: restaurant?.baseCurrency || "USD",
       inventoryLevel: 100,
-      category: "Main Course",
-      imageUrl: "https://picsum.photos/seed/dish/600/400",
-      isAvailable: true,
+      category: itemForm.category,
+      imageUrl: itemForm.imageUrl || `https://picsum.photos/seed/${Date.now()}/600/400`,
+      isAvailable: itemForm.isAvailable,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -271,17 +302,19 @@ function DashboardContent() {
       .then(() => {
         toast({
           title: "Item Added",
-          description: "A placeholder item has been created. You can now customize it.",
+          description: `${newItemData.name} has been created.`,
         });
+        setIsItemDialogOpen(false);
+        setItemForm({ name: '', description: '', price: '', category: 'Main Course', imageUrl: '', isAvailable: true });
       })
       .catch(async (error) => {
-        const permissionError = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: itemsColRef.path,
           operation: 'create',
           requestResourceData: newItemData
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      });
+        }));
+      })
+      .finally(() => setIsCreating(false));
   };
 
   const handleDeleteMenu = (menuId: string) => {
@@ -328,7 +361,7 @@ function DashboardContent() {
         <div className="space-y-2">
           <h2 className="text-2xl font-bold text-primary">Access Restriction</h2>
           <p className="text-muted-foreground">
-            We couldn't connect your account to a specific restaurant profile. This usually happens if your subscription is pending or if you haven't been assigned a tenant ID.
+            Access Restrictions could not connect with your restaurant please contact your platform administrator.
           </p>
         </div>
         <div className="pt-4 space-y-2">
@@ -482,7 +515,7 @@ function DashboardContent() {
               </div>
               <Button 
                 className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm w-full md:w-auto"
-                onClick={handleCreateMenu}
+                onClick={() => setIsMenuDialogOpen(true)}
               >
                 <Plus className="mr-2 h-4 w-4" /> Create New Menu Section
               </Button>
@@ -522,7 +555,10 @@ function DashboardContent() {
                               variant="outline" 
                               size="sm" 
                               className="text-xs h-9 border-accent text-accent hover:bg-accent/5 gap-1.5"
-                              onClick={() => handleCreateMenuItem(menu.id)}
+                              onClick={() => {
+                                setTargetMenuId(menu.id);
+                                setIsItemDialogOpen(true);
+                              }}
                             >
                               <Plus className="h-3.5 w-3.5" /> Add Menu Item
                             </Button>
@@ -541,7 +577,11 @@ function DashboardContent() {
                         <MenuItemManager 
                           restaurantId={effectiveRestaurantId!} 
                           menuId={menu.id} 
-                          currency={currencySymbol} 
+                          currency={currencySymbol}
+                          onAddItem={(id) => {
+                            setTargetMenuId(id);
+                            setIsItemDialogOpen(true);
+                          }}
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -550,7 +590,7 @@ function DashboardContent() {
               ) : (
                 <div className="text-center py-20 border-2 border-dashed rounded-xl space-y-4">
                   <p className="text-muted-foreground">You haven't initialized any menus yet.</p>
-                  <Button variant="outline" onClick={handleCreateMenu} className="shadow-sm">
+                  <Button variant="outline" onClick={() => setIsMenuDialogOpen(true)} className="shadow-sm">
                     <Plus className="mr-2 h-4 w-4" /> Start Initial Menu
                   </Button>
                 </div>
@@ -558,6 +598,128 @@ function DashboardContent() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Create Menu Dialog */}
+        <Dialog open={isMenuDialogOpen} onOpenChange={setIsMenuDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Create Menu Section</DialogTitle>
+              <DialogDescription>
+                Add a new category to your menu, like "Starters" or "Main Courses".
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="menuName">Name</Label>
+                <Input 
+                  id="menuName" 
+                  value={menuForm.name} 
+                  onChange={(e) => setMenuForm({...menuForm, name: e.target.value})}
+                  placeholder="e.g. Dinner Menu"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="menuDesc">Description</Label>
+                <Textarea 
+                  id="menuDesc" 
+                  value={menuForm.description} 
+                  onChange={(e) => setMenuForm({...menuForm, description: e.target.value})}
+                  placeholder="A short summary of this section..."
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  id="menuActive" 
+                  checked={menuForm.isActive} 
+                  onCheckedChange={(v) => setMenuForm({...menuForm, isActive: v})}
+                />
+                <Label htmlFor="menuActive">Active and visible to customers</Label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsMenuDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleCreateMenu} disabled={isCreating || !menuForm.name}>
+                {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Section"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create Item Dialog */}
+        <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add Menu Item</DialogTitle>
+              <DialogDescription>
+                Fill in the details for your new culinary creation.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="itemName">Name</Label>
+                  <Input 
+                    id="itemName" 
+                    value={itemForm.name} 
+                    onChange={(e) => setItemForm({...itemForm, name: e.target.value})}
+                    placeholder="e.g. Truffle Pizza"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="itemPrice">Price ({restaurant?.baseCurrency})</Label>
+                  <Input 
+                    id="itemPrice" 
+                    type="number"
+                    value={itemForm.price} 
+                    onChange={(e) => setItemForm({...itemForm, price: e.target.value})}
+                    placeholder="15.00"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="itemCategory">Category</Label>
+                <Input 
+                  id="itemCategory" 
+                  value={itemForm.category} 
+                  onChange={(e) => setItemForm({...itemForm, category: e.target.value})}
+                  placeholder="Main Course"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="itemDesc">Description</Label>
+                <Textarea 
+                  id="itemDesc" 
+                  value={itemForm.description} 
+                  onChange={(e) => setItemForm({...itemForm, description: e.target.value})}
+                  placeholder="Ingredients and prep details..."
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="itemImage">Image URL (Optional)</Label>
+                <Input 
+                  id="itemImage" 
+                  value={itemForm.imageUrl} 
+                  onChange={(e) => setItemForm({...itemForm, imageUrl: e.target.value})}
+                  placeholder="https://images.unsplash.com/..."
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch 
+                  id="itemAvailable" 
+                  checked={itemForm.isAvailable} 
+                  onCheckedChange={(v) => setItemForm({...itemForm, isAvailable: v})}
+                />
+                <Label htmlFor="itemAvailable">Available for order</Label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsItemDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleCreateMenuItem} disabled={isCreating || !itemForm.name}>
+                {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Item"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <TabsContent value="seo" className="space-y-6 pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
