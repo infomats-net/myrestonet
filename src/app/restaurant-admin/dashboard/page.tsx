@@ -168,12 +168,12 @@ function DashboardContent() {
         router.push(`/restaurant-admin/dashboard?${params.toString()}`, { scroll: false });
       }} className="space-y-6 w-full">
         <TabsList className="bg-slate-100/50 border p-1 rounded-2xl h-14 w-full flex overflow-x-auto no-scrollbar">
-          <TabsTrigger value="overview" className="flex-1 rounded-xl h-full font-bold">Overview</TabsTrigger>
-          <TabsTrigger value="reservations" className="flex-1 rounded-xl h-full font-bold">Reservations</TabsTrigger>
-          <TabsTrigger value="tables" className="flex-1 rounded-xl h-full font-bold">Tables</TabsTrigger>
-          <TabsTrigger value="menu" className="flex-1 rounded-xl h-full font-bold">Menu</TabsTrigger>
-          <TabsTrigger value="design" className="flex-1 rounded-xl h-full font-bold">Design</TabsTrigger>
-          <TabsTrigger value="settings" className="flex-1 rounded-xl h-full font-bold">Settings</TabsTrigger>
+          <TabsTrigger value="overview" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Overview</TabsTrigger>
+          <TabsTrigger value="reservations" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Reservations</TabsTrigger>
+          <TabsTrigger value="tables" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Tables</TabsTrigger>
+          <TabsTrigger value="menu" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Menu</TabsTrigger>
+          <TabsTrigger value="design" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Design</TabsTrigger>
+          <TabsTrigger value="settings" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
