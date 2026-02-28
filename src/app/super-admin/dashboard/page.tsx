@@ -13,7 +13,7 @@ import {
   ArrowRight,
   ArrowUpRight,
   Activity,
-  Globe,
+  Globe, 
   ShieldCheck,
   DollarSign,
   ChevronRight
@@ -38,6 +38,7 @@ import {
   BarChart,
   Bar
 } from 'recharts';
+import { cn } from '@/lib/utils';
 
 const REVENUE_DATA = [
   { month: 'Jan', revenue: 45000, users: 1200 },
