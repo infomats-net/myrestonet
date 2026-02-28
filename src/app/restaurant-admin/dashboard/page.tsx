@@ -33,7 +33,8 @@ import {
   CreditCard,
   User,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  ShoppingBag
 } from 'lucide-react';
 import {
   Dialog,
@@ -62,6 +63,7 @@ import { DesignSystemEditor } from '@/components/design-system-editor';
 import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 function MenuItemManager({ 
   restaurantId, 
@@ -733,7 +735,7 @@ function DashboardContent() {
                 <div className="space-y-2"><Label>Cuisines (Comma separated)</Label><Input value={profileForm.cuisine} onChange={(e) => setProfileForm({...profileForm, cuisine: e.target.value})} placeholder="Italian, Pizza, Dessert" /></div>
                 <div className="space-y-2 md:col-span-2"><Label>Public Description</Label><Textarea value={profileForm.description} onChange={(e) => setProfileForm({...profileForm, description: e.target.value})} className="min-h-[100px]" /></div>
                 <div className="space-y-2"><Label>Contact Email</Label><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactEmail} onChange={(e) => setProfileForm({...profileForm, contactEmail: e.target.value})} /></div></div>
-                <div className="space-y-2"><Label>Contact Phone</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactPhone} onChange={(e) => setProfileForm({...contactPhone, contactPhone: e.target.value})} /></div></div>
+                <div className="space-y-2"><Label>Contact Phone</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactPhone} onChange={(e) => setProfileForm({...profileForm, contactPhone: e.target.value})} /></div></div>
                 <div className="space-y-2 md:col-span-2"><Label>Street Address</Label><div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.address} onChange={(e) => setProfileForm({...profileForm, address: e.target.value})} /></div></div>
                 <div className="space-y-2"><Label>City</Label><Input value={profileForm.city} onChange={(e) => setProfileForm({...profileForm, city: e.target.value})} /></div>
                 <div className="space-y-2"><Label>Country</Label><Input value={profileForm.country} onChange={(e) => setProfileForm({...profileForm, country: e.target.value})} /></div>
