@@ -3,13 +3,15 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * CORE PHILOSOPHY
-     * This ruleset implements a multi-tenant restaurant management and ordering system. 
-     * Security is enforced through a combination of global roles (Super Admin), 
-     * shared administrative access (Restaurant Admins), and individual ownership (Customers).
+     * DINEFLOW GLOBAL SECURITY RULES
+     * 
+     * Hierarchical Access:
+     * 1. Super Admins: Global read/write across all tenants.
+     * 2. Restaurant Admins: Full control over their specific restaurant instance.
+     * 3. Customers: Public browsing of menus/design, private access to their own orders.
      */
 
-    // --- Global Helper Functions ---
+    // --- Core Helper Functions ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -19,35 +21,25 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Faster check using marker collection
+    // Optimized Super Admin check using marker collection
     function isSuperAdmin() {
       return isSignedIn() && exists(/databases/$(database)/documents/superAdmins/$(request.auth.uid));
     }
 
-    // Comprehensive check for restaurant admin rights
+    // Direct check for Restaurant Admin rights
+    // Verifies if the current user UID is present in the restaurant's adminUserIds array.
     function isRestaurantAdmin(restaurantId) {
       if (!isSignedIn()) return false;
       if (isSuperAdmin()) return true;
       
-      // Method 1: Check user profile document
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      let userProfile = exists(userPath) ? get(userPath).data : null;
-      
-      if (userProfile != null) {
-        let role = userProfile.get('role', 'none').lower();
-        let isRoleMatch = role == 'restaurant_admin' || role == 'restaurantadmin';
-        if (isRoleMatch && userProfile.get('restaurantId', '') == restaurantId) return true;
-      }
-
-      // Method 2: Fallback check on the restaurant document itself
+      // The restaurant document is the source of truth for its authorized admins.
       let restPath = /databases/$(database)/documents/restaurants/$(restaurantId);
-      let restaurant = exists(restPath) ? get(restPath).data : null;
-      
-      return restaurant != null && request.auth.uid in restaurant.get('adminUserIds', []);
+      return exists(restPath) && (request.auth.uid in get(restPath).data.get('adminUserIds', []));
     }
 
     // --- Collection Rules ---
 
+    // User Profiles
     match /users/{userId} {
       allow get: if isOwner(userId) || isSuperAdmin();
       allow list: if isSuperAdmin();
@@ -56,12 +48,16 @@ service cloud.firestore {
       allow delete: if isSuperAdmin();
     }
 
+    // Restaurant Root and Subcollections
     match /restaurants/{restaurantId} {
+      // Browsing basic info is public
       allow get, list: if true;
+      
+      // Management requires Super Admin or specific Restaurant Admin rights
       allow create, delete: if isSuperAdmin();
       allow update: if isRestaurantAdmin(restaurantId);
 
-      // Design and Config are public for storefront, admin-only for writes
+      // Design & Config: Public read for storefront, Admin write for dash
       match /design/{docId} {
         allow read: if true;
         allow write: if isRestaurantAdmin(restaurantId);
@@ -71,7 +67,7 @@ service cloud.firestore {
         allow write: if isRestaurantAdmin(restaurantId);
       }
 
-      // Menus and items are public for browsing
+      // Menus & Items: Public read for browsing, Admin write for management
       match /menus/{menuId} {
         allow get, list: if true;
         allow create, update, delete: if isRestaurantAdmin(restaurantId);
@@ -82,21 +78,29 @@ service cloud.firestore {
         }
       }
 
-      // Orders: High security required
+      // Orders: Sensitive Transactional Data
       match /orders/{orderId} {
-        // Anyone signed in (including anonymous) can place an order
+        // Anyone signed in (including anonymous guest checkout) can place an order
         allow create: if isSignedIn();
-        // Only the customer who placed it OR the restaurant admin can view it
-        allow get: if isSignedIn() && (isOwner(resource.data.customerId) || isRestaurantAdmin(restaurantId));
-        // Only the restaurant admin can list all orders for processing
+        
+        // Single order view: Restricted to the customer who placed it OR the restaurant owner
+        allow get: if isSignedIn() && (
+          isOwner(resource.data.customerId) || 
+          isRestaurantAdmin(restaurantId)
+        );
+        
+        // Listing orders: Exclusive to the merchant dashboard and super admins
         allow list: if isRestaurantAdmin(restaurantId);
-        // Only the restaurant admin can update status (Accepted, Preparing, etc)
+        
+        // Status updates: Exclusive to the merchant dashboard
         allow update: if isRestaurantAdmin(restaurantId);
-        // Orders are generally preserved for auditing
+        
+        // Orders are immutable for audit logs (no deletion)
         allow delete: if false;
       }
     }
 
+    // Super Admin Privileged Access List
     match /superAdmins/{userId} {
       allow read, write: if isSuperAdmin();
     }
