@@ -15,12 +15,36 @@ service cloud.firestore {
       return request.auth != null && getUser().role == "marketing_partner";
     }
 
+    function isSupport() {
+      return request.auth != null && (getUser().role == "support" || getUser().role == "helper");
+    }
+
     function belongsToRestaurant(restaurantId) {
       return request.auth != null && getUser().restaurantId == restaurantId;
     }
 
     function belongsToPartner(partnerId) {
       return isPartner() && getUser().partnerId == partnerId;
+    }
+
+    function hasPermission(restaurantId, action) {
+      if (isSuperAdmin()) return true;
+      let userData = getUser();
+      if (request.auth != null && userData.restaurantId == restaurantId) return true;
+      
+      // Check partner scope if restaurant exists
+      let restaurantData = get(/databases/$(database)/documents/restaurants/$(restaurantId)).data;
+      if (isPartner() && restaurantData.partnerId == userData.partnerId) return true;
+      
+      if (isSupport()) {
+        let assigned = userData.assignedRestaurants;
+        return assigned.exists(r, 
+          r.restaurantId == restaurantId && 
+          r.permissions.hasAny([action]) && 
+          (r.expiryDate == null || timestamp(r.expiryDate) > request.time)
+        );
+      }
+      return false;
     }
 
     match /partners/{partnerId} {
@@ -34,29 +58,25 @@ service cloud.firestore {
     }
 
     match /restaurants/{restaurantId} {
-      // Public read for storefront
+      // Public read for storefront (specific items might need more rules)
       allow get: if true;
-      allow read: if isSuperAdmin() 
-          || belongsToRestaurant(restaurantId) 
-          || (resource.data.partnerId != null && belongsToPartner(resource.data.partnerId));
-      
-      allow write: if isSuperAdmin()
-          || (request.auth != null && getUser().role == "marketing_partner" && request.resource.data.partnerId == getUser().partnerId);
+      allow read: if hasPermission(restaurantId, "read");
+      allow update: if hasPermission(restaurantId, "update_settings");
+      allow write: if isSuperAdmin() || (isPartner() && request.resource.data.partnerId == getUser().partnerId);
 
       match /{subcollection=**} {
         allow get: if true;
-        allow list: if true;
-        allow read, write: if isSuperAdmin() 
-            || belongsToRestaurant(restaurantId)
-            || (get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.partnerId != null && belongsToPartner(get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.partnerId));
+        allow list: if hasPermission(restaurantId, "read");
+        allow read, write: if hasPermission(restaurantId, "update_settings");
       }
     }
 
     match /users/{userId} {
-      // Allow users to check for email uniqueness (read-only for specific fields)
       allow list: if request.auth != null;
       allow read: if request.auth.uid == userId || isSuperAdmin();
-      allow write: if isSuperAdmin();
+      allow create: if false; // Deactivated after root setup
+      allow update: if isSuperAdmin() || (request.auth.uid == userId && request.resource.data.role == resource.data.role);
+      allow delete: if isSuperAdmin();
     }
   }
 }

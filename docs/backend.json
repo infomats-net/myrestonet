@@ -8,9 +8,20 @@
       "properties": {
         "id": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["super_admin", "marketing_partner", "restaurant_admin", "staff"] },
+        "role": { "type": "string", "enum": ["super_admin", "marketing_partner", "restaurant_admin", "staff", "support", "helper"] },
         "restaurantId": { "type": "string", "description": "The tenant ID this user belongs to (null for admins/partners)." },
         "partnerId": { "type": "string", "description": "The partner ID this user belongs to (null for super_admin)." },
+        "assignedRestaurants": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "restaurantId": { "type": "string" },
+              "permissions": { "type": "array", "items": { "type": "string", "enum": ["read", "update_settings", "guide"] } },
+              "expiryDate": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "role"]

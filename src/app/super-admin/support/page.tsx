@@ -1,0 +1,202 @@
+
+"use client";
+
+import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Users, 
+  Plus, 
+  Search, 
+  LifeBuoy, 
+  ShieldCheck, 
+  Loader2,
+  Trash2,
+  Calendar,
+  Settings2
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, doc, setDoc, serverTimestamp, query, where, updateDoc, deleteDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
+import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { Checkbox } from '@/components/ui/checkbox';
+
+export default function SupportManagementPage() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [search, setSearch] = useState('');
+  const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [form, setForm] = useState({
+    email: '',
+    password: '',
+    role: 'support' as 'support' | 'helper',
+  });
+
+  const supportQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'users'), where('role', 'in', ['support', 'helper']));
+  }, [firestore]);
+  const { data: supportUsers, isLoading } = useCollection(supportQuery);
+
+  const handleCreateSupport = async () => {
+    if (!firestore || !form.email || !form.password) return;
+    setLoading(true);
+    let secondaryApp;
+
+    try {
+      const secondaryAppName = `support-gen-${Date.now()}`;
+      secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
+      const secondaryAuth = getAuth(secondaryApp);
+      
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, form.email, form.password);
+      const uid = userCredential.user.uid;
+
+      await setDoc(doc(firestore, 'users', uid), {
+        id: uid,
+        email: form.email,
+        role: form.role,
+        assignedRestaurants: [],
+        createdAt: serverTimestamp()
+      });
+
+      await signOut(secondaryAuth);
+      await deleteApp(secondaryApp);
+
+      toast({ title: "Staff Account Created", description: "The support user can now log in." });
+      setIsNewDialogOpen(false);
+      setForm({ email: '', password: '', role: 'support' });
+    } catch (e: any) {
+      if (secondaryApp) await deleteApp(secondaryApp);
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = supportUsers?.filter(u => u.email.toLowerCase().includes(search.toLowerCase())) || [];
+
+  return (
+    <div className="p-8 space-y-8 bg-slate-50/50 min-h-screen w-full">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+            <LifeBuoy className="h-8 w-8 text-primary" /> Support & Helper Staff
+          </h1>
+          <p className="text-muted-foreground uppercase font-bold text-[10px] tracking-widest mt-1">Manage global internal support accounts.</p>
+        </div>
+        
+        <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="rounded-2xl h-12 px-6 shadow-xl"><Plus className="mr-2" /> Add Staff Account</Button>
+          </DialogTrigger>
+          <DialogContent className="rounded-[2.5rem] p-10">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black">New Support User</DialogTitle>
+              <DialogDescription>Create a managed internal account for platform assistance.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-6">
+              <div className="space-y-2">
+                <Label>Email Address</Label>
+                <Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="support@myrestonet.com" />
+              </div>
+              <div className="space-y-2">
+                <Label>Initial Password</Label>
+                <Input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Role Level</Label>
+                <div className="flex gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="role-support" checked={form.role === 'support'} onCheckedChange={() => setForm({...form, role: 'support'})} />
+                    <Label htmlFor="role-support">Support (Write Access)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="role-helper" checked={form.role === 'helper'} onCheckedChange={() => setForm({...form, role: 'helper'})} />
+                    <Label htmlFor="role-helper">Helper (Read Only)</Label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleCreateSupport} disabled={loading}>
+                {loading ? <Loader2 className="animate-spin" /> : "Initialize Support Profile"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden">
+        <div className="p-8 border-b flex flex-col md:flex-row justify-between items-center gap-4 bg-white">
+          <div className="relative w-full md:w-96">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input placeholder="Search staff by email..." className="pl-12 h-12 bg-slate-50 border-none rounded-xl" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead className="bg-slate-50/50 border-b">
+              <tr>
+                <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Account</th>
+                <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Role</th>
+                <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Assignments</th>
+                <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filtered.map(u => (
+                <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold">
+                        {u.email[0].toUpperCase()}
+                      </div>
+                      <span className="font-bold text-slate-900">{u.email}</span>
+                    </div>
+                  </td>
+                  <td className="p-6">
+                    <Badge variant={u.role === 'support' ? 'default' : 'secondary'} className="capitalize">
+                      {u.role}
+                    </Badge>
+                  </td>
+                  <td className="p-6 text-sm font-medium text-slate-600">
+                    {u.assignedRestaurants?.length || 0} active assignments
+                  </td>
+                  <td className="p-6">
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="icon" title="Manage Assignments">
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-destructive">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {isLoading && (
+                <tr><td colSpan={4} className="p-20 text-center"><Loader2 className="animate-spin mx-auto h-10 w-10 text-primary" /></td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}

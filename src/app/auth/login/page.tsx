@@ -35,7 +35,6 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fetch user role from the strict global users collection
       const userDoc = await getDoc(doc(firestore, 'users', user.uid));
       
       if (userDoc.exists()) {
@@ -51,10 +50,11 @@ export default function LoginPage() {
           router.push('/super-admin/dashboard');
         } else if (role === 'marketing_partner') {
           router.push('/partner-admin/dashboard');
+        } else if (role === 'support' || role === 'helper') {
+          router.push('/support/dashboard');
         } else if (role === 'restaurant_admin' || role === 'staff') {
           router.push('/restaurant-admin/dashboard');
         } else {
-          // Fallback
           router.push(`/customer/${userData.restaurantId || 'demo'}`);
         }
       } else {
