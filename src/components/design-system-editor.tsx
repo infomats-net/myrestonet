@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -276,37 +275,37 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
             </div>
 
             <ScrollArea className="flex-1">
-              <div className="px-8 py-6">
-                <TabsContent value="theme" className="space-y-10 mt-0 pb-10">
+              <div className="px-8 py-4">
+                <TabsContent value="theme" className="space-y-6 mt-0 pb-6">
                   {/* AI Section */}
-                  <div className="p-6 rounded-3xl bg-white border border-primary/10 shadow-sm relative overflow-hidden group">
-                    <div className="flex items-center gap-2 mb-4">
+                  <div className="p-5 rounded-2xl bg-white border border-primary/10 shadow-sm relative overflow-hidden group">
+                    <div className="flex items-center gap-2 mb-3">
                       <Sparkles className="h-4 w-4 text-primary" />
                       <h3 className="text-[11px] font-bold text-primary tracking-wider uppercase">AI Theme Designer</h3>
                     </div>
-                    <div className="bg-slate-50 rounded-2xl border border-slate-100 p-1 mb-4">
+                    <div className="bg-slate-50 rounded-xl border border-slate-100 p-1 mb-3">
                       <Textarea 
-                        placeholder="e.g. A rustic Italian trattoria with warm earth tones and elegant typography..." 
-                        className="min-h-[100px] border-none focus-visible:ring-0 shadow-none text-sm placeholder:text-slate-400 p-4 bg-transparent resize-none"
+                        placeholder="e.g. A rustic Italian trattoria with warm earth tones..." 
+                        className="min-h-[80px] border-none focus-visible:ring-0 shadow-none text-sm placeholder:text-slate-400 p-3 bg-transparent resize-none"
                         value={aiPrompt}
                         onChange={(e) => setAiPrompt(e.target.value)}
                       />
                     </div>
                     <Button 
                       variant="outline" 
-                      className="w-full rounded-full h-12 border-primary/10 text-slate-700 bg-primary/5 hover:bg-primary/10 font-bold gap-2"
+                      className="w-full rounded-full h-10 border-primary/10 text-slate-700 bg-primary/5 hover:bg-primary/10 font-bold text-xs gap-2"
                       onClick={handleAiGenerate}
                       disabled={generatingAi}
                     >
-                      {generatingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                      {generatingAi ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
                       Generate Palette
                     </Button>
                   </div>
 
                   {/* Core Color Palette */}
                   <div>
-                    <h4 className="text-[11px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-8">Brand Colors</h4>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-8">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4">Brand Colors</h4>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                       {[
                         { label: 'Primary', key: 'primary' },
                         { label: 'Secondary', key: 'secondary' },
@@ -314,10 +313,10 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                         { label: 'Background', key: 'background' },
                         { label: 'Text', key: 'text' }
                       ].map((item) => (
-                        <div key={item.key} className="space-y-3">
-                          <Label className="text-xs font-medium text-slate-500">{item.label}</Label>
+                        <div key={item.key} className="space-y-1.5">
+                          <Label className="text-[10px] font-medium text-slate-500 uppercase">{item.label}</Label>
                           <div className="flex gap-2">
-                            <div className="relative h-11 w-11 shrink-0">
+                            <div className="relative h-9 w-9 shrink-0">
                               <Input 
                                 type="color" 
                                 value={(settings.theme as any)[item.key]} 
@@ -332,7 +331,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                             <Input 
                               value={(settings.theme as any)[item.key].toUpperCase()} 
                               onChange={(e) => setSettings({...settings, theme: {...settings.theme, [item.key]: e.target.value}})} 
-                              className="h-11 rounded-xl bg-slate-50 border-slate-100 font-mono text-xs text-slate-600 focus-visible:ring-primary" 
+                              className="h-9 rounded-lg bg-slate-50 border-slate-100 font-mono text-[10px] text-slate-600 focus-visible:ring-primary px-2" 
                             />
                           </div>
                         </div>
@@ -342,16 +341,16 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
                   {/* Interface Colors */}
                   <div>
-                    <h4 className="text-[11px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-8 border-t pt-8">Interface Layout</h4>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-8">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4 border-t pt-4">Interface Layout</h4>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                       {[
                         { label: 'Header BG', key: 'headerColor' },
                         { label: 'Footer BG', key: 'footerColor' }
                       ].map((item) => (
-                        <div key={item.key} className="space-y-3">
-                          <Label className="text-xs font-medium text-slate-500">{item.label}</Label>
+                        <div key={item.key} className="space-y-1.5">
+                          <Label className="text-[10px] font-medium text-slate-500 uppercase">{item.label}</Label>
                           <div className="flex gap-2">
-                            <div className="relative h-11 w-11 shrink-0">
+                            <div className="relative h-9 w-9 shrink-0">
                               <Input 
                                 type="color" 
                                 value={(settings.theme as any)[item.key]} 
@@ -366,7 +365,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                             <Input 
                               value={(settings.theme as any)[item.key].toUpperCase()} 
                               onChange={(e) => setSettings({...settings, theme: {...settings.theme, [item.key]: e.target.value}})} 
-                              className="h-11 rounded-xl bg-slate-50 border-slate-100 font-mono text-xs text-slate-600 focus-visible:ring-primary" 
+                              className="h-9 rounded-lg bg-slate-50 border-slate-100 font-mono text-[10px] text-slate-600 focus-visible:ring-primary px-2" 
                             />
                           </div>
                         </div>
@@ -376,13 +375,13 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
                   {/* Template Presets */}
                   <div>
-                    <h4 className="text-[11px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-6 border-t pt-8">Template Presets</h4>
-                    <div className="grid grid-cols-2 gap-3">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4 border-t pt-4">Template Presets</h4>
+                    <div className="grid grid-cols-2 gap-2">
                       {THEME_PRESETS.map((p) => (
                         <Button 
                           key={p.name} 
                           variant="outline" 
-                          className="h-14 rounded-2xl bg-slate-50/30 border-slate-100 hover:bg-slate-50 hover:border-primary/20 text-slate-600 font-medium text-sm transition-all"
+                          className="h-10 rounded-xl bg-slate-50/30 border-slate-100 hover:bg-slate-50 hover:border-primary/20 text-slate-600 font-medium text-xs transition-all"
                           onClick={() => applyPreset(p)}
                         >
                           {p.name}
@@ -392,9 +391,9 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="layout" className="space-y-6 mt-0">
-                  <h4 className="text-[11px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-6">Layout & Sections</h4>
-                  <div className="space-y-3">
+                <TabsContent value="layout" className="space-y-4 mt-0">
+                  <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4">Layout & Sections</h4>
+                  <div className="space-y-2">
                     {[
                       { id: 'hero', label: 'Hero Header', icon: Monitor, visibilityKey: 'hero' },
                       { id: 'welcomeCard', label: 'Welcome & Info Card', icon: Info, visibilityKey: 'welcomeCard' },
@@ -405,12 +404,13 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       { id: 'contact', label: 'Contact', icon: Phone, visibilityKey: 'contact' },
                       { id: 'map', label: 'Map', icon: MapPin, visibilityKey: 'map' },
                     ].map((section) => (
-                      <div key={section.id} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                      <div key={section.id} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border border-slate-100">
                         <div className="flex items-center gap-3">
-                          <div className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100"><section.icon className="h-4 w-4 text-slate-400" /></div>
-                          <span className="text-sm font-semibold text-slate-700">{section.label}</span>
+                          <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-100"><section.icon className="h-3.5 w-3.5 text-slate-400" /></div>
+                          <span className="text-xs font-semibold text-slate-700">{section.label}</span>
                         </div>
                         <Switch 
+                          className="scale-75"
                           checked={(settings.sections as any)[section.visibilityKey].visible} 
                           onCheckedChange={(v) => setSettings({
                             ...settings, 
@@ -428,13 +428,13 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="fonts" className="space-y-8 mt-0">
-                  <h4 className="text-[11px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-6">Typography</h4>
-                  <div className="space-y-8">
-                    <div className="space-y-3">
-                      <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Heading Font</Label>
+                <TabsContent value="fonts" className="space-y-6 mt-0">
+                  <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4">Typography</h4>
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Heading Font</Label>
                       <Select value={settings.typography.headingFont} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, headingFont: v}})}>
-                        <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-200 focus:ring-primary"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-10 rounded-xl bg-slate-50/50 border-slate-200 focus:ring-primary text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {FONT_OPTIONS.map(font => (
                             <SelectItem key={font.value} value={font.value}>{font.name}</SelectItem>
@@ -442,10 +442,10 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-3">
-                      <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Body Font</Label>
+                    <div className="space-y-2">
+                      <Label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Body Font</Label>
                       <Select value={settings.typography.fontFamily} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, fontFamily: v}})}>
-                        <SelectTrigger className="h-12 rounded-2xl bg-slate-50/50 border-slate-200 focus:ring-primary"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-10 rounded-xl bg-slate-50/50 border-slate-200 focus:ring-primary text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           {FONT_OPTIONS.map(font => (
                             <SelectItem key={font.value} value={font.value}>{font.name}</SelectItem>
@@ -453,10 +453,10 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-6 pt-4 border-t">
+                    <div className="space-y-4 pt-4 border-t">
                       <div className="flex justify-between items-center">
-                        <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Base Font Size</Label>
-                        <Badge variant="secondary" className="font-mono">{settings.typography.baseSize}</Badge>
+                        <Label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Base Font Size</Label>
+                        <Badge variant="secondary" className="font-mono text-[10px] h-5 px-1.5">{settings.typography.baseSize}</Badge>
                       </div>
                       <Slider 
                         defaultValue={[parseInt(settings.typography.baseSize)]} 
@@ -465,18 +465,18 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                         step={1}
                         onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, baseSize: `${v[0]}px`}})}
                       />
-                      <p className="text-[10px] text-slate-400 text-center">Adjusts the overall scale of your storefront's text content.</p>
+                      <p className="text-[9px] text-slate-400 text-center">Adjusts the overall scale of your storefront's text content.</p>
                     </div>
                   </div>
                 </TabsContent>
 
-                <TabsContent value="code" className="space-y-6 mt-0">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-[11px] font-bold text-slate-400 tracking-[0.2em] uppercase">Custom CSS</h4>
-                    <Badge className="rounded-full bg-primary/5 text-primary border-primary/10 font-bold px-3 py-1">ADVANCED</Badge>
+                <TabsContent value="code" className="space-y-4 mt-0">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase">Custom CSS</h4>
+                    <Badge className="rounded-full bg-primary/5 text-primary border-primary/10 font-bold text-[9px] px-2 py-0.5">ADVANCED</Badge>
                   </div>
                   <Textarea 
-                    className="min-h-[400px] font-mono text-xs bg-[#0F172A] text-slate-300 border-none rounded-3xl p-6 focus-visible:ring-1 focus-visible:ring-primary/50 resize-none shadow-xl"
+                    className="min-h-[300px] font-mono text-[10px] bg-[#0F172A] text-slate-300 border-none rounded-2xl p-4 focus-visible:ring-1 focus-visible:ring-primary/50 resize-none shadow-xl"
                     spellCheck={false}
                     value={settings.customCss}
                     onChange={(e) => setSettings({...settings, customCss: e.target.value})}
