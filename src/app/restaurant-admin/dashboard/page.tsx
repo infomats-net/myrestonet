@@ -35,7 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/flows/localized-seo-content';
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, addDoc } from 'firebase/firestore';
+import { doc, collection, addDoc, query, where } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
@@ -57,7 +57,6 @@ function DashboardContent() {
   
   const { data: userProfile, isLoading: loadingProfile } = useDoc(userProfileRef);
   
-  // Determine if we have a restaurant to load based on the profile or impersonation
   const effectiveRestaurantId = impersonateId || (userProfile?.role === 'RestaurantAdmin' ? userProfile.restaurantId : null);
 
   const restaurantRef = useMemoFirebase(() => {
@@ -178,12 +177,41 @@ function DashboardContent() {
       });
   };
 
-  /**
-   * REFINED LOADING LOGIC:
-   * 1. If Firebase Auth is still determining the user state, we are loading.
-   * 2. If we have an authenticated user but their profile is still loading, we are loading.
-   * 3. If we have a profile but we're still waiting to fetch the restaurant data, we are loading.
-   */
+  const handleCreateMenuItem = (menuId: string) => {
+    if (!firestore || !effectiveRestaurantId) return;
+
+    const itemsColRef = collection(firestore, 'restaurants', effectiveRestaurantId, 'menus', menuId, 'menuItems');
+    const newItemData = {
+      menuId: menuId,
+      name: "Signature Dish",
+      description: "A delicious house specialty made with local ingredients.",
+      price: 18.50,
+      currency: restaurant?.baseCurrency || "USD",
+      inventoryLevel: 100,
+      category: "Main Course",
+      imageUrl: "https://picsum.photos/seed/dish/600/400",
+      isAvailable: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    addDoc(itemsColRef, newItemData)
+      .then(() => {
+        toast({
+          title: "Item Added",
+          description: `${newItemData.name} has been added to the menu.`,
+        });
+      })
+      .catch(async (error) => {
+        const permissionError = new FirestorePermissionError({
+          path: itemsColRef.path,
+          operation: 'create',
+          requestResourceData: newItemData
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+  };
+
   const isTrulyLoading = authLoading || 
                          (!!authUser && loadingProfile) || 
                          (!!effectiveRestaurantId && loadingRes && !restaurant);
@@ -202,7 +230,6 @@ function DashboardContent() {
     );
   }
 
-  // Final check: if we are NOT loading anymore, and we still don't have a restaurant, THEN show the restriction error.
   if (!restaurant && !loadingRes && !loadingProfile && !authLoading) {
     return (
       <div className="p-20 text-center max-w-md mx-auto space-y-6">
@@ -213,9 +240,6 @@ function DashboardContent() {
           <h2 className="text-2xl font-bold text-primary">Access Restriction</h2>
           <p className="text-muted-foreground">
             We couldn't connect your account to a specific restaurant profile. This usually happens if your subscription is pending or if you haven't been assigned a tenant ID.
-          </p>
-          <p className="text-xs text-muted-foreground/60 italic">
-            Please contact your platform administrator or try logging in again.
           </p>
         </div>
         <div className="pt-4 space-y-2">
@@ -309,55 +333,6 @@ function DashboardContent() {
               </CardContent>
             </Card>
           </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="border-none shadow-lg">
-              <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-accent" /> AI Insights Preview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {!aiInsights ? (
-                  <div className="text-center py-8 space-y-4">
-                    <p className="text-muted-foreground">Generate deep-dive insights from your recent sales data.</p>
-                    <Button onClick={generateInsights} disabled={loadingAi} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-                      {loadingAi ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Run AI Analysis"}
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="p-4 bg-accent-soft rounded-lg border border-accent/10">
-                      <p className="text-sm italic">"{aiInsights.overallPerformanceSummary}"</p>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-sm mb-2">Key Recommendation:</h4>
-                      <p className="text-sm text-muted-foreground">{aiInsights.actionableRecommendations[0]}</p>
-                    </div>
-                    <Button variant="link" className="p-0 h-auto text-primary" onClick={() => setActiveTab('analytics')}>
-                      View Full Analysis <ArrowUpRight className="ml-1 h-3 w-3" />
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-lg">
-              <CardHeader>
-                <CardTitle className="font-headline text-xl flex items-center gap-2">
-                  <Palette className="h-5 w-5 text-primary" /> Storefront Design
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">Customize your website's theme, colors, and layout in our drag-and-drop editor.</p>
-                  <Button variant="outline" className="w-full" onClick={() => setActiveTab('design')}>
-                    Open Design Management
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
         </TabsContent>
 
         <TabsContent value="design" className="pt-4">
@@ -366,11 +341,9 @@ function DashboardContent() {
 
         <TabsContent value="orders" className="space-y-6 pt-4">
           <Card className="border-none shadow-lg overflow-hidden">
-            <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div>
-                <CardTitle className="font-headline">Order Management</CardTitle>
-                <CardDescription>Track and update active customer orders.</CardDescription>
-              </div>
+            <CardHeader>
+              <CardTitle className="font-headline">Order Management</CardTitle>
+              <CardDescription>Track and update active customer orders.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {loadingOrders ? (
@@ -384,7 +357,6 @@ function DashboardContent() {
                       <TableHead>Order ID</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Type</TableHead>
                       <TableHead>Total</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
@@ -393,31 +365,16 @@ function DashboardContent() {
                     {orders.map((order) => (
                       <TableRow key={order.id}>
                         <TableCell className="font-mono text-xs">{order.id.slice(-6).toUpperCase()}</TableCell>
-                        <TableCell className="text-xs">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(order.orderedAt).toLocaleDateString()}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="text-[10px] uppercase">
-                            {order.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs">{order.orderType}</TableCell>
+                        <TableCell className="text-xs">{new Date(order.orderedAt).toLocaleDateString()}</TableCell>
+                        <TableCell><Badge variant="secondary">{order.status}</Badge></TableCell>
                         <TableCell className="font-bold">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{order.totalAmount.toFixed(2)}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="sm">Update</Button>
-                        </TableCell>
+                        <TableCell className="text-right"><Button variant="ghost" size="sm">Update</Button></TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
               ) : (
-                <div className="text-center py-20 border-2 border-dashed rounded-xl space-y-4 m-6">
-                  <div className="bg-primary/5 p-4 rounded-full w-16 h-16 mx-auto flex items-center justify-center">
-                    <Package className="h-8 w-8 text-primary/40" />
-                  </div>
+                <div className="text-center py-20 m-6 border-2 border-dashed rounded-xl">
                   <p className="text-muted-foreground">No orders have been placed yet.</p>
                 </div>
               )}
@@ -447,21 +404,33 @@ function DashboardContent() {
               ) : menus && menus.length > 0 ? (
                 <div className="grid gap-4">
                   {menus.map((menu) => (
-                    <div key={menu.id} className="flex items-center gap-4 p-4 border rounded-xl hover:bg-muted/50 transition-colors">
-                      <div className="bg-primary/10 p-4 rounded-xl">
+                    <div key={menu.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border rounded-xl hover:bg-muted/50 transition-colors">
+                      <div className="bg-primary/10 p-4 rounded-xl shrink-0">
                         <Utensils className="h-6 w-6 text-primary" />
                       </div>
                       <div className="flex-1">
                         <h4 className="font-bold text-lg">{menu.name}</h4>
                         <p className="text-sm text-muted-foreground">{menu.description || 'No description provided.'}</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={menu.isActive ? 'default' : 'secondary'}>
-                          {menu.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
-                        <Button variant="ghost" size="icon">
-                          <ChevronLeft className="h-4 w-4 rotate-180" />
-                        </Button>
+                      <div className="flex items-center gap-3 mt-4 sm:mt-0 w-full sm:w-auto justify-between">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={menu.isActive ? 'default' : 'secondary'}>
+                            {menu.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="text-xs h-8 border-accent text-accent hover:bg-accent/10"
+                            onClick={() => handleCreateMenuItem(menu.id)}
+                          >
+                            <Plus className="mr-1 h-3 w-3" /> Add Item
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <ChevronLeft className="h-4 w-4 rotate-180" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -584,72 +553,8 @@ function DashboardContent() {
                       <p className="text-2xl font-bold">{aiInsights.keyPerformanceIndicators.numberOfOrders}</p>
                     </div>
                   </div>
-                  
-                  <div>
-                    <h4 className="font-bold mb-4 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-accent" /> Detected Trends
-                    </h4>
-                    <div className="space-y-2">
-                      {aiInsights.performanceTrends.map((trend, i) => (
-                        <div key={i} className="flex items-start gap-2 text-sm p-3 bg-white border rounded-lg shadow-sm">
-                          <div className="w-1.5 h-1.5 rounded-full bg-accent mt-1.5 shrink-0" />
-                          <span>{trend}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold mb-4 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-accent" /> Strategic Recommendations
-                    </h4>
-                    <div className="space-y-2">
-                      {aiInsights.actionableRecommendations.map((rec, i) => (
-                        <div key={i} className="flex items-start gap-2 text-sm p-3 bg-accent/5 border border-accent/20 rounded-lg">
-                          <Sparkles className="h-4 w-4 text-accent mt-0.5 shrink-0" />
-                          <span className="font-medium">{rec}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
-
-              <div className="space-y-6">
-                <Card className="border-none shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="font-headline text-lg">Top Performers</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {aiInsights.bestSellingItems.map((item, i) => (
-                      <div key={i} className="flex justify-between items-center border-b pb-3 last:border-0 last:pb-0">
-                        <div>
-                          <p className="font-semibold text-sm">{item.itemName}</p>
-                          <p className="text-xs text-muted-foreground">{item.totalQuantitySold} sold</p>
-                        </div>
-                        <p className="font-bold text-accent">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{item.totalRevenueGenerated.toFixed(2)}</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-lg bg-primary text-white">
-                  <CardHeader>
-                    <CardTitle className="font-headline text-lg flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-accent" /> Promotional Strategy
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-4">
-                      {aiInsights.promotionalStrategies.slice(0, 3).map((strat, i) => (
-                        <li key={i} className="text-sm border-l-2 border-accent pl-4 italic leading-relaxed">
-                          "{strat}"
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              </div>
             </div>
           )}
         </TabsContent>
