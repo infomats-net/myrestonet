@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -8,7 +9,7 @@ service cloud.firestore {
      * Hierarchical Access:
      * 1. Super Admins: Global read/write across all tenants.
      * 2. Restaurant Admins: Full control over their specific restaurant instance.
-     * 3. Customers: Public browsing of menus/design, private access to their own orders.
+     * 3. Customers: Public browsing of menus/design.
      */
 
     // --- Core Helper Functions ---
@@ -76,27 +77,6 @@ service cloud.firestore {
           allow get, list: if true;
           allow create, update, delete: if isRestaurantAdmin(restaurantId);
         }
-      }
-
-      // Orders: Sensitive Transactional Data
-      match /orders/{orderId} {
-        // Anyone signed in (including anonymous guest checkout) can place an order
-        allow create: if isSignedIn();
-        
-        // Single order view: Restricted to the customer who placed it OR the restaurant owner
-        allow get: if isSignedIn() && (
-          isOwner(resource.data.customerId) || 
-          isRestaurantAdmin(restaurantId)
-        );
-        
-        // Listing orders: Exclusive to the merchant dashboard and super admins
-        allow list: if isRestaurantAdmin(restaurantId);
-        
-        // Status updates: Exclusive to the merchant dashboard
-        allow update: if isRestaurantAdmin(restaurantId);
-        
-        // Orders are immutable for audit logs (no deletion)
-        allow delete: if false;
       }
     }
 
