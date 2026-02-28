@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -15,18 +16,11 @@ import {
   Sparkles,
   TrendingUp,
   Clock,
-  ArrowUpRight,
   Save,
   Loader2,
   Plus,
-  ChevronLeft,
   Info,
-  Package,
-  Calendar,
-  Palette,
-  ShieldAlert,
   Trash2,
-  ChevronDown,
   Wand2,
   Pencil,
   MapPin,
@@ -34,7 +28,7 @@ import {
   Mail,
   CreditCard,
   Truck,
-  Wallet
+  Palette
 } from 'lucide-react';
 import {
   Dialog,
@@ -44,7 +38,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -117,7 +110,7 @@ function MenuItemManager({
             <div key={item.id} className="flex items-center justify-between p-3 bg-white border rounded-lg hover:border-primary/20 transition-colors shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded bg-muted overflow-hidden">
-                  <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-full h-full object-cover" />
+                  <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-full h-full object-cover" alt={item.name} />
                 </div>
                 <div>
                   <p className="text-sm font-bold leading-tight">{item.name}</p>
@@ -171,7 +164,7 @@ function DashboardContent() {
   
   const { data: userProfile, isLoading: loadingProfile } = useDoc(userProfileRef);
   
-  const effectiveRestaurantId = impersonateId || (userProfile?.role === 'RestaurantAdmin' ? userProfile.restaurantId : null);
+  const effectiveRestaurantId = impersonateId || (userProfile?.role?.toLowerCase() === 'restaurant_admin' ? userProfile.restaurantId : null);
 
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
@@ -445,6 +438,45 @@ function DashboardContent() {
     const menuRef = doc(firestore, 'restaurants', effectiveRestaurantId, 'menus', menuId);
     deleteDoc(menuRef);
     toast({ title: "Menu Deleted", description: "The menu section has been removed." });
+  };
+
+  const generateSeo = async () => {
+    if (!firestore || !effectiveRestaurantId) return;
+    setLoadingSeo(true);
+    try {
+      const res = await localizedSeoContentGenerator(seoForm);
+      setSeoResult(res);
+      toast({ title: "SEO Strategy Generated", description: "AI has optimized your restaurant's digital presence." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "SEO Generation Failed", description: e.message });
+    } finally {
+      setLoadingSeo(false);
+    }
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!itemForm.name) return;
+    setGeneratingDescription(true);
+    try {
+      const { description } = await generateItemDescription({ itemName: itemForm.name, cuisine: restaurant?.cuisine?.[0] || 'Modern' });
+      setItemForm(prev => ({ ...prev, description }));
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Generation Failed", description: e.message });
+    } finally {
+      setGeneratingDescription(false);
+    }
+  };
+
+  const generateInsights = async () => {
+    setLoadingAi(true);
+    try {
+      const insights = await getAiSalesInsights({ salesData: [] }); // In MVP, raw data might be empty
+      setAiInsights(insights);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "AI Analysis Failed", description: e.message });
+    } finally {
+      setLoadingAi(false);
+    }
   };
 
   const isTrulyLoading = authLoading || (!!authUser && loadingProfile) || (!!effectiveRestaurantId && loadingRes && !restaurant);

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -36,11 +37,11 @@ export default function LoginPage() {
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        const role = userData.role;
+        const role = userData.role?.toLowerCase();
 
-        if (role === 'SuperAdmin') {
+        if (role === 'super_admin' || role === 'superadmin') {
           router.push('/super-admin/dashboard');
-        } else if (role === 'RestaurantAdmin') {
+        } else if (role === 'restaurant_admin' || role === 'restaurantadmin') {
           router.push('/restaurant-admin/dashboard');
         } else {
           router.push(`/customer/${userData.restaurantId || 'demo'}`);

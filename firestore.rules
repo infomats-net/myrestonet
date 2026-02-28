@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -20,11 +21,12 @@ service cloud.firestore {
     }
 
     function getAuthProfile() {
-      return get(/databases/$(database)/documents/user_profiles/$(request.auth.uid)).data;
+      // Use 'users' collection to match application code
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function isSuperAdmin() {
-      return isSignedIn() && getAuthProfile().role == 'super_admin';
+      return isSignedIn() && (getAuthProfile().role == 'super_admin' || getAuthProfile().role == 'SuperAdmin');
     }
 
     function hasAdminAccess(adminIds) {
@@ -37,7 +39,7 @@ service cloud.firestore {
 
     // --- Collection Rules ---
 
-    match /user_profiles/{userId} {
+    match /users/{userId} {
       allow get: if isOwner(userId) || isSuperAdmin();
       allow list: if isSuperAdmin();
       allow create: if isOwner(userId) && request.resource.data.id == userId;
@@ -92,6 +94,10 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.orderId == orderId && request.resource.data.customerId == request.auth.uid;
       allow update: if isSignedIn() && (request.auth.uid == resource.data.customerId || hasAdminAccess(resource.data.adminUserIds)) && resource != null && request.resource.data.orderId == resource.data.orderId;
       allow delete: if isSuperAdmin() && resource != null;
+    }
+
+    match /superAdmins/{userId} {
+      allow read, write: if isSuperAdmin();
     }
 
     match /{path=**}/orders/{orderId} {

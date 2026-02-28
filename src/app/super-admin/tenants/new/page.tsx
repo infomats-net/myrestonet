@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
@@ -146,7 +147,7 @@ export default function NewTenantPage() {
         contactPhone: values.contactNumber,
         baseLanguage: "en",
         baseCurrency: values.currency,
-        adminUserId: adminUid,
+        adminUserIds: [adminUid], // Denormalized ID array for security rules
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         customDomain: values.customDomain || null,
@@ -161,7 +162,7 @@ export default function NewTenantPage() {
         id: adminUid,
         email: values.adminEmail,
         name: values.contactName,
-        role: 'RestaurantAdmin',
+        role: 'restaurant_admin',
         restaurantId: restaurantId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -10,7 +11,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Loader2, ShieldCheck } from 'lucide-react';
 import { useFirebase } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -41,7 +42,7 @@ export default function SignupPage() {
         id: user.uid,
         email: email,
         name: fullName || orgName,
-        role: 'SuperAdmin',
+        role: 'super_admin',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
