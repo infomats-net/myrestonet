@@ -204,13 +204,28 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const theme = designSettings?.theme || { primary: '#22c55e', background: '#ffffff', text: '#0f172a' };
   const sections = designSettings?.sections || { 
     hero: { visible: true }, 
-    welcomeCard: { visible: true }, 
+    welcomeCard: { 
+      visible: true,
+      showBadges: true,
+      showRating: true,
+      showDeliveryInfo: true,
+      showLocation: true,
+      showRanking: true
+    }, 
     about: { visible: true }, 
     menuList: { visible: true },
     gallery: { visible: true },
     testimonials: { visible: true },
     contact: { visible: true },
     map: { visible: true }
+  };
+
+  const welcomeCardSettings = sections.welcomeCard || { 
+    visible: true, 
+    showBadges: true, 
+    showRating: true, 
+    showLocation: true, 
+    showDeliveryInfo: true 
   };
 
   return (
@@ -247,44 +262,52 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       <div className="max-w-6xl mx-auto px-6 py-12 space-y-24">
         
         {/* 2. Welcome Card / Quick Info */}
-        {sections.welcomeCard?.visible && (
+        {welcomeCardSettings.visible && (
           <section className={cn("relative z-30", sections.hero?.visible && "-mt-32")}>
             <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
               <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 text-slate-900">
                 <div className="flex-1 space-y-6">
                   <div className="flex items-center gap-3">
-                    <Badge className={cn(
-                      "border-none font-bold",
-                      isOpen ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-destructive/10 text-destructive hover:bg-destructive/10"
-                    )}>
-                      {isOpen ? "OPEN NOW" : "CLOSED NOW"}
-                    </Badge>
-                    <div className="flex items-center gap-1 text-amber-500">
-                      <Star className="h-4 w-4 fill-current" />
-                      <span className="font-black">4.9</span>
-                      <span className="text-slate-400 text-sm">(500+ reviews)</span>
-                    </div>
+                    {welcomeCardSettings.showBadges && (
+                      <Badge className={cn(
+                        "border-none font-bold",
+                        isOpen ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-destructive/10 text-destructive hover:bg-destructive/10"
+                      )}>
+                        {isOpen ? "OPEN NOW" : "CLOSED NOW"}
+                      </Badge>
+                    )}
+                    {welcomeCardSettings.showRating && (
+                      <div className="flex items-center gap-1 text-amber-500">
+                        <Star className="h-4 w-4 fill-current" />
+                        <span className="font-black">4.9</span>
+                        <span className="text-slate-400 text-sm">(500+ reviews)</span>
+                      </div>
+                    )}
                   </div>
                   <h2 className="text-3xl font-black">Welcome to {restaurant.name}</h2>
-                  <p className="text-slate-500 leading-relaxed font-medium">
-                    {restaurant.city}, {restaurant.country}. Experience high-end dining with isolation and security at the core of our service.
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
-                      <Clock className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400">Wait Time</p>
-                        <p className="font-bold text-slate-900">15-20 Mins</p>
+                  {welcomeCardSettings.showLocation && (
+                    <p className="text-slate-500 leading-relaxed font-medium">
+                      {restaurant.city}, {restaurant.country}. Experience high-end dining with isolation and security at the core of our service.
+                    </p>
+                  )}
+                  {welcomeCardSettings.showDeliveryInfo && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
+                        <Clock className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-slate-400">Wait Time</p>
+                          <p className="font-bold text-slate-900">15-20 Mins</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
+                        <Truck className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
+                        <div>
+                          <p className="text-[10px] font-black uppercase text-slate-400">Delivery</p>
+                          <p className="font-bold text-slate-900">Free over $50</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
-                      <Truck className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
-                      <div>
-                        <p className="text-[10px] font-black uppercase text-slate-400">Delivery</p>
-                        <p className="font-bold text-slate-900">Free over $50</p>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
                 <div className="w-full md:w-72 shrink-0 space-y-4">
                   <Button className="w-full h-16 rounded-2xl text-xl font-black shadow-lg" style={{ backgroundColor: theme.primary }} asChild disabled={!isOpen}>

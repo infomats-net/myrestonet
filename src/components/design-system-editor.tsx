@@ -36,7 +36,9 @@ import {
   Clock,
   Trophy,
   Grid,
-  Map as MapIcon
+  Map as MapIcon,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -425,16 +427,40 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       { id: 'contact', label: 'Contact Details', icon: Phone, visibilityKey: 'contact' },
                       { id: 'map', label: 'Interactive Map', icon: MapIcon, visibilityKey: 'map' },
                     ].map((section) => (
-                      <div key={section.id} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border">
-                        <div className="flex items-center gap-3">
-                          <section.icon className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="text-xs font-semibold text-slate-700">{section.label}</span>
+                      <div key={section.id} className="space-y-2">
+                        <div className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border">
+                          <div className="flex items-center gap-3">
+                            <section.icon className="h-3.5 w-3.5 text-slate-400" />
+                            <span className="text-xs font-semibold text-slate-700">{section.label}</span>
+                          </div>
+                          <Switch 
+                            className="scale-75"
+                            checked={(settings.sections as any)[section.visibilityKey].visible} 
+                            onCheckedChange={(v) => updateSectionVisibility(section.visibilityKey, v)} 
+                          />
                         </div>
-                        <Switch 
-                          className="scale-75"
-                          checked={(settings.sections as any)[section.visibilityKey].visible} 
-                          onCheckedChange={(v) => updateSectionVisibility(section.visibilityKey, v)} 
-                        />
+                        
+                        {/* Granular Info Card Options */}
+                        {section.id === 'welcomeCard' && settings.sections.welcomeCard.visible && (
+                          <div className="ml-8 p-4 bg-slate-50/30 rounded-2xl border border-dashed space-y-4 animate-in slide-in-from-top-2 duration-300">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Status Badges</Label>
+                              <Switch className="scale-75" checked={settings.sections.welcomeCard.showBadges} onCheckedChange={(v) => updateWelcomeCardSetting('showBadges', v)} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Ratings</Label>
+                              <Switch className="scale-75" checked={settings.sections.welcomeCard.showRating} onCheckedChange={(v) => updateWelcomeCardSetting('showRating', v)} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Location Details</Label>
+                              <Switch className="scale-75" checked={settings.sections.welcomeCard.showLocation} onCheckedChange={(v) => updateWelcomeCardSetting('showLocation', v)} />
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Delivery & Wait Info</Label>
+                              <Switch className="scale-75" checked={settings.sections.welcomeCard.showDeliveryInfo} onCheckedChange={(v) => updateWelcomeCardSetting('showDeliveryInfo', v)} />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -494,9 +520,30 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
                 {settings.sections.welcomeCard.visible && (
                   <div className="px-8 -mt-6">
-                    <div className="bg-white rounded-2xl p-6 shadow-lg border">
-                      <h3 className="font-bold">Welcome</h3>
-                      <p className="text-xs opacity-50">Providing elite culinary experiences since 2024.</p>
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border space-y-4">
+                      <div className="flex items-center justify-between">
+                        {settings.sections.welcomeCard.showBadges && (
+                          <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold">Open Now</Badge>
+                        )}
+                        {settings.sections.welcomeCard.showRating && (
+                          <div className="flex items-center gap-1 text-amber-500">
+                            <Star className="h-3 w-3 fill-current" />
+                            <span className="text-[10px] font-black">4.9</span>
+                          </div>
+                        )}
+                      </div>
+                      <div>
+                        <h3 className="font-bold">Welcome</h3>
+                        {settings.sections.welcomeCard.showLocation && (
+                          <p className="text-[10px] opacity-50">Providing elite culinary experiences since 2024.</p>
+                        )}
+                      </div>
+                      {settings.sections.welcomeCard.showDeliveryInfo && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-slate-50 p-2 rounded-lg text-[8px] font-bold uppercase text-slate-400">15 min wait</div>
+                          <div className="bg-slate-50 p-2 rounded-lg text-[8px] font-bold uppercase text-slate-400">Free delivery</div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
