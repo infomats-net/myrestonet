@@ -170,9 +170,16 @@ function OrderManager({ restaurantId }: { restaurantId: string }) {
   const updateStatus = (orderId: string, newStatus: string) => {
     if (!firestore) return;
     const orderRef = doc(firestore, 'restaurants', restaurantId, 'orders', orderId);
+    
     updateDoc(orderRef, { status: newStatus })
       .then(() => toast({ title: "Order Updated", description: `Status changed to ${newStatus}.` }))
-      .catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
+      .catch(async (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: orderRef.path,
+          operation: 'update',
+          requestResourceData: { status: newStatus }
+        }));
+      });
   };
 
   if (isLoading) return <div className="text-center py-20"><Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" /></div>;
@@ -204,7 +211,7 @@ function OrderManager({ restaurantId }: { restaurantId: string }) {
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-black text-primary">{order.currency}{order.total.toFixed(2)}</p>
+                        <p className="text-sm font-black text-primary">{order.currency}{order.total?.toFixed(2)}</p>
                         <p className="text-[10px] font-bold text-muted-foreground uppercase">{order.paymentMethod}</p>
                       </div>
                     </div>
