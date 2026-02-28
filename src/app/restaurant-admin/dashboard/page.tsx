@@ -26,7 +26,14 @@ import {
   Phone,
   Mail,
   Palette,
-  ShieldAlert
+  ShieldAlert,
+  CheckCircle2,
+  AlertTriangle,
+  Truck,
+  CreditCard,
+  User,
+  ExternalLink,
+  ChevronRight
 } from 'lucide-react';
 import {
   Dialog,
@@ -47,13 +54,14 @@ import { selectPlaceholder } from '@/ai/flows/select-placeholder';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, addDoc, query, deleteDoc, updateDoc } from 'firebase/firestore';
+import { doc, collection, addDoc, query, deleteDoc, updateDoc, orderBy, setDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
 import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
 
 function MenuItemManager({ 
   restaurantId, 
@@ -143,6 +151,120 @@ function MenuItemManager({
   );
 }
 
+function OrderManager({ restaurantId }: { restaurantId: string }) {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  
+  const ordersQuery = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return query(
+      collection(firestore, 'restaurants', restaurantId, 'orders'),
+      orderBy('createdAt', 'desc')
+    );
+  }, [firestore, restaurantId]);
+
+  const { data: orders, isLoading } = useCollection(ordersQuery);
+
+  const updateStatus = (orderId: string, newStatus: string) => {
+    if (!firestore) return;
+    const orderRef = doc(firestore, 'restaurants', restaurantId, 'orders', orderId);
+    updateDoc(orderRef, { status: newStatus })
+      .then(() => toast({ title: "Order Updated", description: `Status changed to ${newStatus}.` }))
+      .catch(e => toast({ variant: "destructive", title: "Update Failed", description: e.message }));
+  };
+
+  if (isLoading) return <div className="text-center py-20"><Loader2 className="h-10 w-10 animate-spin mx-auto text-primary" /></div>;
+
+  return (
+    <div className="space-y-6">
+      {orders && orders.length > 0 ? (
+        <div className="grid gap-4">
+          {orders.map((order) => (
+            <Card key={order.id} className="border-none shadow-md overflow-hidden bg-white">
+              <div className={cn(
+                "h-1.5 w-full",
+                order.status === 'pending' ? "bg-amber-400" :
+                order.status === 'accepted' ? "bg-emerald-400" :
+                order.status === 'preparing' ? "bg-blue-400" :
+                order.status === 'delivered' ? "bg-slate-200" : "bg-primary"
+              )} />
+              <CardContent className="p-6">
+                <div className="flex flex-col lg:flex-row gap-8">
+                  <div className="flex-1 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-black tracking-tight uppercase">Order #{order.id.slice(-6).toUpperCase()}</h3>
+                          <Badge variant={order.status === 'pending' ? 'destructive' : 'secondary'} className="capitalize">{order.status}</Badge>
+                        </div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">
+                          {order.createdAt ? new Date(order.createdAt.seconds * 1000).toLocaleString() : 'Just now'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-black text-primary">{order.currency}{order.total.toFixed(2)}</p>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase">{order.paymentMethod}</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-xl space-y-2 border">
+                      <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest"><User className="h-3 w-3" /> Customer</div>
+                      <p className="font-bold text-sm">{order.customerInfo?.name}</p>
+                      <div className="flex items-center gap-4 text-xs font-medium text-slate-600">
+                        <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {order.customerInfo?.phone}</span>
+                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {order.customerInfo?.address}</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest"><Utensils className="h-3 w-3" /> Items</div>
+                      <div className="grid gap-1.5">
+                        {order.items?.map((item: any, idx: number) => (
+                          <div key={idx} className="flex justify-between text-sm bg-white p-2 rounded border border-dashed">
+                            <span className="font-bold"><span className="text-primary">{item.qty}x</span> {item.name}</span>
+                            <span className="text-muted-foreground">{order.currency}{item.price.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lg:w-48 flex flex-col gap-2 border-l lg:pl-8">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Actions</p>
+                    {order.status === 'pending' && (
+                      <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={() => updateStatus(order.id, 'accepted')}>Accept Order</Button>
+                    )}
+                    {order.status === 'accepted' && (
+                      <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => updateStatus(order.id, 'preparing')}>Start Prep</Button>
+                    )}
+                    {order.status === 'preparing' && (
+                      <Button className="w-full bg-orange-600 hover:bg-orange-700" onClick={() => updateStatus(order.id, 'out_for_delivery')}>Dispatch</Button>
+                    )}
+                    {order.status === 'out_for_delivery' && (
+                      <Button className="w-full bg-slate-800" onClick={() => updateStatus(order.id, 'delivered')}>Complete</Button>
+                    )}
+                    <Button variant="ghost" className="w-full text-xs text-destructive hover:bg-destructive/5" onClick={() => updateStatus(order.id, 'cancelled')}>Cancel Order</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-20 bg-white rounded-3xl border-2 border-dashed space-y-4">
+          <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
+            <ShoppingBag className="h-10 w-10 text-slate-300" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-lg">No Orders Yet</h3>
+            <p className="text-muted-foreground text-sm max-w-xs mx-auto">When customers place orders on your storefront, they will appear here in real-time.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -171,6 +293,12 @@ function DashboardContent() {
   }, [firestore, effectiveRestaurantId]);
 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
+
+  const paymentsConfigRef = useMemoFirebase(() => {
+    if (!firestore || !effectiveRestaurantId) return null;
+    return doc(firestore, 'restaurants', effectiveRestaurantId, 'config', 'payments');
+  }, [firestore, effectiveRestaurantId]);
+  const { data: paymentsConfig } = useDoc(paymentsConfigRef);
   
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
@@ -193,7 +321,7 @@ function DashboardContent() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
-  // Profile Form State
+  // Form State
   const [profileForm, setProfileForm] = useState({
     name: '',
     description: '',
@@ -203,6 +331,13 @@ function DashboardContent() {
     contactPhone: '',
     contactEmail: '',
     cuisine: ''
+  });
+
+  const [paymentForm, setPaymentForm] = useState({
+    deliveryCharge: '0.00',
+    stripe: false,
+    paypal: false,
+    cod: true
   });
 
   // Menu Form State
@@ -262,6 +397,17 @@ function DashboardContent() {
     }
   }, [restaurant]);
 
+  useEffect(() => {
+    if (paymentsConfig) {
+      setPaymentForm({
+        deliveryCharge: (paymentsConfig.deliveryCharge || 0).toString(),
+        stripe: !!paymentsConfig.methods?.stripe,
+        paypal: !!paymentsConfig.methods?.paypal,
+        cod: paymentsConfig.methods?.cod !== false
+      });
+    }
+  }, [paymentsConfig]);
+
   const handleSaveProfile = async () => {
     if (!firestore || !effectiveRestaurantId) return;
     setSavingSettings(true);
@@ -283,6 +429,28 @@ function DashboardContent() {
       toast({ title: "Settings Saved", description: "Your restaurant profile has been updated successfully." });
     } catch (error: any) {
       toast({ variant: "destructive", title: "Save Failed", description: error.message });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleSavePayments = async () => {
+    if (!firestore || !effectiveRestaurantId) return;
+    setSavingSettings(true);
+    try {
+      const pRef = doc(firestore, 'restaurants', effectiveRestaurantId, 'config', 'payments');
+      await setDoc(pRef, {
+        deliveryCharge: parseFloat(paymentForm.deliveryCharge) || 0,
+        methods: {
+          stripe: paymentForm.stripe,
+          paypal: paymentForm.paypal,
+          cod: paymentForm.cod
+        },
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      toast({ title: "Payments Updated", description: "Configuration has been synchronized." });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Update Failed", description: e.message });
     } finally {
       setSavingSettings(false);
     }
@@ -518,7 +686,7 @@ function DashboardContent() {
           <p className="text-muted-foreground text-sm">{restaurant?.contactEmail} • Location: {restaurant?.city}, {restaurant?.country}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="border-primary text-primary hover:bg-primary/5" asChild><Link href={`/customer/${restaurant?.id}`} target="_blank"><ShoppingCart className="mr-2 h-4 w-4" /> View Storefront</Link></Button>
+          <Button variant="outline" className="border-primary text-primary hover:bg-primary/5" asChild><Link href={`/customer/${restaurant?.id}`} target="_blank"><ExternalLink className="mr-2 h-4 w-4" /> View Storefront</Link></Button>
           <Button className="bg-primary hover:bg-primary/90" onClick={() => handleTabChange('settings')}><Settings className="mr-2 h-4 w-4" /> Store Settings</Button>
         </div>
       </div>
@@ -526,9 +694,10 @@ function DashboardContent() {
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="bg-white border p-1 rounded-xl flex overflow-x-auto no-scrollbar h-auto w-full md:w-auto">
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Overview</TabsTrigger>
+          <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2"><ShoppingCart className="h-4 w-4" /> Orders</TabsTrigger>
           <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Menus</TabsTrigger>
-          <TabsTrigger value="hours" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2"><Clock className="h-4 w-4" /> Timing System</TabsTrigger>
-          <TabsTrigger value="design" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2"><Palette className="h-4 w-4" /> Design System</TabsTrigger>
+          <TabsTrigger value="hours" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2"><Clock className="h-4 w-4" /> Timing</TabsTrigger>
+          <TabsTrigger value="design" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2"><Palette className="h-4 w-4" /> Design</TabsTrigger>
           <TabsTrigger value="seo" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">SEO Engine</TabsTrigger>
           <TabsTrigger value="analytics" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">AI Insights</TabsTrigger>
           <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Settings</TabsTrigger>
@@ -551,10 +720,11 @@ function DashboardContent() {
           </div>
         </TabsContent>
 
+        <TabsContent value="orders" className="pt-4"><OrderManager restaurantId={effectiveRestaurantId!} /></TabsContent>
         <TabsContent value="design" className="pt-4"><DesignSystemEditor restaurantId={effectiveRestaurantId!} /></TabsContent>
         <TabsContent value="hours" className="pt-4"><OperatingHoursEditor restaurantId={effectiveRestaurantId!} /></TabsContent>
 
-        <TabsContent value="settings" className="space-y-6 pt-4">
+        <TabsContent value="settings" className="space-y-6 pt-4 pb-20">
           <Card className="border-none shadow-lg max-w-4xl">
             <CardHeader><CardTitle className="font-headline">Global Profile</CardTitle><CardDescription>Manage your restaurant's identity and location.</CardDescription></CardHeader>
             <CardContent className="space-y-6">
@@ -563,12 +733,67 @@ function DashboardContent() {
                 <div className="space-y-2"><Label>Cuisines (Comma separated)</Label><Input value={profileForm.cuisine} onChange={(e) => setProfileForm({...profileForm, cuisine: e.target.value})} placeholder="Italian, Pizza, Dessert" /></div>
                 <div className="space-y-2 md:col-span-2"><Label>Public Description</Label><Textarea value={profileForm.description} onChange={(e) => setProfileForm({...profileForm, description: e.target.value})} className="min-h-[100px]" /></div>
                 <div className="space-y-2"><Label>Contact Email</Label><div className="relative"><Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactEmail} onChange={(e) => setProfileForm({...profileForm, contactEmail: e.target.value})} /></div></div>
-                <div className="space-y-2"><Label>Contact Phone</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactPhone} onChange={(e) => setProfileForm({...profileForm, contactPhone: e.target.value})} /></div></div>
+                <div className="space-y-2"><Label>Contact Phone</Label><div className="relative"><Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.contactPhone} onChange={(e) => setProfileForm({...contactPhone, contactPhone: e.target.value})} /></div></div>
                 <div className="space-y-2 md:col-span-2"><Label>Street Address</Label><div className="relative"><MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input className="pl-10" value={profileForm.address} onChange={(e) => setProfileForm({...profileForm, address: e.target.value})} /></div></div>
                 <div className="space-y-2"><Label>City</Label><Input value={profileForm.city} onChange={(e) => setProfileForm({...profileForm, city: e.target.value})} /></div>
                 <div className="space-y-2"><Label>Country</Label><Input value={profileForm.country} onChange={(e) => setProfileForm({...profileForm, country: e.target.value})} /></div>
               </div>
               <Button className="w-full bg-primary hover:bg-primary/90 text-white shadow-sm" onClick={handleSaveProfile} disabled={savingSettings}>{savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save Global Profile</Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-lg max-w-4xl">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                <CardTitle className="font-headline">Payments & Delivery</CardTitle>
+              </div>
+              <CardDescription>Configure how customers pay and set your standard delivery rates.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div className="space-y-4">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Payment Methods</Label>
+                <div className="grid gap-4">
+                  {[
+                    { id: 'stripe', label: 'Stripe (Credit Card)', icon: CreditCard },
+                    { id: 'paypal', label: 'PayPal (Digital Wallet)', icon: ExternalLink },
+                    { id: 'cod', label: 'Cash on Delivery', icon: BanknoteIcon }
+                  ].map((method) => (
+                    <div key={method.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-lg shadow-sm border border-slate-100"><method.icon className="h-4 w-4 text-slate-400" /></div>
+                        <span className="text-sm font-bold text-slate-700">{method.label}</span>
+                      </div>
+                      <Switch 
+                        checked={(paymentForm as any)[method.id]} 
+                        onCheckedChange={(v) => setPaymentForm({...paymentForm, [method.id]: v})} 
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Logistics Settings</Label>
+                <div className="space-y-2">
+                  <Label>Delivery Charge ({restaurant?.baseCurrency})</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-slate-400">{currencySymbol}</span>
+                    <Input 
+                      type="number" 
+                      className="pl-8 h-12 rounded-xl bg-slate-50 border-slate-100" 
+                      value={paymentForm.deliveryCharge}
+                      onChange={(e) => setPaymentForm({...paymentForm, deliveryCharge: e.target.value})}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground italic">This fee is added to every order at checkout automatically.</p>
+                </div>
+              </div>
+
+              <Button className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl" onClick={handleSavePayments} disabled={savingSettings}>
+                {savingSettings ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Publish Payment Strategy
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -596,6 +821,27 @@ function DashboardContent() {
         <TabsContent value="analytics" className="space-y-6 pt-4">{!aiInsights ? <Card className="border-none shadow-lg text-center py-20"><CardContent className="space-y-4"><div className="bg-primary/5 w-20 h-20 rounded-full flex items-center justify-center mx-auto"><BarChart3 className="h-10 w-10 text-primary opacity-40" /></div><h3 className="text-xl font-bold">Comprehensive Sales Intelligence</h3><p className="text-muted-foreground max-w-md mx-auto">Run our AI auditor to identify trends, underperforming menu items, and peak revenue windows.</p><Button onClick={generateInsights} disabled={loadingAi} className="bg-primary shadow-md">{loadingAi ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Run Deep Analysis"}</Button></CardContent></Card> : <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"><Card className="lg:col-span-2 border-none shadow-lg"><CardHeader><CardTitle className="font-headline">Performance Trend Analysis</CardTitle></CardHeader><CardContent className="space-y-6"><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div className="p-4 bg-primary/5 rounded-xl border border-primary/10"><p className="text-xs uppercase text-muted-foreground">Total Revenue</p><p className="text-2xl font-bold">{currencySymbol}{aiInsights.keyPerformanceIndicators.totalRevenue.toLocaleString()}</p></div><div className="p-4 bg-primary/5 rounded-xl border border-primary/10"><p className="text-xs uppercase text-muted-foreground">Avg. Order</p><p className="text-2xl font-bold">{currencySymbol}{aiInsights.keyPerformanceIndicators.averageOrderValue.toFixed(2)}</p></div><div className="p-4 bg-primary/5 rounded-xl border border-primary/10"><p className="text-xs uppercase text-muted-foreground">Total Orders</p><p className="text-2xl font-bold">{aiInsights.keyPerformanceIndicators.numberOfOrders}</p></div></div></CardContent></Card></div>}</TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function BanknoteIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width="24" 
+      height="24" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <rect width="20" height="12" x="2" y="6" rx="2" />
+      <circle cx="12" cy="12" r="2" />
+      <path d="M6 12h.01M18 12h.01" />
+    </svg>
   );
 }
 

@@ -15,16 +15,26 @@ import {
   Mail, 
   Lock,
   CheckCircle2,
-  AlertTriangle
+  AlertTriangle,
+  ShoppingBag,
+  CreditCard,
+  Truck,
+  User,
+  ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
-import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth } from '@/firebase';
+import { doc, collection, query, where, addDoc, serverTimestamp } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
 import { checkIsRestaurantOpen, OperatingHours } from '@/lib/operating-hours';
+import { signInAnonymously } from 'firebase/auth';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +49,8 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const resolvedParams = reactUse(params);
   const restaurantId = resolvedParams.restaurantId;
   const firestore = useFirestore();
+  const auth = useAuth();
+  const { toast } = useToast();
 
   // 1. Fetch Restaurant Data
   const restaurantRef = useMemoFirebase(() => {
@@ -61,7 +73,14 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   }, [firestore, restaurantId]);
   const { data: hours, isLoading: loadingHours } = useDoc<OperatingHours>(hoursRef);
 
-  // 4. Fetch Active Menus
+  // 4. Fetch Payments Config
+  const paymentsRef = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return doc(firestore, 'restaurants', restaurantId, 'config', 'payments');
+  }, [firestore, restaurantId]);
+  const { data: paymentsConfig } = useDoc(paymentsRef);
+
+  // 5. Fetch Active Menus
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return query(
@@ -74,6 +93,13 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(true);
   const [showClosedAlert, setShowClosedAlert] = useState(false);
+  const [isCheckoutMode, setIsCheckoutMode] = useState(false);
+  const [isOrdering, setIsOrdering] = useState(false);
+  const [orderComplete, setOrderComplete] = useState(false);
+
+  // Form State
+  const [customerInfo, setCustomerInfo] = useState({ name: '', phone: '', address: '' });
+  const [paymentMethod, setPaymentMethod] = useState('cod');
 
   useEffect(() => {
     if (menus && menus.length > 0 && !activeMenuId) {
@@ -114,7 +140,57 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   };
 
   const subtotal = cart.reduce((sum, entry) => sum + (entry.item.price * entry.qty), 0);
+  const deliveryFee = paymentsConfig?.deliveryCharge || 0;
+  const total = subtotal + deliveryFee;
   const cartCount = cart.reduce((sum, entry) => sum + entry.qty, 0);
+
+  const handlePlaceOrder = async () => {
+    if (!auth || !firestore || !restaurantId) return;
+    if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) {
+      toast({ variant: "destructive", title: "Missing Info", description: "Please provide your contact and delivery details." });
+      return;
+    }
+
+    setIsOrdering(true);
+    try {
+      // 1. Sign in anonymously if not already authed
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+
+      // 2. Create the order
+      const orderData = {
+        restaurantId,
+        customerId: auth.currentUser?.uid,
+        customerInfo,
+        items: cart.map(c => ({
+          id: c.item.id,
+          name: c.item.name,
+          price: c.item.price,
+          qty: c.qty
+        })),
+        paymentMethod,
+        subtotal,
+        deliveryFee,
+        total,
+        status: 'pending',
+        currency: restaurant?.baseCurrency || 'USD',
+        adminUserIds: restaurant?.adminUserIds || [],
+        createdAt: serverTimestamp(),
+      };
+
+      await addDoc(collection(firestore, 'restaurants', restaurantId, 'orders'), orderData);
+      
+      setOrderComplete(true);
+      setCart([]);
+      setIsCartOpen(false);
+      setIsCheckoutMode(false);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Order Failed", description: error.message });
+    } finally {
+      setIsOrdering(false);
+    }
+  };
 
   if (loadingRes || loadingDesign || loadingHours || (loadingMenus && !menus)) {
     return <div className="min-h-screen flex flex-col items-center justify-center space-y-4"><Loader2 className="h-10 w-10 animate-spin text-primary" /><p className="text-muted-foreground font-medium animate-pulse">Syncing with Kitchen...</p></div>;
@@ -122,6 +198,34 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
 
   if (!restaurant) {
     return <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-6"><div className="bg-muted p-6 rounded-full"><UtensilsCrossed className="h-12 w-12 text-muted-foreground" /></div><div className="space-y-2"><h1 className="text-2xl font-bold">Restaurant Not Found</h1><p className="text-muted-foreground max-w-xs">We couldn't find the restaurant you're looking for.</p></div><Button asChild><Link href="/">Back to Home</Link></Button></div>;
+  }
+
+  if (orderComplete) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-8 bg-slate-50">
+        <div className="w-24 h-24 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 animate-bounce">
+          <CheckCircle2 className="h-12 w-12" />
+        </div>
+        <div className="space-y-2">
+          <h1 className="text-4xl font-black text-slate-900">Order Confirmed!</h1>
+          <p className="text-slate-500 max-w-md mx-auto">Thank you for dining with us. Your meal is being prepared and will be with you shortly.</p>
+        </div>
+        <Card className="w-full max-w-md border-none shadow-xl rounded-[2.5rem] p-8 bg-white">
+          <div className="space-y-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-400 font-bold uppercase tracking-wider">Estimated Time</span>
+              <span className="font-black text-slate-900">25-35 Mins</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-400 font-bold uppercase tracking-wider">Payment Method</span>
+              <span className="font-black text-slate-900 uppercase">{paymentMethod}</span>
+            </div>
+          </div>
+        </Card>
+        <Button size="lg" className="rounded-full px-12 h-16 text-lg font-black" onClick={() => setOrderComplete(false)}>Return to Menu</Button>
+      </div>
+    );
   }
 
   const currencySymbol = restaurant?.baseCurrency === 'GBP' ? '£' : '$';
@@ -138,6 +242,12 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
 
   const fullAddressQuery = encodeURIComponent(`${restaurant?.address}, ${restaurant?.city}, ${restaurant?.country}`);
   const wc = design?.sections?.welcomeCard || { visible: true, showBadges: true, showRating: true, showDeliveryInfo: true, showLocation: true, showRanking: true };
+
+  const availableMethods = [
+    { id: 'stripe', label: 'Credit Card', enabled: paymentsConfig?.methods?.stripe },
+    { id: 'paypal', label: 'PayPal', enabled: paymentsConfig?.methods?.paypal },
+    { id: 'cod', label: 'Cash on Delivery', enabled: paymentsConfig?.methods?.cod !== false },
+  ].filter(m => m.enabled);
 
   return (
     <div className="min-h-screen bg-background pb-24" style={designStyles}>
@@ -258,14 +368,95 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 w-full max-w-xl px-6 z-50">
           <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
             <SheetTrigger asChild><Button className="w-full shadow-2xl h-20 text-xl font-black flex justify-between px-10 rounded-[2.5rem] transition-all hover:scale-105 active:scale-95" style={{ backgroundColor: designStyles['--primary'] as string }}><span className="bg-white/20 px-4 py-1.5 rounded-2xl text-sm">{cartCount}</span><span>Review Selection</span><span>{currencySymbol}{subtotal.toFixed(2)}</span></Button></SheetTrigger>
-            <SheetContent side="bottom" className="h-[85vh] rounded-t-[4rem] px-10 pt-16">
-              <SheetHeader className="mb-8"><SheetTitle className="text-4xl font-black" style={{ fontFamily: designStyles['--heading-font'] as string }}>Your Order</SheetTitle></SheetHeader>
-              <div className="py-6 space-y-6 overflow-y-auto max-h-[50vh] no-scrollbar">
-                {cart.map((entry) => (
-                  <div key={entry.item.id} className="flex justify-between items-center p-6 bg-slate-50 rounded-[2.5rem] border border-slate-100 transition-all hover:bg-slate-100/50"><div className="flex gap-6 items-center"><div className="w-20 h-20 rounded-[1.5rem] bg-muted overflow-hidden border-2 border-white shadow-md"><img src={entry.item.imageUrl || `https://picsum.photos/seed/${entry.item.id}/100/100`} className="w-full h-full object-cover" alt="Item" /></div><div><p className="font-black text-lg leading-tight">{entry.item.name}</p><p className="text-sm font-bold text-primary opacity-80" style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{entry.item.price}</p></div></div><div className="flex items-center gap-6"><Button variant="outline" size="icon" className="h-10 w-10 rounded-full border-2" onClick={() => updateQty(entry.item.id, -1)}><Minus className="h-4 w-4" /></Button><span className="text-xl font-black min-w-[2ch] text-center">{entry.qty}</span><Button variant="outline" size="icon" className="h-10 w-10 rounded-full border-2" onClick={() => updateQty(entry.item.id, 1)}><Plus className="h-4 w-4" /></Button></div></div>
-                ))}
+            <SheetContent side="bottom" className="h-[90vh] rounded-t-[4rem] px-6 md:px-10 pt-12 overflow-hidden flex flex-col">
+              <SheetHeader className="mb-6 shrink-0 text-center md:text-left">
+                <SheetTitle className="text-3xl md:text-4xl font-black flex items-center gap-3 justify-center md:justify-start" style={{ fontFamily: designStyles['--heading-font'] as string }}>
+                  {isCheckoutMode ? <><Truck className="h-8 w-8 text-primary" /> Delivery Details</> : <><ShoppingBag className="h-8 w-8 text-primary" /> Your Order</>}
+                </SheetTitle>
+              </SheetHeader>
+
+              <div className="flex-1 overflow-y-auto no-scrollbar pb-32">
+                {!isCheckoutMode ? (
+                  <div className="space-y-4">
+                    {cart.map((entry) => (
+                      <div key={entry.item.id} className="flex justify-between items-center p-4 md:p-6 bg-slate-50 rounded-[2rem] border border-slate-100 transition-all hover:bg-slate-100/50">
+                        <div className="flex gap-4 md:gap-6 items-center">
+                          <div className="w-16 h-16 rounded-[1.2rem] bg-muted overflow-hidden border-2 border-white shadow-md shrink-0">
+                            <img src={entry.item.imageUrl || `https://picsum.photos/seed/${entry.item.id}/100/100`} className="w-full h-full object-cover" alt="Item" />
+                          </div>
+                          <div>
+                            <p className="font-black text-base md:text-lg leading-tight">{entry.item.name}</p>
+                            <p className="text-sm font-bold text-primary opacity-80" style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{entry.item.price}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 md:gap-6">
+                          <Button variant="outline" size="icon" className="h-8 w-8 md:h-10 md:w-10 rounded-full border-2" onClick={() => updateQty(entry.item.id, -1)}><Minus className="h-4 w-4" /></Button>
+                          <span className="text-lg md:text-xl font-black min-w-[2ch] text-center">{entry.qty}</span>
+                          <Button variant="outline" size="icon" className="h-8 w-8 md:h-10 md:w-10 rounded-full border-2" onClick={() => updateQty(entry.item.id, 1)}><Plus className="h-4 w-4" /></Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-8 animate-in slide-in-from-right duration-300 px-1">
+                    <div className="space-y-6">
+                      <div className="space-y-4">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><User className="h-3 w-3" /> Contact Information</h4>
+                        <div className="grid gap-4">
+                          <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase ml-1">Full Name</Label><Input value={customerInfo.name} onChange={e => setCustomerInfo({...customerInfo, name: e.target.value})} className="h-14 rounded-2xl bg-slate-50 border-slate-100" placeholder="e.g. John Doe" /></div>
+                          <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase ml-1">Phone Number</Label><Input value={customerInfo.phone} onChange={e => setCustomerInfo({...customerInfo, phone: e.target.value})} className="h-14 rounded-2xl bg-slate-50 border-slate-100" placeholder="e.g. +1 234 567 890" /></div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 pt-4 border-t">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><MapPin className="h-3 w-3" /> Delivery Address</h4>
+                        <Textarea value={customerInfo.address} onChange={e => setCustomerInfo({...customerInfo, address: e.target.value})} className="min-h-[100px] rounded-2xl bg-slate-50 border-slate-100 p-4" placeholder="Enter your full street address, apartment number, and any special instructions..." />
+                      </div>
+
+                      <div className="space-y-4 pt-4 border-t">
+                        <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2"><CreditCard className="h-3 w-3" /> Payment Method</h4>
+                        <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid gap-3">
+                          {availableMethods.map(m => (
+                            <Label key={m.id} className={cn("flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer", paymentMethod === m.id ? "border-primary bg-primary/5" : "border-slate-100 hover:border-slate-200")}>
+                              <div className="flex items-center gap-3">
+                                <RadioGroupItem value={m.id} className="sr-only" />
+                                <div className={cn("w-5 h-5 rounded-full border-2 flex items-center justify-center", paymentMethod === m.id ? "border-primary" : "border-slate-300")}>
+                                  {paymentMethod === m.id && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                                </div>
+                                <span className="font-bold text-slate-700">{m.label}</span>
+                              </div>
+                              <CreditCard className="h-5 w-5 text-slate-300" />
+                            </Label>
+                          ))}
+                        </RadioGroup>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <SheetFooter className="absolute bottom-0 left-0 w-full p-10 border-t bg-white/95 backdrop-blur-md rounded-b-[4rem]"><div className="flex justify-between w-full mb-8 font-black text-3xl"><span>Subtotal</span><span style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{subtotal.toFixed(2)}</span></div><Button className="w-full h-20 text-2xl font-black rounded-[2.5rem] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]" style={{ backgroundColor: designStyles['--primary'] as string }}>Checkout</Button></SheetFooter>
+
+              <SheetFooter className="shrink-0 pt-6 border-t bg-white mt-auto">
+                <div className="w-full space-y-6">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-slate-400 text-sm font-bold uppercase tracking-wider"><span>Subtotal</span><span>{currencySymbol}{subtotal.toFixed(2)}</span></div>
+                    {deliveryFee > 0 && <div className="flex justify-between text-slate-400 text-sm font-bold uppercase tracking-wider"><span>Delivery Fee</span><span>{currencySymbol}{deliveryFee.toFixed(2)}</span></div>}
+                    <div className="flex justify-between font-black text-3xl md:text-4xl text-slate-900 pt-2 border-t border-dashed"><span>Total</span><span style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{total.toFixed(2)}</span></div>
+                  </div>
+                  
+                  {isCheckoutMode ? (
+                    <div className="flex gap-4">
+                      <Button variant="outline" className="h-16 flex-1 rounded-[2rem] font-black text-lg border-2" onClick={() => setIsCheckoutMode(false)}>Back</Button>
+                      <Button className="h-16 flex-[2] rounded-[2rem] font-black text-xl shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]" style={{ backgroundColor: designStyles['--primary'] as string }} onClick={handlePlaceOrder} disabled={isOrdering}>
+                        {isOrdering ? <Loader2 className="h-6 w-6 animate-spin" /> : "Confirm Order"}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button className="w-full h-16 md:h-20 text-xl md:text-2xl font-black rounded-[2rem] md:rounded-[2.5rem] shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] group" style={{ backgroundColor: designStyles['--primary'] as string }} onClick={() => setIsCheckoutMode(true)}>
+                      Go to Checkout <ArrowRight className="ml-2 h-6 w-6 group-hover:translate-x-1 transition-transform" />
+                    </Button>
+                  )}
+                </div>
+              </SheetFooter>
             </SheetContent>
           </Sheet>
         </div>
