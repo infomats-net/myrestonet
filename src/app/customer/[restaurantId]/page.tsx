@@ -171,6 +171,8 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
     '--footer-bg': design?.theme?.footerColor || '#1A1A1A',
   } as React.CSSProperties;
 
+  const fullAddressQuery = encodeURIComponent(`${restaurant?.address}, ${restaurant?.city}, ${restaurant?.country}`);
+
   return (
     <div className="min-h-screen bg-background pb-24" style={designStyles}>
       <link href={`https://fonts.googleapis.com/css2?family=${designStyles['--font-family']?.toString().replace(' ', '+')}&family=${designStyles['--heading-font']?.toString().replace(' ', '+')}&display=swap`} rel="stylesheet" />
@@ -466,10 +468,17 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
              <div className="absolute inset-0 bg-slate-200 animate-pulse flex items-center justify-center text-slate-400 font-bold uppercase tracking-widest">
                Interactive Map Loading...
              </div>
-             {/* Static Map Image Placeholder */}
-             <img src="https://picsum.photos/seed/map/1200/600" className="absolute inset-0 w-full h-full object-cover brightness-90 grayscale-[0.3]" alt="Map" />
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                <div className="bg-white p-6 rounded-[2rem] shadow-2xl border-4 border-primary flex items-center gap-4" style={{ borderColor: designStyles['--primary'] as string }}>
+             {/* Interactive Map Embed */}
+             <iframe 
+               width="100%" 
+               height="100%" 
+               className="absolute inset-0 w-full h-full border-0 grayscale-[0.2] brightness-90"
+               loading="lazy"
+               allowFullScreen
+               src={`https://maps.google.com/maps?q=${fullAddressQuery}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+             />
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                <div className="bg-white p-6 rounded-[2rem] shadow-2xl border-4 border-primary flex items-center gap-4 pointer-events-auto" style={{ borderColor: designStyles['--primary'] as string }}>
                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary" style={{ color: designStyles['--primary'] as string }}>
                      <MapPin className="h-6 w-6" />
                    </div>
