@@ -38,6 +38,11 @@ service cloud.firestore {
       allow create: if isSuperAdmin();
       allow update, delete: if isRestaurantOwner(restaurantId);
 
+      match /config/{document=**} {
+        allow get: if true;
+        allow write: if isRestaurantOwner(restaurantId);
+      }
+
       match /design/{document=**} {
         allow get: if true;
         allow write: if isRestaurantOwner(restaurantId);
