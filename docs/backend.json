@@ -28,6 +28,40 @@
         "baseCurrency": { "type": "string" },
         "baseLanguage": { "type": "string" },
         "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "trial"] },
+        "paymentSettings": {
+          "type": "object",
+          "properties": {
+            "stripe": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "publishableKey": { "type": "string" },
+                "accountId": { "type": "string" }
+              }
+            },
+            "paypal": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "clientId": { "type": "string" }
+              }
+            },
+            "cod": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "deliverySettings": {
+          "type": "object",
+          "properties": {
+            "deliveryCharge": { "type": "number" },
+            "freeDeliveryAbove": { "type": "number" },
+            "deliveryEnabled": { "type": "boolean" }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
@@ -40,9 +74,12 @@
         "id": { "type": "string" },
         "customerId": { "type": "string" },
         "status": { "type": "string" },
-        "totalAmount": { "type": "number" },
+        "subtotal": { "type": "number" },
         "deliveryCharge": { "type": "number" },
-        "paymentMethod": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "paymentMethod": { "type": "string", "enum": ["stripe", "paypal", "cod"] },
+        "paymentStatus": { "type": "string" },
+        "items": { "type": "array" },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
@@ -55,18 +92,6 @@
         "price": { "type": "number" },
         "category": { "type": "string" },
         "isAvailable": { "type": "boolean" }
-      }
-    },
-    "Payment": {
-      "title": "Payment",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "orderId": { "type": "string" },
-        "amount": { "type": "number" },
-        "method": { "type": "string" },
-        "status": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
       }
     }
   },
@@ -89,10 +114,6 @@
     "/restaurants/{restaurantId}/menu/{menuItemId}": {
       "schema": { "$ref": "#/backend/entities/MenuItem" },
       "description": "Tenant-specific menu subcollection."
-    },
-    "/restaurants/{restaurantId}/payments/{paymentId}": {
-      "schema": { "$ref": "#/backend/entities/Payment" },
-      "description": "Tenant-specific payments subcollection."
     }
   }
 }

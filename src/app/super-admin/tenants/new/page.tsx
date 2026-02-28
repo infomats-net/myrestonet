@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Card } from '@/components/ui/card';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase } from '@/firebase';
@@ -50,7 +51,6 @@ export default function NewTenantPage() {
 
     let secondaryApp;
     try {
-      // 1. Create a unique secondary app to register the tenant admin without logging out current super admin
       const secondaryAppName = `tenant-gen-${Date.now()}`;
       secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
@@ -58,11 +58,10 @@ export default function NewTenantPage() {
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, values.adminEmail, values.password);
       const adminUid = userCredential.user.uid;
 
-      // 2. Generate a new restaurant ID
       const restaurantRef = doc(collection(firestore, 'restaurants'));
       const restaurantId = restaurantRef.id;
 
-      // 3. Create Restaurant Document (Target structure)
+      // Default settings for new tenants
       await setDoc(restaurantRef, {
         id: restaurantId,
         name: values.restaurantName,
@@ -72,11 +71,20 @@ export default function NewTenantPage() {
         baseCurrency: "USD",
         baseLanguage: "en",
         subscriptionStatus: "active",
+        paymentSettings: {
+          stripe: { enabled: false, publishableKey: '', accountId: '' },
+          paypal: { enabled: false, clientId: '' },
+          cod: { enabled: true }
+        },
+        deliverySettings: {
+          deliveryEnabled: true,
+          deliveryCharge: 5.00,
+          freeDeliveryAbove: 50.00
+        },
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
 
-      // 4. Create User Document with Mapping (Target structure)
       await setDoc(doc(firestore, 'users', adminUid), {
         id: adminUid,
         email: values.adminEmail,
@@ -85,19 +93,14 @@ export default function NewTenantPage() {
         createdAt: new Date().toISOString(),
       });
 
-      // Cleanup secondary app
       await signOut(secondaryAuth);
       await deleteApp(secondaryApp);
 
-      toast({ title: "Tenant Initialized", description: `${values.restaurantName} has been created successfully.` });
+      toast({ title: "Tenant Created", description: "Restaurant instance initialized." });
       router.push('/super-admin/tenants');
     } catch (error: any) {
       if (secondaryApp) await deleteApp(secondaryApp);
-      toast({ 
-        variant: "destructive", 
-        title: "Setup Failed", 
-        description: error.message || "Could not initialize tenant." 
-      });
+      toast({ variant: "destructive", title: "Setup Failed", description: error.message });
     } finally {
       setLoading(false);
     }
@@ -107,12 +110,12 @@ export default function NewTenantPage() {
     <div className="p-8 max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild><Link href="/super-admin/tenants"><ChevronLeft /></Link></Button>
-        <h1 className="text-3xl font-bold">New Restaurant Tenant</h1>
+        <h1 className="text-3xl font-black">New Restaurant Instance</h1>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Card className="p-6 space-y-4">
+          <Card className="p-8 space-y-4 rounded-[2rem] border-none shadow-xl">
             <FormField control={form.control} name="restaurantName" render={({ field }) => (
               <FormItem><FormLabel>Restaurant Name</FormLabel><FormControl><Input placeholder="e.g. Bella Napoli" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
@@ -126,18 +129,18 @@ export default function NewTenantPage() {
             </div>
           </Card>
 
-          <Card className="p-6 space-y-4">
-            <h3 className="font-bold text-sm uppercase tracking-widest text-muted-foreground border-b pb-2">Admin Credentials</h3>
+          <Card className="p-8 space-y-4 rounded-[2rem] border-none shadow-xl">
+            <h3 className="font-black text-xs uppercase tracking-widest text-slate-400 border-b pb-2 mb-4">Admin Account</h3>
             <FormField control={form.control} name="adminEmail" render={({ field }) => (
               <FormItem><FormLabel>Admin Email</FormLabel><FormControl><Input type="email" placeholder="admin@restaurant.com" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="password" render={({ field }) => (
-              <FormItem><FormLabel>Secure Password</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
           </Card>
 
-          <Button type="submit" className="w-full h-12 text-lg" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Initialize Restaurant Instance"}
+          <Button type="submit" className="w-full h-14 text-lg font-black rounded-2xl shadow-xl shadow-primary/20" disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Initialize Global Instance"}
           </Button>
         </form>
       </Form>
