@@ -11,8 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Slider } from '@/components/ui/slider';
 import { 
   Palette, 
   Type, 
@@ -34,11 +32,7 @@ import {
   Star,
   Info,
   Clock,
-  Trophy,
-  Grid,
-  Map as MapIcon,
-  ChevronDown,
-  ChevronUp
+  Map as MapIcon
 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -59,7 +53,7 @@ interface DesignSettings {
     footerColor: string;
   };
   typography: {
-    fontFamily: string;
+    fontFamily: string; // Used as Body Font
     headingFont: string;
     baseSize: string;
   };
@@ -149,7 +143,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   useEffect(() => {
     if (!firestore || !restaurantId) return;
 
-    // Strict multi-tenant path for design settings
     const docRef = doc(firestore, 'restaurants', restaurantId, 'design', 'settings');
 
     const unsub = onSnapshot(
@@ -192,7 +185,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
     if (!firestore || !restaurantId) return;
     setSaving(true);
     try {
-      // Writing to nested tenant path
       const docRef = doc(firestore, 'restaurants', restaurantId, 'design', 'settings');
       await setDoc(docRef, {
         ...settings,
@@ -267,8 +259,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
   };
 
   if (loading) return <div className="p-20 flex justify-center h-full items-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
-
-  const initials = user?.email?.substring(0, 2).toUpperCase() || 'AD';
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-white overflow-hidden rounded-3xl border shadow-sm">
@@ -440,7 +430,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                           />
                         </div>
                         
-                        {/* Granular Info Card Options */}
                         {section.id === 'welcomeCard' && settings.sections.welcomeCard.visible && (
                           <div className="ml-8 p-4 bg-slate-50/30 rounded-2xl border border-dashed space-y-4 animate-in slide-in-from-top-2 duration-300">
                             <div className="flex items-center justify-between">
@@ -469,7 +458,22 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 <TabsContent value="fonts" className="space-y-6 mt-0">
                   <div className="space-y-2">
                     <Label className="text-[10px] font-semibold text-slate-500 uppercase">Heading Font</Label>
-                    <Select value={settings.typography.headingFont} onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, headingFont: v}})}>
+                    <Select 
+                      value={settings.typography.headingFont} 
+                      onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, headingFont: v}})}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {FONT_OPTIONS.map(font => <SelectItem key={font.value} value={font.value}>{font.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-semibold text-slate-500 uppercase">Body Font</Label>
+                    <Select 
+                      value={settings.typography.fontFamily} 
+                      onValueChange={(v) => setSettings({...settings, typography: {...settings.typography, fontFamily: v}})}
+                    >
                       <SelectTrigger className="h-10 rounded-xl"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {FONT_OPTIONS.map(font => <SelectItem key={font.value} value={font.value}>{font.name}</SelectItem>)}
@@ -503,7 +507,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               fontSize: settings.typography.baseSize
             }}>
               <nav className="h-16 flex items-center justify-between px-8 border-b" style={{ backgroundColor: settings.theme.headerColor }}>
-                <span className="font-bold text-sm" style={{ color: settings.theme.primary }}>Signature Dining</span>
+                <span className="font-bold text-sm" style={{ color: settings.theme.primary, fontFamily: settings.typography.headingFont }}>Signature Dining</span>
                 <div className="flex gap-4 text-[9px] uppercase font-bold text-slate-400">
                   <span>Menu</span>
                   <span>About</span>
@@ -513,7 +517,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               <div className="space-y-12 pb-20">
                 {settings.sections.hero.visible && (
                   <section className="h-64 flex flex-col items-center justify-center text-center p-8" style={{ backgroundColor: `${settings.theme.primary}10` }}>
-                    <h2 className="text-4xl font-black mb-4">Taste the Future</h2>
+                    <h2 className="text-4xl font-black mb-4" style={{ fontFamily: settings.typography.headingFont }}>Taste the Future</h2>
                     <Button size="sm" style={{ backgroundColor: settings.theme.primary }}>View Menu</Button>
                   </section>
                 )}
@@ -533,7 +537,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                         )}
                       </div>
                       <div>
-                        <h3 className="font-bold">Welcome</h3>
+                        <h3 className="font-bold" style={{ fontFamily: settings.typography.headingFont }}>Welcome</h3>
                         {settings.sections.welcomeCard.showLocation && (
                           <p className="text-[10px] opacity-50">Providing elite culinary experiences since 2024.</p>
                         )}
@@ -550,14 +554,14 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
                 {settings.sections.about.visible && (
                   <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold">About Us</h3>
+                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>About Us</h3>
                     <p className="text-xs opacity-70">Crafting excellence in every dish, sourced locally and inspired globally.</p>
                   </section>
                 )}
 
                 {settings.sections.menuList.visible && (
                   <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold">Our Menu</h3>
+                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Our Menu</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="aspect-square bg-slate-100 rounded-2xl" />
                       <div className="aspect-square bg-slate-100 rounded-2xl" />
@@ -567,7 +571,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
                 {settings.sections.gallery.visible && (
                   <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold">Gallery</h3>
+                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Gallery</h3>
                     <div className="grid grid-cols-3 gap-2">
                       {[1,2,3].map(i => <div key={i} className="aspect-square bg-slate-50 rounded-lg" />)}
                     </div>
@@ -576,7 +580,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
                 {settings.sections.testimonials.visible && (
                   <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold">Guest Experiences</h3>
+                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Guest Experiences</h3>
                     <div className="p-4 bg-slate-50 rounded-2xl italic text-[10px]">
                       "The best dining experience I've had in years. Highly recommended!"
                     </div>
@@ -585,7 +589,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
                 {settings.sections.contact.visible && (
                   <section className="px-8 space-y-4">
-                    <h3 className="text-xl font-bold">Get In Touch</h3>
+                    <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Get In Touch</h3>
                     <div className="space-y-2 text-[10px] opacity-70">
                       <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> +1 234 567 890</p>
                       <p className="flex items-center gap-2"><MapPin className="h-3 w-3" /> 123 Culinary St, Flavor City</p>

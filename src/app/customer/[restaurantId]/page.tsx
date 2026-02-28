@@ -3,7 +3,7 @@
 
 import { use, useState, useEffect } from 'react';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, collection, addDoc, getDocs, onSnapshot } from 'firebase/firestore';
+import { doc, collection, addDoc, getDocs } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { 
   Loader2, 
@@ -12,12 +12,8 @@ import {
   ShoppingBag, 
   Plus, 
   Minus, 
-  X, 
   CreditCard, 
   Truck, 
-  CheckCircle2, 
-  AlertCircle,
-  ChevronDown,
   Phone,
   Clock,
   Star,
@@ -128,7 +124,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       if (settings.paypal?.enabled) setPaymentMethod('paypal');
       else if (settings.cod?.enabled) setPaymentMethod('cod');
     } else {
-      setPaymentMethod('cod'); // Default fallback
+      setPaymentMethod('cod'); 
     }
   }, [restaurant]);
 
@@ -202,6 +198,8 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   const isOpen = checkIsRestaurantOpen(operatingHours);
   const theme = designSettings?.theme || { primary: '#22c55e', background: '#ffffff', text: '#0f172a' };
+  const typography = designSettings?.typography || { fontFamily: 'Inter', headingFont: 'Inter', baseSize: '16px' };
+  
   const sections = designSettings?.sections || { 
     hero: { visible: true }, 
     welcomeCard: { 
@@ -228,8 +226,19 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     showDeliveryInfo: true 
   };
 
+  const globalStyle = { 
+    backgroundColor: theme.background, 
+    color: theme.text,
+    fontFamily: typography.fontFamily,
+    fontSize: typography.baseSize
+  };
+
+  const headingStyle = {
+    fontFamily: typography.headingFont
+  };
+
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: theme.background, color: theme.text }}>
+    <div className="min-h-screen pb-24" style={globalStyle}>
       {/* 1. Hero Section */}
       {sections.hero?.visible && (
         <section className="relative h-[60vh] flex items-center justify-center text-center px-6 overflow-hidden">
@@ -241,7 +250,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             data-ai-hint="restaurant interior"
           />
           <div className="relative z-20 space-y-6 max-w-3xl">
-            <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight drop-shadow-lg">
+            <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight drop-shadow-lg" style={headingStyle}>
               {restaurant.name}
             </h1>
             <p className="text-xl text-white/90 font-medium drop-shadow-md">
@@ -284,7 +293,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                       </div>
                     )}
                   </div>
-                  <h2 className="text-3xl font-black">Welcome to {restaurant.name}</h2>
+                  <h2 className="text-3xl font-black" style={headingStyle}>Welcome to {restaurant.name}</h2>
                   {welcomeCardSettings.showLocation && (
                     <p className="text-slate-500 leading-relaxed font-medium">
                       {restaurant.city}, {restaurant.country}. Experience high-end dining with isolation and security at the core of our service.
@@ -328,7 +337,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         {sections.about?.visible && (
           <section className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
-              <h2 className="text-4xl font-black tracking-tight" style={{ color: theme.text }}>About Our Culinary Vision</h2>
+              <h2 className="text-4xl font-black tracking-tight" style={headingStyle}>About Our Culinary Vision</h2>
               <p className="text-lg leading-relaxed opacity-70">
                 At {restaurant.name}, we believe that dining is an art form. Every dish we serve is a testament to our commitment to excellence, crafted with the freshest local ingredients and a touch of global inspiration.
               </p>
@@ -373,14 +382,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         {sections.menuList?.visible && (
           <section id="menu" className="space-y-12">
             <div className="text-center space-y-4">
-              <h2 className="text-5xl font-black tracking-tight">Our Signature Menu</h2>
+              <h2 className="text-5xl font-black tracking-tight" style={headingStyle}>Our Signature Menu</h2>
               <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of dishes, designed to delight and satisfy.</p>
             </div>
 
             {menus?.map(menu => (
               <div key={menu.id} className="space-y-8">
                 <div className="flex items-center gap-4">
-                  <h3 className="text-3xl font-black border-l-8 pl-6" style={{ borderColor: theme.primary }}>{menu.name}</h3>
+                  <h3 className="text-3xl font-black border-l-8 pl-6" style={{ borderColor: theme.primary, ...headingStyle }}>{menu.name}</h3>
                   <div className="h-px bg-slate-200 flex-1" />
                 </div>
                 <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -401,7 +410,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                       </div>
                       <CardContent className="p-8 space-y-4">
                         <div className="space-y-2">
-                          <h4 className="font-black text-2xl group-hover:text-primary transition-colors">{item.name}</h4>
+                          <h4 className="font-black text-2xl group-hover:text-primary transition-colors" style={headingStyle}>{item.name}</h4>
                           <p className="text-sm text-slate-500 line-clamp-2 font-medium">{item.description}</p>
                         </div>
                         <div className="flex items-center justify-between pt-4 border-t border-slate-50">
@@ -425,7 +434,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         {sections.gallery?.visible && (
           <section className="space-y-12">
             <div className="text-center space-y-4">
-              <h2 className="text-4xl font-black">Visual Journey</h2>
+              <h2 className="text-4xl font-black" style={headingStyle}>Visual Journey</h2>
               <p className="opacity-60">A glimpse into our kitchen and dining ambiance.</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -454,7 +463,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <section className="space-y-12 bg-slate-50/50 -mx-6 px-6 py-20 rounded-[4rem]">
             <div className="text-center space-y-4 max-w-3xl mx-auto">
               <Quote className="h-12 w-12 text-primary mx-auto opacity-20" style={{ color: theme.primary }} />
-              <h2 className="text-4xl font-black">Guest Experiences</h2>
+              <h2 className="text-4xl font-black" style={headingStyle}>Guest Experiences</h2>
               <p className="opacity-60 text-lg">Don't just take our word for it. Here is what our community has to say.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -485,7 +494,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         {sections.contact?.visible && (
           <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="rounded-[3rem] border-none shadow-2xl bg-white text-slate-900 p-12 space-y-8 lg:col-span-1">
-              <h2 className="text-3xl font-black">Connect With Us</h2>
+              <h2 className="text-3xl font-black" style={headingStyle}>Connect With Us</h2>
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Phone className="h-5 w-5" /></div>
@@ -525,7 +534,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                   <div className="flex items-center gap-4">
                     <MapIcon className="h-8 w-8 text-primary" style={{ color: theme.primary }} />
                     <div>
-                      <h3 className="font-black text-xl">Find Your Way</h3>
+                      <h3 className="font-black text-xl" style={headingStyle}>Find Your Way</h3>
                       <p className="text-sm opacity-60">Get directions to our premium location.</p>
                     </div>
                   </div>
@@ -541,7 +550,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -mr-48 -mt-48" style={{ backgroundColor: `${theme.primary}30` }} />
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
-              <h2 className="text-4xl font-black">Plan Your Visit</h2>
+              <h2 className="text-4xl font-black" style={headingStyle}>Plan Your Visit</h2>
               <p className="text-white/60 text-lg">We are ready to welcome you. For large parties or special events, please contact us directly or use our smart reservation system.</p>
               <div className="space-y-6">
                 <div className="flex items-center gap-4">
@@ -563,7 +572,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             <Card className="rounded-[2.5rem] bg-white text-slate-900 border-none p-10 shadow-2xl space-y-8">
               <div className="text-center space-y-2">
                 <CalendarDays className="h-12 w-12 text-primary mx-auto" style={{ color: theme.primary }} />
-                <h3 className="text-2xl font-black">Secure Your Spot</h3>
+                <h3 className="text-2xl font-black" style={headingStyle}>Secure Your Spot</h3>
                 <p className="text-slate-500">Instant confirmation via our AI-powered table allocator.</p>
               </div>
               <Button size="lg" className="w-full h-16 rounded-2xl text-xl font-black shadow-xl" style={{ backgroundColor: theme.primary }} asChild disabled={!isOpen}>
@@ -594,7 +603,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               </SheetTrigger>
               <SheetContent side="right" className="w-full sm:max-w-md rounded-l-[3rem] p-0 flex flex-col h-full border-none">
                 <SheetHeader className="p-8 bg-slate-50/50 shrink-0">
-                  <SheetTitle className="text-3xl font-black">Your Order</SheetTitle>
+                  <SheetTitle className="text-3xl font-black" style={headingStyle}>Your Order</SheetTitle>
                 </SheetHeader>
                 
                 <div className="flex-1 overflow-y-auto px-8 py-4 space-y-8 no-scrollbar">
