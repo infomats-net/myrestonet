@@ -23,7 +23,11 @@ import {
   Star,
   Info,
   ChevronRight,
-  CalendarDays
+  CalendarDays,
+  Quote,
+  Map as MapIcon,
+  Image as ImageIcon,
+  Mail
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -189,7 +193,16 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   );
 
   const theme = designSettings?.theme || { primary: '#22c55e', background: '#ffffff', text: '#0f172a' };
-  const sections = designSettings?.sections || { hero: { visible: true }, welcomeCard: { visible: true }, about: { visible: true }, menuList: { visible: true } };
+  const sections = designSettings?.sections || { 
+    hero: { visible: true }, 
+    welcomeCard: { visible: true }, 
+    about: { visible: true }, 
+    menuList: { visible: true },
+    gallery: { visible: true },
+    testimonials: { visible: true },
+    contact: { visible: true },
+    map: { visible: true }
+  };
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: theme.background, color: theme.text }}>
@@ -222,13 +235,13 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         </section>
       )}
 
-      <div className="max-w-6xl mx-auto px-6 py-12 space-y-20">
+      <div className="max-w-6xl mx-auto px-6 py-12 space-y-24">
         
         {/* 2. Welcome Card / Quick Info */}
         {sections.welcomeCard?.visible && (
           <section className={cn("relative z-30", sections.hero?.visible && "-mt-32")}>
             <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
-              <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-12">
+              <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 text-slate-900">
                 <div className="flex-1 space-y-6">
                   <div className="flex items-center gap-3">
                     <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none font-bold">OPEN NOW</Badge>
@@ -238,7 +251,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                       <span className="text-slate-400 text-sm">(500+ reviews)</span>
                     </div>
                   </div>
-                  <h2 className="text-3xl font-black text-slate-900">Welcome to {restaurant.name}</h2>
+                  <h2 className="text-3xl font-black">Welcome to {restaurant.name}</h2>
                   <p className="text-slate-500 leading-relaxed font-medium">
                     {restaurant.city}, {restaurant.country}. Experience high-end dining with isolation and security at the core of our service.
                   </p>
@@ -321,7 +334,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
         {/* 4. Menu Section */}
         {sections.menuList?.visible && (
-          <section id="menu" className="space-y-12 pt-12">
+          <section id="menu" className="space-y-12">
             <div className="text-center space-y-4">
               <h2 className="text-5xl font-black tracking-tight">Our Signature Menu</h2>
               <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of dishes, designed to delight and satisfy.</p>
@@ -335,7 +348,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 </div>
                 <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
                   {allMenuItems.filter(i => i.menuId === menu.id).map(item => (
-                    <Card key={item.id} className="overflow-hidden border-none shadow-lg rounded-[2.5rem] group hover:shadow-2xl transition-all duration-500 bg-white">
+                    <Card key={item.id} className="overflow-hidden border-none shadow-lg rounded-[2.5rem] group hover:shadow-2xl transition-all duration-500 bg-white text-slate-900">
                       <div className="relative h-56 overflow-hidden">
                         <img 
                           src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/400`} 
@@ -351,7 +364,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                       </div>
                       <CardContent className="p-8 space-y-4">
                         <div className="space-y-2">
-                          <h4 className="font-black text-2xl text-slate-900 group-hover:text-primary transition-colors" style={{ color: designSettings?.theme?.text }}>{item.name}</h4>
+                          <h4 className="font-black text-2xl group-hover:text-primary transition-colors">{item.name}</h4>
                           <p className="text-sm text-slate-500 line-clamp-2 font-medium">{item.description}</p>
                         </div>
                         <div className="flex items-center justify-between pt-4 border-t border-slate-50">
@@ -371,7 +384,122 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           </section>
         )}
 
-        {/* 5. Contact / Booking Footer */}
+        {/* 5. Gallery Section */}
+        {sections.gallery?.visible && (
+          <section className="space-y-12">
+            <div className="text-center space-y-4">
+              <h2 className="text-4xl font-black">Visual Journey</h2>
+              <p className="opacity-60">A glimpse into our kitchen and dining ambiance.</p>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <div key={i} className={cn(
+                  "relative rounded-3xl overflow-hidden shadow-xl group",
+                  i % 3 === 0 ? "md:col-span-2 md:row-span-2 h-96 md:h-auto" : "h-48 md:h-64"
+                )}>
+                  <img 
+                    src={`https://picsum.photos/seed/gallery-${i}/800/800`} 
+                    alt="Gallery" 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                    data-ai-hint="restaurant food"
+                  />
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <ImageIcon className="text-white h-8 w-8" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 6. Testimonials Section */}
+        {sections.testimonials?.visible && (
+          <section className="space-y-12 bg-slate-50/50 -mx-6 px-6 py-20 rounded-[4rem]">
+            <div className="text-center space-y-4 max-w-3xl mx-auto">
+              <Quote className="h-12 w-12 text-primary mx-auto opacity-20" style={{ color: theme.primary }} />
+              <h2 className="text-4xl font-black">Guest Experiences</h2>
+              <p className="opacity-60 text-lg">Don't just take our word for it. Here is what our community has to say.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[
+                { name: "James Miller", role: "Food Critic", text: "The attention to detail in every dish is simply unmatched. A true gem in the city." },
+                { name: "Sophia Chen", role: "Regular Guest", text: "My go-to spot for every special occasion. The atmosphere is always perfect." },
+                { name: "Robert Wilson", role: "Local Resident", text: "Fast delivery, incredible flavors, and always consistent. Highly recommend the pizza!" }
+              ].map((item, i) => (
+                <Card key={i} className="rounded-3xl border-none shadow-xl p-10 space-y-6 bg-white text-slate-900">
+                  <div className="flex gap-1 text-amber-400">
+                    {[1,2,3,4,5].map(s => <Star key={s} className="h-4 w-4 fill-current" />)}
+                  </div>
+                  <p className="italic text-lg leading-relaxed opacity-80">"{item.text}"</p>
+                  <div className="flex items-center gap-4 border-t pt-6">
+                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center font-black text-primary" style={{ color: theme.primary }}>{item.name[0]}</div>
+                    <div>
+                      <p className="font-bold">{item.name}</p>
+                      <p className="text-xs opacity-50 uppercase font-black tracking-widest">{item.role}</p>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 7. Contact Section */}
+        {sections.contact?.visible && (
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <Card className="rounded-[3rem] border-none shadow-2xl bg-white text-slate-900 p-12 space-y-8 lg:col-span-1">
+              <h2 className="text-3xl font-black">Connect With Us</h2>
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Phone className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-slate-400">Call Us</p>
+                    <p className="font-bold">{restaurant.contactPhone}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Mail className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-slate-400">Email Us</p>
+                    <p className="font-bold">{restaurant.adminEmail}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><MapPin className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-slate-400">Visit Us</p>
+                    <p className="font-bold">{restaurant.address}, {restaurant.city}</p>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* 8. Map Section */}
+            {sections.map?.visible && (
+              <div className="lg:col-span-2 rounded-[3.5rem] overflow-hidden shadow-2xl border-8 border-white h-full min-h-[400px] relative group">
+                <img 
+                  src="https://picsum.photos/seed/restaurant-map/1200/800" 
+                  alt="Location Map" 
+                  className="w-full h-full object-cover grayscale brightness-90 group-hover:grayscale-0 transition-all duration-1000"
+                  data-ai-hint="city map"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+                <div className="absolute bottom-8 left-8 right-8 p-8 bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl flex items-center justify-between border border-white/50 text-slate-900">
+                  <div className="flex items-center gap-4">
+                    <MapIcon className="h-8 w-8 text-primary" style={{ color: theme.primary }} />
+                    <div>
+                      <h3 className="font-black text-xl">Find Your Way</h3>
+                      <p className="text-sm opacity-60">Get directions to our premium location.</p>
+                    </div>
+                  </div>
+                  <Button className="rounded-2xl h-12 px-6 font-bold" style={{ backgroundColor: theme.primary }}>Open Maps</Button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* 9. Final CTA / Booking Section */}
         <section className="bg-slate-900 text-white rounded-[3rem] p-8 md:p-20 overflow-hidden relative">
           <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -mr-48 -mt-48" style={{ backgroundColor: `${theme.primary}30` }} />
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
@@ -461,7 +589,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                     </RadioGroup>
                   </div>
 
-                  <div className="space-y-3 bg-slate-50 p-6 rounded-3xl border">
+                  <div className="space-y-3 bg-slate-50 p-6 rounded-3xl border text-slate-900">
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Subtotal</span>
                       <span className="font-bold">${subtotal.toFixed(2)}</span>

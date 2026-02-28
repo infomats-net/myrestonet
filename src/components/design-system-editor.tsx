@@ -34,7 +34,9 @@ import {
   Star,
   Info,
   Clock,
-  Trophy
+  Trophy,
+  Grid,
+  Map as MapIcon
 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -416,8 +418,12 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                     {[
                       { id: 'hero', label: 'Hero Banner', icon: Monitor, visibilityKey: 'hero' },
                       { id: 'welcomeCard', label: 'Info Card', icon: Info, visibilityKey: 'welcomeCard' },
-                      { id: 'about', label: 'About', icon: User, visibilityKey: 'about' },
+                      { id: 'about', label: 'About Us', icon: User, visibilityKey: 'about' },
                       { id: 'menuList', label: 'Menu Catalog', icon: UtensilsCrossed, visibilityKey: 'menuList' },
+                      { id: 'gallery', label: 'Photo Gallery', icon: ImageIcon, visibilityKey: 'gallery' },
+                      { id: 'testimonials', label: 'Testimonials', icon: MessageSquare, visibilityKey: 'testimonials' },
+                      { id: 'contact', label: 'Contact Details', icon: Phone, visibilityKey: 'contact' },
+                      { id: 'map', label: 'Interactive Map', icon: MapIcon, visibilityKey: 'map' },
                     ].map((section) => (
                       <div key={section.id} className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl border">
                         <div className="flex items-center gap-3">
@@ -478,23 +484,78 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 </div>
               </nav>
 
-              {settings.sections.hero.visible && (
-                <section className="h-64 flex flex-col items-center justify-center text-center p-8" style={{ backgroundColor: `${settings.theme.primary}10` }}>
-                  <h2 className="text-4xl font-black mb-4">Taste the Future</h2>
-                  <Button size="sm" style={{ backgroundColor: settings.theme.primary }}>View Menu</Button>
-                </section>
-              )}
+              <div className="space-y-12 pb-20">
+                {settings.sections.hero.visible && (
+                  <section className="h-64 flex flex-col items-center justify-center text-center p-8" style={{ backgroundColor: `${settings.theme.primary}10` }}>
+                    <h2 className="text-4xl font-black mb-4">Taste the Future</h2>
+                    <Button size="sm" style={{ backgroundColor: settings.theme.primary }}>View Menu</Button>
+                  </section>
+                )}
 
-              {settings.sections.welcomeCard.visible && (
-                <div className="px-8 -mt-6">
-                  <div className="bg-white rounded-2xl p-6 shadow-lg border">
-                    <h3 className="font-bold">Welcome</h3>
-                    <p className="text-xs opacity-50">Providing elite culinary experiences since 2024.</p>
+                {settings.sections.welcomeCard.visible && (
+                  <div className="px-8 -mt-6">
+                    <div className="bg-white rounded-2xl p-6 shadow-lg border">
+                      <h3 className="font-bold">Welcome</h3>
+                      <p className="text-xs opacity-50">Providing elite culinary experiences since 2024.</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <footer className="mt-auto py-8 text-center opacity-20 text-[8px] uppercase font-bold tracking-[0.2em]" style={{ backgroundColor: settings.theme.footerColor }}>
+                {settings.sections.about.visible && (
+                  <section className="px-8 space-y-4">
+                    <h3 className="text-xl font-bold">About Us</h3>
+                    <p className="text-xs opacity-70">Crafting excellence in every dish, sourced locally and inspired globally.</p>
+                  </section>
+                )}
+
+                {settings.sections.menuList.visible && (
+                  <section className="px-8 space-y-4">
+                    <h3 className="text-xl font-bold">Our Menu</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="aspect-square bg-slate-100 rounded-2xl" />
+                      <div className="aspect-square bg-slate-100 rounded-2xl" />
+                    </div>
+                  </section>
+                )}
+
+                {settings.sections.gallery.visible && (
+                  <section className="px-8 space-y-4">
+                    <h3 className="text-xl font-bold">Gallery</h3>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1,2,3].map(i => <div key={i} className="aspect-square bg-slate-50 rounded-lg" />)}
+                    </div>
+                  </section>
+                )}
+
+                {settings.sections.testimonials.visible && (
+                  <section className="px-8 space-y-4">
+                    <h3 className="text-xl font-bold">Guest Experiences</h3>
+                    <div className="p-4 bg-slate-50 rounded-2xl italic text-[10px]">
+                      "The best dining experience I've had in years. Highly recommended!"
+                    </div>
+                  </section>
+                )}
+
+                {settings.sections.contact.visible && (
+                  <section className="px-8 space-y-4">
+                    <h3 className="text-xl font-bold">Get In Touch</h3>
+                    <div className="space-y-2 text-[10px] opacity-70">
+                      <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> +1 234 567 890</p>
+                      <p className="flex items-center gap-2"><MapPin className="h-3 w-3" /> 123 Culinary St, Flavor City</p>
+                    </div>
+                  </section>
+                )}
+
+                {settings.sections.map.visible && (
+                  <section className="px-8">
+                    <div className="h-32 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
+                      <MapIcon className="h-8 w-8" />
+                    </div>
+                  </section>
+                )}
+              </div>
+
+              <footer className="py-8 text-center opacity-20 text-[8px] uppercase font-bold tracking-[0.2em]" style={{ backgroundColor: settings.theme.footerColor }}>
                 © Powered by MyRestoNet
               </footer>
             </div>
