@@ -329,6 +329,35 @@
             { "name": "restaurantId", "description": "Parent restaurant ID" }
           ]
         }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/menus/{menuId}",
+        "definition": {
+          "entityName": "Menu",
+          "schema": {
+            "$ref": "#/backend/entities/Menu"
+          },
+          "description": "Stores restaurant menus.",
+          "params": [
+            { "name": "restaurantId", "description": "Parent restaurant ID" },
+            { "name": "menuId", "description": "Menu ID" }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/menus/{menuId}/menuItems/{menuItemId}",
+        "definition": {
+          "entityName": "MenuItem",
+          "schema": {
+            "$ref": "#/backend/entities/MenuItem"
+          },
+          "description": "Stores items within a specific menu.",
+          "params": [
+            { "name": "restaurantId", "description": "Parent restaurant ID" },
+            { "name": "menuId", "description": "Parent menu ID" },
+            { "name": "menuItemId", "description": "Item ID" }
+          ]
+        }
       }
     ]
   }

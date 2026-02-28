@@ -25,7 +25,9 @@ import {
   Package,
   Calendar,
   Palette,
-  ShieldAlert
+  ShieldAlert,
+  Trash2,
+  ChevronDown
 } from 'lucide-react';
 import { MOCK_SALES_DATA } from '@/lib/mock-data';
 import { getAiSalesInsights, AiSalesInsightsOutput } from '@/ai/flows/ai-sales-insights';
@@ -35,12 +37,82 @@ import { Textarea } from '@/components/ui/textarea';
 import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/flows/localized-seo-content';
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, addDoc, query, where } from 'firebase/firestore';
+import { doc, collection, addDoc, query, where, deleteDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DesignSystemEditor } from '@/components/design-system-editor';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
+// Sub-component to manage items for a specific menu
+function MenuItemManager({ restaurantId, menuId, currency }: { restaurantId: string, menuId: string, currency: string }) {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  
+  const itemsQuery = useMemoFirebase(() => {
+    if (!firestore || !restaurantId || !menuId) return null;
+    return collection(firestore, 'restaurants', restaurantId, 'menus', menuId, 'menuItems');
+  }, [firestore, restaurantId, menuId]);
+
+  const { data: items, isLoading } = useCollection(itemsQuery);
+
+  const handleDeleteItem = (itemId: string) => {
+    if (!firestore || !restaurantId || !menuId) return;
+    const itemRef = doc(firestore, 'restaurants', restaurantId, 'menus', menuId, 'menuItems', itemId);
+    
+    deleteDoc(itemRef).catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: itemRef.path,
+        operation: 'delete',
+      }));
+    });
+    
+    toast({
+      title: "Item Removed",
+      description: "The item has been deleted from your catalog.",
+    });
+  };
+
+  if (isLoading) return <div className="flex justify-center p-4"><Loader2 className="h-4 w-4 animate-spin opacity-20" /></div>;
+
+  return (
+    <div className="space-y-3 mt-4">
+      <div className="flex items-center justify-between px-1">
+        <h5 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Menu Items ({items?.length || 0})</h5>
+      </div>
+      {items && items.length > 0 ? (
+        <div className="grid gap-2">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center justify-between p-3 bg-white border rounded-lg group hover:border-primary/20 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded bg-muted overflow-hidden">
+                  <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold leading-tight">{item.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{currency}{item.price.toFixed(2)} • {item.category}</p>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                onClick={() => handleDeleteItem(item.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-6 bg-muted/20 rounded-xl border border-dashed">
+          <p className="text-xs text-muted-foreground italic">No items added to this menu section yet.</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -183,8 +255,8 @@ function DashboardContent() {
     const itemsColRef = collection(firestore, 'restaurants', effectiveRestaurantId, 'menus', menuId, 'menuItems');
     const newItemData = {
       menuId: menuId,
-      name: "Signature Dish",
-      description: "A delicious house specialty made with local ingredients.",
+      name: "New Culinary Creation",
+      description: "A delicious house specialty made with premium local ingredients.",
       price: 18.50,
       currency: restaurant?.baseCurrency || "USD",
       inventoryLevel: 100,
@@ -199,7 +271,7 @@ function DashboardContent() {
       .then(() => {
         toast({
           title: "Item Added",
-          description: `${newItemData.name} has been added to the menu.`,
+          description: "A placeholder item has been created. You can now customize it.",
         });
       })
       .catch(async (error) => {
@@ -210,6 +282,23 @@ function DashboardContent() {
         });
         errorEmitter.emit('permission-error', permissionError);
       });
+  };
+
+  const handleDeleteMenu = (menuId: string) => {
+    if (!firestore || !effectiveRestaurantId) return;
+    const menuRef = doc(firestore, 'restaurants', effectiveRestaurantId, 'menus', menuId);
+    
+    deleteDoc(menuRef).catch(async (error) => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: menuRef.path,
+        operation: 'delete',
+      }));
+    });
+
+    toast({
+      title: "Menu Deleted",
+      description: "The menu and its reference have been removed.",
+    });
   };
 
   const isTrulyLoading = authLoading || 
@@ -253,6 +342,8 @@ function DashboardContent() {
       </div>
     );
   }
+
+  const currencySymbol = restaurant?.baseCurrency === 'GBP' ? '£' : '$';
 
   return (
     <div className="p-4 md:p-8 space-y-8">
@@ -308,7 +399,7 @@ function DashboardContent() {
                 <TrendingUp className="h-4 w-4 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}1,240.50</div>
+                <div className="text-2xl font-bold">{currencySymbol}1,240.50</div>
                 <p className="text-xs text-muted-foreground">+8.2% from yesterday</p>
               </CardContent>
             </Card>
@@ -367,7 +458,7 @@ function DashboardContent() {
                         <TableCell className="font-mono text-xs">{order.id.slice(-6).toUpperCase()}</TableCell>
                         <TableCell className="text-xs">{new Date(order.orderedAt).toLocaleDateString()}</TableCell>
                         <TableCell><Badge variant="secondary">{order.status}</Badge></TableCell>
-                        <TableCell className="font-bold">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{order.totalAmount.toFixed(2)}</TableCell>
+                        <TableCell className="font-bold">{currencySymbol}{order.totalAmount.toFixed(2)}</TableCell>
                         <TableCell className="text-right"><Button variant="ghost" size="sm">Update</Button></TableCell>
                       </TableRow>
                     ))}
@@ -387,13 +478,13 @@ function DashboardContent() {
             <CardHeader className="flex flex-col md:flex-row items-center justify-between gap-4">
               <div>
                 <CardTitle className="font-headline">Menu Catalog</CardTitle>
-                <CardDescription>Manage your active menus and digital catalogue.</CardDescription>
+                <CardDescription>Manage your active sections and digital catalogue.</CardDescription>
               </div>
               <Button 
                 className="bg-accent hover:bg-accent/90 text-accent-foreground shadow-sm w-full md:w-auto"
                 onClick={handleCreateMenu}
               >
-                <Plus className="mr-2 h-4 w-4" /> Create Menu
+                <Plus className="mr-2 h-4 w-4" /> Create New Menu Section
               </Button>
             </CardHeader>
             <CardContent>
@@ -402,43 +493,64 @@ function DashboardContent() {
                   <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                 </div>
               ) : menus && menus.length > 0 ? (
-                <div className="grid gap-4">
+                <Accordion type="single" collapsible className="space-y-4">
                   {menus.map((menu) => (
-                    <div key={menu.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 border rounded-xl hover:bg-muted/50 transition-colors">
-                      <div className="bg-primary/10 p-4 rounded-xl shrink-0">
-                        <Utensils className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-lg">{menu.name}</h4>
-                        <p className="text-sm text-muted-foreground">{menu.description || 'No description provided.'}</p>
-                      </div>
-                      <div className="flex items-center gap-3 mt-4 sm:mt-0 w-full sm:w-auto justify-between">
-                        <div className="flex items-center gap-2">
-                          <Badge variant={menu.isActive ? 'default' : 'secondary'}>
-                            {menu.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
+                    <AccordionItem key={menu.id} value={menu.id} className="border rounded-xl bg-white px-6 py-2">
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex flex-1 items-center justify-between text-left pr-4">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-primary/10 p-3 rounded-xl hidden sm:block">
+                              <Utensils className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-lg leading-tight">{menu.name}</p>
+                              <p className="text-xs text-muted-foreground">{menu.description || 'No section summary.'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <Badge variant={menu.isActive ? 'default' : 'secondary'} className="text-[10px] uppercase font-bold px-2 py-0">
+                              {menu.isActive ? 'Active' : 'Draft'}
+                            </Badge>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="text-xs h-8 border-accent text-accent hover:bg-accent/10"
-                            onClick={() => handleCreateMenuItem(menu.id)}
-                          >
-                            <Plus className="mr-1 h-3 w-3" /> Add Item
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <ChevronLeft className="h-4 w-4 rotate-180" />
-                          </Button>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-4 border-t mt-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Section Management</p>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="text-xs h-9 border-accent text-accent hover:bg-accent/5 gap-1.5"
+                              onClick={() => handleCreateMenuItem(menu.id)}
+                            >
+                              <Plus className="h-3.5 w-3.5" /> Add Menu Item
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/5"
+                              onClick={() => handleDeleteMenu(menu.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                        
+                        {/* Recursive Item Management */}
+                        <MenuItemManager 
+                          restaurantId={effectiveRestaurantId!} 
+                          menuId={menu.id} 
+                          currency={currencySymbol} 
+                        />
+                      </AccordionContent>
+                    </AccordionItem>
                   ))}
-                </div>
+                </Accordion>
               ) : (
                 <div className="text-center py-20 border-2 border-dashed rounded-xl space-y-4">
-                  <p className="text-muted-foreground">You haven't created any menus yet.</p>
-                  <Button variant="outline" onClick={handleCreateMenu}>
+                  <p className="text-muted-foreground">You haven't initialized any menus yet.</p>
+                  <Button variant="outline" onClick={handleCreateMenu} className="shadow-sm">
                     <Plus className="mr-2 h-4 w-4" /> Start Initial Menu
                   </Button>
                 </div>
@@ -542,11 +654,11 @@ function DashboardContent() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <p className="text-xs uppercase text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{aiInsights.keyPerformanceIndicators.totalRevenue.toLocaleString()}</p>
+                      <p className="text-2xl font-bold">{currencySymbol}{aiInsights.keyPerformanceIndicators.totalRevenue.toLocaleString()}</p>
                     </div>
                     <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <p className="text-xs uppercase text-muted-foreground">Avg. Order</p>
-                      <p className="text-2xl font-bold">{restaurant?.baseCurrency === 'GBP' ? '£' : '$'}{aiInsights.keyPerformanceIndicators.averageOrderValue.toFixed(2)}</p>
+                      <p className="text-2xl font-bold">{currencySymbol}{aiInsights.keyPerformanceIndicators.averageOrderValue.toFixed(2)}</p>
                     </div>
                     <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
                       <p className="text-xs uppercase text-muted-foreground">Total Orders</p>
