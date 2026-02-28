@@ -129,6 +129,46 @@
         "updatedAt"
       ]
     },
+    "OperatingHours": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OperatingHours",
+      "type": "object",
+      "description": "Stores the weekly opening/closing schedule and holiday closures for a restaurant.",
+      "properties": {
+        "isAlwaysOpen": { "type": "boolean", "default": true },
+        "schedule": {
+          "type": "object",
+          "properties": {
+            "monday": { "$ref": "#/backend/entities/DaySchedule" },
+            "tuesday": { "$ref": "#/backend/entities/DaySchedule" },
+            "wednesday": { "$ref": "#/backend/entities/DaySchedule" },
+            "thursday": { "$ref": "#/backend/entities/DaySchedule" },
+            "friday": { "$ref": "#/backend/entities/DaySchedule" },
+            "saturday": { "$ref": "#/backend/entities/DaySchedule" },
+            "sunday": { "$ref": "#/backend/entities/DaySchedule" }
+          }
+        },
+        "holidays": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "reason": { "type": "string" }
+            }
+          }
+        },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "DaySchedule": {
+      "type": "object",
+      "properties": {
+        "open": { "type": "string", "description": "Opening time in HH:mm format" },
+        "close": { "type": "string", "description": "Closing time in HH:mm format" },
+        "isClosed": { "type": "boolean" }
+      }
+    },
     "Menu": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Menu",
@@ -315,6 +355,19 @@
           "description": "Top-level collection for restaurant data.",
           "params": [
             { "name": "restaurantId", "description": "Restaurant ID" }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/config/operatingHours",
+        "definition": {
+          "entityName": "OperatingHours",
+          "schema": {
+            "$ref": "#/backend/entities/OperatingHours"
+          },
+          "description": "Stores opening and closing times.",
+          "params": [
+            { "name": "restaurantId", "description": "Parent restaurant ID" }
           ]
         }
       },

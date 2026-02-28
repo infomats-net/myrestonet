@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -56,6 +57,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DesignSystemEditor } from '@/components/design-system-editor';
+import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Sub-component to manage items for a specific menu
@@ -533,6 +535,9 @@ function DashboardContent() {
           <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Overview</TabsTrigger>
           <TabsTrigger value="orders" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Orders</TabsTrigger>
           <TabsTrigger value="menu" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5">Menus</TabsTrigger>
+          <TabsTrigger value="hours" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2">
+            <Clock className="h-4 w-4" /> Timing System
+          </TabsTrigger>
           <TabsTrigger value="design" className="data-[state=active]:bg-primary data-[state=active]:text-white rounded-lg px-6 py-2.5 flex items-center gap-2">
             <Palette className="h-4 w-4" /> Design System
           </TabsTrigger>
@@ -577,6 +582,10 @@ function DashboardContent() {
 
         <TabsContent value="design" className="pt-4">
           <DesignSystemEditor restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+
+        <TabsContent value="hours" className="pt-4">
+          <OperatingHoursEditor restaurantId={effectiveRestaurantId!} />
         </TabsContent>
 
         <TabsContent value="orders" className="space-y-6 pt-4">

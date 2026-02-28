@@ -4,7 +4,22 @@
 import { useState, use as reactUse, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Star, Clock, MapPin, Plus, Minus, Loader2, UtensilsCrossed, Phone, Mail, Instagram, Facebook, Twitter } from 'lucide-react';
+import { 
+  Star, 
+  Clock, 
+  MapPin, 
+  Plus, 
+  Minus, 
+  Loader2, 
+  UtensilsCrossed, 
+  Phone, 
+  Mail, 
+  Instagram, 
+  Facebook, 
+  Twitter, 
+  AlertTriangle,
+  Lock
+} from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
@@ -12,6 +27,16 @@ import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase
 import { doc, collection, query, where } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 import { Separator } from '@/components/ui/separator';
+import { checkIsRestaurantOpen, OperatingHours } from '@/lib/operating-hours';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function CustomerOrderPage({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = reactUse(params);
@@ -32,7 +57,14 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   }, [firestore, restaurantId]);
   const { data: design, isLoading: loadingDesign } = useDoc(designRef);
 
-  // 3. Fetch Active Menus
+  // 3. Fetch Operating Hours
+  const hoursRef = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return doc(firestore, 'restaurants', restaurantId, 'config', 'operatingHours');
+  }, [firestore, restaurantId]);
+  const { data: hours, isLoading: loadingHours } = useDoc<OperatingHours>(hoursRef);
+
+  // 4. Fetch Active Menus
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return query(
@@ -43,12 +75,24 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const { data: menus, isLoading: loadingMenus } = useCollection(menusQuery);
 
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(true);
+  const [showClosedAlert, setShowClosedAlert] = useState(false);
 
   useEffect(() => {
     if (menus && menus.length > 0 && !activeMenuId) {
       setActiveMenuId(menus[0].id);
     }
   }, [menus, activeMenuId]);
+
+  // Check open status periodically
+  useEffect(() => {
+    const checkStatus = () => {
+      setIsOpen(checkIsRestaurantOpen(hours));
+    };
+    checkStatus();
+    const interval = setInterval(checkStatus, 30000); // Check every 30s
+    return () => clearInterval(interval);
+  }, [hours]);
 
   const itemsQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId || !activeMenuId) return null;
@@ -60,6 +104,10 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const addToCart = (item: any) => {
+    if (!isOpen) {
+      setShowClosedAlert(true);
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(i => i.item.id === item.id);
       if (existing) {
@@ -85,11 +133,11 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const cartTotal = cart.reduce((sum, entry) => sum + (entry.item.price * entry.qty), 0);
   const cartCount = cart.reduce((sum, entry) => sum + entry.qty, 0);
 
-  if (loadingRes || loadingDesign || (loadingMenus && !menus)) {
+  if (loadingRes || loadingDesign || loadingHours || (loadingMenus && !menus)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-muted-foreground font-medium animate-pulse">Opening Menu...</p>
+        <p className="text-muted-foreground font-medium animate-pulse">Syncing with Kitchen...</p>
       </div>
     );
   }
@@ -138,11 +186,23 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
           </div>
           <span className="font-bold text-xl tracking-tight" style={{ fontFamily: designStyles['--heading-font'] as string, color: designStyles['--text'] as string }}>{restaurant?.name}</span>
         </div>
-        <div className="hidden md:flex items-center gap-8 text-[11px] font-bold tracking-[0.2em] uppercase" style={{ color: designStyles['--text'] as string, opacity: 0.7 }}>
-          <a href="#menu" className="hover:opacity-100 transition-opacity">Menu</a>
-          <a href="#about" className="hover:opacity-100 transition-opacity">About</a>
-          <a href="#gallery" className="hover:opacity-100 transition-opacity">Gallery</a>
-          <a href="#contact" className="hover:opacity-100 transition-opacity">Contact</a>
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-8 text-[11px] font-bold tracking-[0.2em] uppercase mr-8" style={{ color: designStyles['--text'] as string, opacity: 0.7 }}>
+            <a href="#menu" className="hover:opacity-100 transition-opacity">Menu</a>
+            <a href="#about" className="hover:opacity-100 transition-opacity">About</a>
+            <a href="#contact" className="hover:opacity-100 transition-opacity">Contact</a>
+          </div>
+          {isOpen ? (
+            <Badge className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-1.5 rounded-full animate-pulse flex items-center gap-2">
+              <span className="w-2 h-2 bg-white rounded-full" />
+              Open Now
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="font-bold px-4 py-1.5 rounded-full flex items-center gap-2">
+              <Lock className="h-3 w-3" />
+              Closed Now
+            </Badge>
+          )}
         </div>
       </nav>
 
@@ -161,8 +221,13 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
             <p className="text-white/80 text-lg md:text-xl font-medium max-w-2xl mb-10">
               {restaurant?.description}
             </p>
-            <Button size="lg" className="rounded-full h-16 px-12 text-lg font-bold shadow-2xl" style={{ backgroundColor: designStyles['--primary'] as string }}>
-              Explore Menu
+            <Button 
+              size="lg" 
+              className="rounded-full h-16 px-12 text-lg font-bold shadow-2xl" 
+              style={{ backgroundColor: designStyles['--primary'] as string }}
+              asChild
+            >
+              <a href="#menu">Explore Menu</a>
             </Button>
           </div>
         </div>
@@ -176,7 +241,9 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
               <div className="flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
                 <div className="space-y-4">
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                    <Badge variant="secondary" className="bg-primary/10 text-primary font-bold px-3 py-1">Open Now</Badge>
+                    <Badge variant={isOpen ? "secondary" : "destructive"} className={cn("font-bold px-3 py-1", isOpen && "bg-primary/10 text-primary")}>
+                      {isOpen ? 'Open for Orders' : 'Closed for Orders'}
+                    </Badge>
                     <Badge variant="outline" className="font-bold border-primary/20 text-primary px-3 py-1">Michelin Recommended</Badge>
                   </div>
                   <h2 className="text-4xl font-bold" style={{ color: designStyles['--text'] as string, fontFamily: designStyles['--heading-font'] as string }}>Welcome to {restaurant?.name}</h2>
@@ -241,7 +308,10 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
                 <div className="col-span-full flex justify-center py-20"><Loader2 className="h-12 w-12 animate-spin text-primary opacity-20" /></div>
               ) : (
                 items?.map((item: any) => (
-                  <Card key={item.id} className="overflow-hidden border-none shadow-sm hover:shadow-xl transition-all duration-300 group rounded-[2rem]">
+                  <Card key={item.id} className={cn(
+                    "overflow-hidden border-none shadow-sm transition-all duration-300 group rounded-[2rem]",
+                    !isOpen ? "opacity-60 grayscale-[0.5] scale-95" : "hover:shadow-xl hover:-translate-y-1"
+                  )}>
                     <div className="relative h-64 overflow-hidden bg-muted">
                       <img 
                         src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/600`} 
@@ -249,16 +319,24 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
                         alt={item.name}
                       />
                       {!item.isAvailable && <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center"><Badge variant="destructive" className="px-6 py-2 text-sm font-black uppercase">Sold Out</Badge></div>}
-                      <div className="absolute top-4 right-4">
-                        <Button 
-                          size="icon" 
-                          className="rounded-full h-12 w-12 shadow-2xl transition-transform hover:scale-110 active:scale-95" 
-                          onClick={() => addToCart(item)}
-                          style={{ backgroundColor: designStyles['--primary'] as string }}
-                        >
-                          <Plus className="h-6 w-6" />
-                        </Button>
-                      </div>
+                      {isOpen ? (
+                        <div className="absolute top-4 right-4">
+                          <Button 
+                            size="icon" 
+                            className="rounded-full h-12 w-12 shadow-2xl transition-transform hover:scale-110 active:scale-95" 
+                            onClick={() => addToCart(item)}
+                            style={{ backgroundColor: designStyles['--primary'] as string }}
+                          >
+                            <Plus className="h-6 w-6" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="absolute top-4 right-4">
+                          <div className="bg-black/40 backdrop-blur-md p-3 rounded-full text-white">
+                            <Lock className="h-5 w-5" />
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <CardContent className="p-8">
                       <div className="flex justify-between items-start mb-4">
@@ -451,6 +529,31 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
           </Sheet>
         </div>
       )}
+
+      {/* Closed Alert Dialog */}
+      <AlertDialog open={showClosedAlert} onOpenChange={setShowClosedAlert}>
+        <AlertDialogContent className="rounded-[2rem]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-2xl font-black flex items-center gap-3">
+              <div className="bg-destructive/10 p-3 rounded-2xl text-destructive">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              Restaurant Closed Now
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-lg py-4">
+              We are sorry! We aren't taking orders right now. Please check our opening hours and come back soon.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction 
+              onClick={() => setShowClosedAlert(false)}
+              className="h-14 rounded-2xl font-black text-lg bg-primary hover:bg-primary/90"
+            >
+              Got it, thanks!
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Footer */}
       <footer className="py-20 text-center border-t-4" style={{ backgroundColor: designStyles['--footer-bg'] as string, borderColor: designStyles['--primary'] as string }}>
