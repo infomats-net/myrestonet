@@ -7,36 +7,43 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Helper to check role from the users collection
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isSuperAdmin() {
-      // Note: Custom claims check if available, or check users collection
-      return isAuthenticated() && 
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin");
+      return isAuthenticated() && (
+        request.auth.token.role == "super_admin" || 
+        getUserData().role == "super_admin"
+      );
     }
 
     function getUserRestaurant() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('restaurantId', null);
+      return getUserData().get('restaurantId', null);
     }
 
     // Tenant Isolation Logic
     match /restaurants/{restaurantId} {
       
-      // Public read for basic info (Storefront)
+      // Public read for storefront info
       allow get: if true; 
+      
       // Admin read/write
       allow read, write: if isSuperAdmin() || 
         (isAuthenticated() && getUserRestaurant() == restaurantId);
 
       match /{subcollection=**} {
-        // Orders and Payments are private to admin/customer
-        // Menu items and Design are public read for storefront
+        // Menu and Design are public read
         allow read: if subcollection in ['menu', 'design', 'config'] || isSuperAdmin() || (isAuthenticated() && getUserRestaurant() == restaurantId);
+        // Everything else is private
         allow write: if isSuperAdmin() || (isAuthenticated() && getUserRestaurant() == restaurantId);
       }
     }
 
     match /users/{userId} {
-      allow read, write: if isSuperAdmin() || 
-        request.auth.uid == userId;
+      // Users can always read and write their own profile
+      allow read, write: if isAuthenticated() && (isSuperAdmin() || request.auth.uid == userId);
     }
   }
 }
