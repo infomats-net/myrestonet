@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, use as reactUse, useEffect } from 'react';
@@ -35,6 +36,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -244,7 +246,6 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
   const wc = design?.sections?.welcomeCard || { visible: true, showBadges: true, showRating: true, showDeliveryInfo: true, showLocation: true, showRanking: true };
 
   const availableMethods = [
-    { id: 'stripe', label: 'Credit Card', enabled: paymentsConfig?.methods?.stripe },
     { id: 'paypal', label: 'PayPal', enabled: paymentsConfig?.methods?.paypal },
     { id: 'cod', label: 'Cash on Delivery', enabled: paymentsConfig?.methods?.cod !== false },
   ].filter(m => m.enabled);

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -344,7 +345,6 @@ function DashboardContent() {
 
   const [paymentForm, setPaymentForm] = useState({
     deliveryCharge: '0.00',
-    stripe: false,
     paypal: false,
     cod: true
   });
@@ -410,7 +410,6 @@ function DashboardContent() {
     if (paymentsConfig) {
       setPaymentForm({
         deliveryCharge: (paymentsConfig.deliveryCharge || 0).toString(),
-        stripe: !!paymentsConfig.methods?.stripe,
         paypal: !!paymentsConfig.methods?.paypal,
         cod: paymentsConfig.methods?.cod !== false
       });
@@ -451,7 +450,6 @@ function DashboardContent() {
       await setDoc(pRef, {
         deliveryCharge: parseFloat(paymentForm.deliveryCharge) || 0,
         methods: {
-          stripe: paymentForm.stripe,
           paypal: paymentForm.paypal,
           cod: paymentForm.cod
         },
@@ -764,7 +762,6 @@ function DashboardContent() {
                 <Label className="text-xs font-black uppercase tracking-widest text-slate-400">Payment Methods</Label>
                 <div className="grid gap-4">
                   {[
-                    { id: 'stripe', label: 'Stripe (Credit Card)', icon: CreditCard },
                     { id: 'paypal', label: 'PayPal (Digital Wallet)', icon: ExternalLink },
                     { id: 'cod', label: 'Cash on Delivery', icon: BanknoteIcon }
                   ].map((method) => (

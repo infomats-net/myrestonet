@@ -108,7 +108,7 @@
         },
         "enabledPaymentMethods": {
           "type": "array",
-          "description": "A list of payment method identifiers (e.g., 'stripe', 'paypal', 'cash_on_delivery') that are enabled for this restaurant.",
+          "description": "A list of payment method identifiers (e.g., 'paypal', 'cash_on_delivery') that are enabled for this restaurant.",
           "items": {
             "type": "string"
           }
