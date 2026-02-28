@@ -27,7 +27,8 @@ import {
   Palette,
   ShieldAlert,
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Wand2
 } from 'lucide-react';
 import {
   Dialog,
@@ -44,6 +45,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/flows/localized-seo-content';
+import { generateItemDescription } from '@/ai/flows/generate-item-description';
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection, addDoc, query, where, deleteDoc } from 'firebase/firestore';
@@ -166,6 +168,7 @@ function DashboardContent() {
   const [seoResult, setSeoResult] = useState<LocalizedSeoContentOutput | null>(null);
   const [loadingAi, setLoadingAi] = useState(false);
   const [loadingSeo, setLoadingSeo] = useState(false);
+  const [generatingDescription, setGeneratingDescription] = useState(false);
 
   // Dialog States
   const [isMenuDialogOpen, setIsMenuDialogOpen] = useState(false);
@@ -243,6 +246,38 @@ function DashboardContent() {
       console.error(e);
     } finally {
       setLoadingSeo(false);
+    }
+  };
+
+  const handleGenerateDescription = async () => {
+    if (!itemForm.name) {
+      toast({
+        variant: "destructive",
+        title: "Name required",
+        description: "Please enter an item name first so AI can write a description."
+      });
+      return;
+    }
+    setGeneratingDescription(true);
+    try {
+      const cuisine = Array.isArray(restaurant?.cuisine) ? restaurant.cuisine[0] : '';
+      const result = await generateItemDescription({
+        itemName: itemForm.name,
+        cuisine: cuisine
+      });
+      setItemForm(prev => ({ ...prev, description: result.description }));
+      toast({
+        title: "Description Generated",
+        description: "AI has crafted a mouth-watering description for your item."
+      });
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Generation failed",
+        description: "AI could not generate a description at this time."
+      });
+    } finally {
+      setGeneratingDescription(false);
     }
   };
 
@@ -686,7 +721,19 @@ function DashboardContent() {
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="itemDesc">Description</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="itemDesc">Description</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-7 text-[10px] font-bold gap-1.5 text-accent hover:text-accent hover:bg-accent/10"
+                    onClick={handleGenerateDescription}
+                    disabled={generatingDescription || !itemForm.name}
+                  >
+                    {generatingDescription ? <Loader2 className="h-3 w-3 animate-spin" /> : <Wand2 className="h-3 w-3" />}
+                    Write with AI
+                  </Button>
+                </div>
                 <Textarea 
                   id="itemDesc" 
                   value={itemForm.description} 
