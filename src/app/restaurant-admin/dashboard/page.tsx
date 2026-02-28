@@ -726,7 +726,7 @@ function DashboardContent() {
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="h-7 text-[10px] font-bold gap-1.5 text-accent hover:text-accent hover:bg-accent/10"
+                    className="h-7 text-[10px] font-bold gap-1.5 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                     onClick={handleGenerateDescription}
                     disabled={generatingDescription || !itemForm.name}
                   >
@@ -746,7 +746,7 @@ function DashboardContent() {
                 <Input 
                   id="itemImage" 
                   value={itemForm.imageUrl} 
-                  onChange={(e) => setItemForm({...itemForm, imageUrl: e.target.value})}
+                  onChange={(e) => setSettings({...settings, imageUrl: e.target.value})}
                   placeholder="https://images.unsplash.com/..."
                 />
               </div>
