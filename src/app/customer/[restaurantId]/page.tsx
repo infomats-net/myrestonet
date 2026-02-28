@@ -200,30 +200,23 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const theme = designSettings?.theme || { primary: '#22c55e', background: '#ffffff', text: '#0f172a' };
   const typography = designSettings?.typography || { fontFamily: 'Inter', headingFont: 'Inter', baseSize: '16px' };
   
-  const sections = designSettings?.sections || { 
-    hero: { visible: true }, 
-    welcomeCard: { 
+  // Robust sections configuration with fallbacks
+  const sections = {
+    hero: designSettings?.sections?.hero ?? { visible: true },
+    welcomeCard: designSettings?.sections?.welcomeCard ?? { 
       visible: true,
       showBadges: true,
       showRating: true,
       showDeliveryInfo: true,
       showLocation: true,
       showRanking: true
-    }, 
-    about: { visible: true }, 
-    menuList: { visible: true },
-    gallery: { visible: true },
-    testimonials: { visible: true },
-    contact: { visible: true },
-    map: { visible: true }
-  };
-
-  const welcomeCardSettings = sections.welcomeCard || { 
-    visible: true, 
-    showBadges: true, 
-    showRating: true, 
-    showLocation: true, 
-    showDeliveryInfo: true 
+    },
+    about: designSettings?.sections?.about ?? { visible: true },
+    menuList: designSettings?.sections?.menuList ?? { visible: true },
+    gallery: designSettings?.sections?.gallery ?? { visible: true },
+    testimonials: designSettings?.sections?.testimonials ?? { visible: true },
+    contact: designSettings?.sections?.contact ?? { visible: true },
+    map: designSettings?.sections?.map ?? { visible: true }
   };
 
   const globalStyle = { 
@@ -258,9 +251,9 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           </div>
 
           <div className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
-            {sections.menuList?.visible && <a href="#menu" className="hover:text-primary transition-colors">Menu</a>}
-            {sections.about?.visible && <a href="#about" className="hover:text-primary transition-colors">About</a>}
-            {sections.contact?.visible && <a href="#contact" className="hover:text-primary transition-colors">Contact</a>}
+            {sections.menuList.visible && <a href="#menu" className="hover:text-primary transition-colors">Menu</a>}
+            {sections.about.visible && <a href="#about" className="hover:text-primary transition-colors">About</a>}
+            {sections.contact.visible && <a href="#contact" className="hover:text-primary transition-colors">Contact</a>}
           </div>
 
           <div className="flex items-center gap-4">
@@ -278,7 +271,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       </nav>
 
       {/* 1. Hero Section */}
-      {sections.hero?.visible && (
+      {sections.hero.visible && (
         <section className="relative h-[60vh] flex items-center justify-center text-center px-6 overflow-hidden">
           <div className="absolute inset-0 bg-black/40 z-10" />
           <img 
@@ -309,13 +302,13 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       <div className="max-w-6xl mx-auto px-6 py-12 space-y-24">
         
         {/* 2. Welcome Card / Quick Info */}
-        {welcomeCardSettings.visible && (
-          <section className={cn("relative z-30", sections.hero?.visible && "-mt-32")}>
+        {sections.welcomeCard.visible && (
+          <section className={cn("relative z-30", sections.hero.visible && "-mt-32")}>
             <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
               <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 text-slate-900">
                 <div className="flex-1 space-y-6">
                   <div className="flex items-center gap-3">
-                    {welcomeCardSettings.showBadges && (
+                    {sections.welcomeCard.showBadges && (
                       <Badge className={cn(
                         "border-none font-bold",
                         isOpen ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-destructive/10 text-destructive hover:bg-destructive/10"
@@ -323,7 +316,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                         {isOpen ? "OPEN NOW" : "CLOSED NOW"}
                       </Badge>
                     )}
-                    {welcomeCardSettings.showRating && (
+                    {sections.welcomeCard.showRating && (
                       <div className="flex items-center gap-1 text-amber-500">
                         <Star className="h-4 w-4 fill-current" />
                         <span className="font-black">4.9</span>
@@ -332,12 +325,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                     )}
                   </div>
                   <h2 className="text-3xl font-black" style={headingStyle}>Welcome to {restaurant.name}</h2>
-                  {welcomeCardSettings.showLocation && (
+                  {sections.welcomeCard.showLocation && (
                     <p className="text-slate-500 leading-relaxed font-medium">
                       {restaurant.city}, {restaurant.country}. Experience high-end dining with isolation and security at the core of our service.
                     </p>
                   )}
-                  {welcomeCardSettings.showDeliveryInfo && (
+                  {sections.welcomeCard.showDeliveryInfo && (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
                         <Clock className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
@@ -372,7 +365,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         )}
 
         {/* 3. About Section */}
-        {sections.about?.visible && (
+        {sections.about.visible && (
           <section id="about" className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center scroll-mt-24">
             <div className="space-y-6">
               <h2 className="text-4xl font-black tracking-tight" style={headingStyle}>About Our Culinary Vision</h2>
@@ -417,7 +410,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         )}
 
         {/* 4. Menu Section */}
-        {sections.menuList?.visible && (
+        {sections.menuList.visible && (
           <section id="menu" className="space-y-12 scroll-mt-24">
             <div className="text-center space-y-4">
               <h2 className="text-5xl font-black tracking-tight" style={headingStyle}>Our Signature Menu</h2>
@@ -469,7 +462,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         )}
 
         {/* 5. Gallery Section */}
-        {sections.gallery?.visible && (
+        {sections.gallery.visible && (
           <section className="space-y-12">
             <div className="text-center space-y-4">
               <h2 className="text-4xl font-black" style={headingStyle}>Visual Journey</h2>
@@ -497,7 +490,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         )}
 
         {/* 6. Testimonials Section */}
-        {sections.testimonials?.visible && (
+        {sections.testimonials.visible && (
           <section className="space-y-12 bg-slate-50/50 -mx-6 px-6 py-20 rounded-[4rem]">
             <div className="text-center space-y-4 max-w-3xl mx-auto">
               <Quote className="h-12 w-12 text-primary mx-auto opacity-20" style={{ color: theme.primary }} />
@@ -529,7 +522,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         )}
 
         {/* 7. Contact Section */}
-        {sections.contact?.visible && (
+        {sections.contact.visible && (
           <section id="contact" className="grid grid-cols-1 lg:grid-cols-3 gap-8 scroll-mt-24">
             <Card className="rounded-[3rem] border-none shadow-2xl bg-white text-slate-900 p-12 space-y-8 lg:col-span-1">
               <h2 className="text-3xl font-black" style={headingStyle}>Connect With Us</h2>
@@ -559,7 +552,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             </Card>
 
             {/* 8. Map Section */}
-            {sections.map?.visible && (
+            {sections.map.visible && (
               <div className="lg:col-span-2 rounded-[3.5rem] overflow-hidden shadow-2xl border-8 border-white h-full min-h-[400px] relative group">
                 <img 
                   src="https://picsum.photos/seed/restaurant-map/1200/800" 
@@ -638,7 +631,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 <Button size="lg" className="rounded-2xl h-14 px-8 font-black text-lg gap-2 shadow-xl" style={{ backgroundColor: theme.primary }}>
                   <ShoppingBag className="h-5 w-5" /> Checkout ({cart.length})
                 </Button>
-              </Trigger>
+              </SheetTrigger>
               <SheetContent side="right" className="w-full sm:max-w-md rounded-l-[3rem] p-0 flex flex-col h-full border-none">
                 <SheetHeader className="p-8 bg-slate-50/50 shrink-0">
                   <SheetTitle className="text-3xl font-black" style={headingStyle}>Your Order</SheetTitle>
