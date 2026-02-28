@@ -35,7 +35,6 @@ export default function TenantsPage() {
 
   const restaurantsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    // Added sorting by creation date (newest first)
     return query(collection(firestore, 'restaurants'), orderBy('createdAt', 'desc'));
   }, [firestore]);
 
@@ -43,19 +42,16 @@ export default function TenantsPage() {
 
   const filteredRestaurants = restaurants?.filter(r => 
     r.name?.toLowerCase().includes(search.toLowerCase()) || 
-    r.contactEmail?.toLowerCase().includes(search.toLowerCase()) ||
+    r.adminEmail?.toLowerCase().includes(search.toLowerCase()) ||
     r.id?.toLowerCase().includes(search.toLowerCase())
   ) || [];
 
-  // Robust date formatting for Firestore Timestamps or ISO strings
   const formatDate = (dateValue: any) => {
     if (!dateValue) return 'N/A';
     try {
-      // Handle Firestore Timestamp object
       if (dateValue && typeof dateValue.toDate === 'function') {
         return dateValue.toDate().toLocaleDateString();
       }
-      // Handle numeric timestamp or string
       const date = new Date(dateValue);
       if (isNaN(date.getTime())) return 'N/A';
       return date.toLocaleDateString();
@@ -139,14 +135,13 @@ export default function TenantsPage() {
                     </AccordionTrigger>
                     <AccordionContent className="px-10 pb-10 pt-4 bg-slate-50/30">
                       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Section 1: Basic Information */}
                         <div className="space-y-4">
                           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                             <Info className="h-3 w-3" /> Restaurant Profile
                           </h4>
                           <div className="space-y-4 bg-white p-6 rounded-[1.5rem] border shadow-sm">
                             <div className="flex flex-col">
-                              <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Contact Email</span>
+                              <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Admin / Contact Email</span>
                               <div className="flex items-center gap-2">
                                 <Mail className="h-3.5 w-3.5 text-primary/60" />
                                 <span className="text-sm font-bold text-slate-700 truncate">{res.adminEmail}</span>
@@ -172,7 +167,6 @@ export default function TenantsPage() {
                           </div>
                         </div>
 
-                        {/* Section 2: Location Details */}
                         <div className="space-y-4">
                           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                             <MapPin className="h-3 w-3" /> Location Params
@@ -195,7 +189,6 @@ export default function TenantsPage() {
                           </div>
                         </div>
 
-                        {/* Section 3: Configuration & Actions */}
                         <div className="space-y-4">
                           <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                             <Layers className="h-3 w-3" /> Instance Config

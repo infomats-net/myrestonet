@@ -143,6 +143,7 @@ export default function NewTenantPage() {
         contactName: values.contactName,
         contactPhone: values.contactPhone,
         adminUserId: adminUid,
+        adminEmail: values.adminEmail.toLowerCase(), // Store admin email as the primary contact
         partnerId: values.partnerId || (currentUser?.role === 'marketing_partner' ? currentUser.uid : null),
         cuisine: values.cuisine,
         city: values.city,
