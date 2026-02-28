@@ -8,31 +8,54 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return request.auth != null && 
-        getUser().role == "super_admin";
+      return request.auth != null && getUser().role == "super_admin";
+    }
+
+    function isPartner() {
+      return request.auth != null && getUser().role == "marketing_partner";
     }
 
     function belongsToRestaurant(restaurantId) {
-      return request.auth != null && 
-        getUser().restaurantId == restaurantId;
+      return request.auth != null && getUser().restaurantId == restaurantId;
+    }
+
+    function belongsToPartner(partnerId) {
+      return isPartner() && getUser().partnerId == partnerId;
+    }
+
+    match /partners/{partnerId} {
+      allow read: if isSuperAdmin() || belongsToPartner(partnerId);
+      allow write: if isSuperAdmin();
+      
+      match /earnings/{monthId} {
+        allow read: if isSuperAdmin() || belongsToPartner(partnerId);
+        allow write: if isSuperAdmin();
+      }
     }
 
     match /restaurants/{restaurantId} {
       // Public read for storefront
       allow get: if true;
-      allow read, write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
+      allow read: if isSuperAdmin() 
+          || belongsToRestaurant(restaurantId) 
+          || (resource.data.partnerId != null && belongsToPartner(resource.data.partnerId));
+      
+      allow write: if isSuperAdmin()
+          || (request.auth != null && getUser().role == "marketing_partner" && request.resource.data.partnerId == getUser().partnerId);
 
       match /{subcollection=**} {
-        // Public read for menu items and public config
         allow get: if true;
         allow list: if true;
-        allow read, write: if isSuperAdmin() || belongsToRestaurant(restaurantId);
+        allow read, write: if isSuperAdmin() 
+            || belongsToRestaurant(restaurantId)
+            || (get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.partnerId != null && belongsToPartner(get(/databases/$(database)/documents/restaurants/$(restaurantId)).data.partnerId));
       }
     }
 
     match /users/{userId} {
+      // Allow users to check for email uniqueness (read-only for specific fields)
+      allow list: if request.auth != null;
       allow read: if request.auth.uid == userId || isSuperAdmin();
-      // Only Super Admins can manage users in a multi-tenant SaaS
       allow write: if isSuperAdmin();
     }
   }

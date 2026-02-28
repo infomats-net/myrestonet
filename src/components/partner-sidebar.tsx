@@ -4,13 +4,12 @@
 import { 
   LayoutDashboard, 
   Store, 
-  Users, 
-  CreditCard, 
-  ShieldCheck,
-  LogOut,
+  DollarSign, 
   Settings,
-  Bell,
-  Briefcase
+  LogOut,
+  Briefcase,
+  Users,
+  Plus
 } from "lucide-react"
 import {
   Sidebar,
@@ -29,7 +28,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useAuth } from "@/firebase"
 import { signOut } from "firebase/auth"
 
-export function AdminSidebar() {
+export function PartnerSidebar() {
   const pathname = usePathname();
   const auth = useAuth();
   const router = useRouter();
@@ -48,39 +47,39 @@ export function AdminSidebar() {
       <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
         <Link href="/" className="flex items-center gap-2">
           <div className="bg-primary rounded-lg p-1.5 shrink-0">
-            <ShieldCheck className="h-5 w-5 text-white" />
+            <Briefcase className="h-5 w-5 text-white" />
           </div>
           <span className="font-bold text-lg text-primary truncate group-data-[collapsible=icon]:hidden">
-            MyRestoNet Super
+            Partner Portal
           </span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Platform</SidebarGroupLabel>
+          <SidebarGroupLabel>Management</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname === "/super-admin/dashboard"}>
-                  <Link href="/super-admin/dashboard">
+                <SidebarMenuButton asChild tooltip="Dashboard" isActive={pathname === "/partner-admin/dashboard"}>
+                  <Link href="/partner-admin/dashboard">
                     <LayoutDashboard />
                     <span>Dashboard</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Tenants" isActive={pathname === "/super-admin/tenants"}>
-                  <Link href="/super-admin/tenants">
+                <SidebarMenuButton asChild tooltip="My Restaurants">
+                  <Link href="/partner-admin/dashboard">
                     <Store />
-                    <span>Restaurant Tenants</span>
+                    <span>My Restaurants</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Partners" isActive={pathname === "/super-admin/partners"}>
-                  <Link href="/super-admin/partners">
-                    <Briefcase />
-                    <span>Marketing Partners</span>
+                <SidebarMenuButton asChild tooltip="Onboard New">
+                  <Link href="/super-admin/tenants/new">
+                    <Plus />
+                    <span>Onboard New</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -89,30 +88,14 @@ export function AdminSidebar() {
         </SidebarGroup>
         
         <SidebarGroup>
-          <SidebarGroupLabel>Administration</SidebarGroupLabel>
+          <SidebarGroupLabel>Financials</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Subscriptions" isActive={pathname === "/super-admin/billing"}>
-                  <Link href="/super-admin/billing">
-                    <CreditCard />
-                    <span>Billing & Tiers</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Notifications" isActive={pathname === "/super-admin/logs"}>
-                  <Link href="/super-admin/logs">
-                    <Bell />
-                    <span>Alerts & Logs</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Settings" isActive={pathname === "/super-admin/settings"}>
-                  <Link href="/super-admin/dashboard">
-                    <Settings />
-                    <span>System Settings</span>
+                <SidebarMenuButton asChild tooltip="Earnings">
+                  <Link href="/partner-admin/dashboard">
+                    <DollarSign />
+                    <span>Earnings & Payouts</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -122,6 +105,14 @@ export function AdminSidebar() {
       </SidebarContent>
       <SidebarFooter className="border-t p-2">
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild tooltip="Settings">
+              <Link href="/partner-admin/dashboard">
+                <Settings />
+                <span>Portal Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton 
               tooltip="Sign Out" 

@@ -49,6 +49,8 @@ export default function LoginPage() {
 
         if (role === 'super_admin') {
           router.push('/super-admin/dashboard');
+        } else if (role === 'marketing_partner') {
+          router.push('/partner-admin/dashboard');
         } else if (role === 'restaurant_admin' || role === 'staff') {
           router.push('/restaurant-admin/dashboard');
         } else {

@@ -8,11 +8,26 @@
       "properties": {
         "id": { "type": "string" },
         "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["super_admin", "restaurant_admin", "staff"] },
-        "restaurantId": { "type": "string", "description": "The tenant ID this user belongs to (null for super_admin)." },
+        "role": { "type": "string", "enum": ["super_admin", "marketing_partner", "restaurant_admin", "staff"] },
+        "restaurantId": { "type": "string", "description": "The tenant ID this user belongs to (null for admins/partners)." },
+        "partnerId": { "type": "string", "description": "The partner ID this user belongs to (null for super_admin)." },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "role"]
+    },
+    "Partner": {
+      "title": "Partner",
+      "description": "A reseller or marketing agency that onboards restaurants.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "country": { "type": "string" },
+        "commissionRate": { "type": "number", "description": "Percentage commission earned per order." },
+        "status": { "type": "string", "enum": ["active", "suspended"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "commissionRate"]
     },
     "Restaurant": {
       "title": "Restaurant",
@@ -20,88 +35,14 @@
       "properties": {
         "id": { "type": "string" },
         "adminUserId": { "type": "string" },
+        "partnerId": { "type": "string", "description": "The partner that onboarded this restaurant." },
         "name": { "type": "string" },
         "customDomain": { "type": "string" },
-        "contactName": { "type": "string" },
-        "contactPhone": { "type": "string" },
-        "address": { "type": "string" },
-        "city": { "type": "string" },
-        "state": { "type": "string" },
-        "country": { "type": "string" },
-        "postcode": { "type": "string" },
-        "baseCurrency": { "type": "string" },
-        "baseLanguage": { "type": "string" },
-        "cuisine": { "type": "array", "items": { "type": "string" } },
         "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "trial"] },
-        "paymentSettings": {
-          "type": "object",
-          "properties": {
-            "paypal": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "clientId": { "type": "string" }
-              }
-            },
-            "cod": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean" }
-              }
-            }
-          }
-        },
-        "deliverySettings": {
-          "type": "object",
-          "properties": {
-            "deliveryCharge": { "type": "number" },
-            "freeDeliveryAbove": { "type": "number" },
-            "deliveryEnabled": { "type": "boolean" }
-          }
-        },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "name", "adminUserId"]
-    },
-    "Menu": {
-      "title": "Menu",
-      "description": "A container for a set of dishes (e.g., Main Menu, Drinks).",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "isAvailable": { "type": "boolean" }
-      },
-      "required": ["id", "name"]
-    },
-    "MenuItem": {
-      "title": "MenuItem",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "price": { "type": "number" },
-        "category": { "type": "string" },
-        "isAvailable": { "type": "boolean" }
-      }
-    },
-    "Order": {
-      "title": "Order",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "customerId": { "type": "string" },
-        "status": { "type": "string" },
-        "subtotal": { "type": "number" },
-        "deliveryCharge": { "type": "number" },
-        "totalAmount": { "type": "number" },
-        "paymentMethod": { "type": "string", "enum": ["paypal", "cod"] },
-        "paymentStatus": { "type": "string" },
-        "items": { "type": "array" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
     }
   },
   "auth": {
@@ -110,23 +51,15 @@
   "firestore": {
     "/users/{userId}": {
       "schema": { "$ref": "#/backend/entities/UserProfile" },
-      "description": "Global users collection for role-based access control."
+      "description": "Global users collection."
+    },
+    "/partners/{partnerId}": {
+      "schema": { "$ref": "#/backend/entities/Partner" },
+      "description": "Marketing partners."
     },
     "/restaurants/{restaurantId}": {
       "schema": { "$ref": "#/backend/entities/Restaurant" },
-      "description": "Tenant root document."
-    },
-    "/restaurants/{restaurantId}/menus/{menuId}": {
-      "schema": { "$ref": "#/backend/entities/Menu" },
-      "description": "Tenant-specific menu containers."
-    },
-    "/restaurants/{restaurantId}/menus/{menuId}/items/{itemId}": {
-      "schema": { "$ref": "#/backend/entities/MenuItem" },
-      "description": "Dishes within a specific menu."
-    },
-    "/restaurants/{restaurantId}/orders/{orderId}": {
-      "schema": { "$ref": "#/backend/entities/Order" },
-      "description": "Tenant-specific orders subcollection."
+      "description": "Restaurant tenants."
     }
   }
 }

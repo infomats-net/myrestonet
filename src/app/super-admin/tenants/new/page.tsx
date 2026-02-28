@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,14 +28,15 @@ import {
   Check,
   X,
   UtensilsCrossed,
-  MapPin
+  MapPin,
+  AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
-import { useFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
 import { cn } from '@/lib/utils';
@@ -69,6 +71,7 @@ const formSchema = z.object({
   adminEmail: z.string().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string().min(8, "Please confirm your password"),
+  partnerId: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -76,10 +79,19 @@ const formSchema = z.object({
 
 export default function NewTenantPage() {
   const router = useRouter();
-  const { firestore } = useFirebase();
+  const { firestore, user: currentUser } = useFirebase();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [emailInUse, setEmailInUse] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
+  // Fetch partners for the dropdown
+  const partnersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'partners');
+  }, [firestore]);
+  const { data: partners } = useCollection(partnersQuery);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -98,15 +110,42 @@ export default function NewTenantPage() {
       adminEmail: "",
       password: "",
       confirmPassword: "",
+      partnerId: "",
     },
   });
 
+  const adminEmail = form.watch('adminEmail');
+
+  // Live Email Uniqueness Check
+  useEffect(() => {
+    const checkEmail = async () => {
+      if (!adminEmail || !firestore || !adminEmail.includes('@')) {
+        setEmailInUse(false);
+        return;
+      }
+      setCheckingEmail(true);
+      try {
+        const q = query(collection(firestore, 'users'), where('email', '==', adminEmail.toLowerCase()));
+        const snap = await getDocs(q);
+        setEmailInUse(!snap.empty);
+      } catch (e) {
+        console.error("Email check failed", e);
+      } finally {
+        setCheckingEmail(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkEmail, 500);
+    return () => clearTimeout(timeoutId);
+  }, [adminEmail, firestore]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!firestore) return;
+    if (!firestore || emailInUse) return;
     setLoading(true);
 
     let secondaryApp;
     try {
+      // Atomic Onboarding Logic
       const secondaryAppName = `tenant-gen-${Date.now()}`;
       secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
@@ -117,6 +156,7 @@ export default function NewTenantPage() {
       const restaurantRef = doc(collection(firestore, 'restaurants'));
       const restaurantId = restaurantRef.id;
 
+      // 1. Create Restaurant Document
       await setDoc(restaurantRef, {
         id: restaurantId,
         name: values.restaurantName,
@@ -124,6 +164,7 @@ export default function NewTenantPage() {
         contactName: values.contactName,
         contactPhone: values.contactPhone,
         adminUserId: adminUid,
+        partnerId: values.partnerId || (currentUser?.role === 'marketing_partner' ? currentUser.uid : null),
         cuisine: values.cuisine,
         city: values.city,
         state: values.state,
@@ -133,24 +174,17 @@ export default function NewTenantPage() {
         baseCurrency: values.baseCurrency,
         baseLanguage: "en",
         subscriptionStatus: "active",
-        paymentSettings: {
-          paypal: { enabled: false, clientId: '' },
-          cod: { enabled: true }
-        },
-        deliverySettings: {
-          deliveryEnabled: true,
-          deliveryCharge: 5.00,
-          freeDeliveryAbove: 50.00
-        },
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
 
+      // 2. Create users/{uid} Document (Crucial for Security Rules)
       await setDoc(doc(firestore, 'users', adminUid), {
         id: adminUid,
-        email: values.adminEmail,
+        email: values.adminEmail.toLowerCase(),
         role: 'restaurant_admin',
         restaurantId: restaurantId,
+        partnerId: values.partnerId || null,
         createdAt: serverTimestamp(),
       });
 
@@ -188,298 +222,256 @@ export default function NewTenantPage() {
           <Button variant="ghost" size="icon" asChild className="rounded-full bg-white shadow-sm border">
             <Link href="/super-admin/tenants"><ChevronLeft /></Link>
           </Button>
-          <div className="flex flex-wrap items-center gap-x-4">
-            <div>
-              <h1 className="text-3xl font-black text-slate-900 tracking-tight">New Restaurant Instance</h1>
-              <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1">Configure global market parameters and tenant isolation.</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">New Restaurant Instance</h1>
+            <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1">Tenant isolation and global market parameters.</p>
           </div>
         </div>
       </div>
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card className="rounded-[2rem] border-none shadow-xl overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b px-10 py-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Basic Information</h3>
-            </CardHeader>
-            <CardContent className="p-10 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden h-fit">
+              <CardHeader className="bg-slate-50/50 border-b px-10 py-8">
+                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Restaurant Profile</h3>
+              </CardHeader>
+              <CardContent className="p-10 space-y-8">
                 <FormField control={form.control} name="restaurantName" render={({ field }) => (
                   <FormItem>
-                    <Label className="font-bold text-slate-700">Restaurant Name</Label>
-                    <FormControl><Input placeholder="e.g. Bella Napoli" className="h-12 bg-slate-50 border-slate-100 rounded-xl" {...field} /></FormControl>
+                    <Label className="font-bold text-slate-700">Business Name</Label>
+                    <FormControl><Input placeholder="e.g. Bella Napoli" className="h-14 bg-slate-50 border-slate-100 rounded-2xl" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="customDomain" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Custom Domain</Label>
-                    <FormControl>
-                      <div className="relative">
-                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="pizzaplace.com" className="h-12 bg-slate-50 border-slate-100 rounded-xl pl-12" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <FormField control={form.control} name="contactName" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Contact Name</Label>
-                    <FormControl>
-                      <div className="relative">
-                        <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="John Doe" className="h-12 bg-slate-50 border-slate-100 rounded-xl pl-12" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="contactPhone" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Contact Number</Label>
-                    <FormControl>
-                      <div className="relative">
-                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="+1 (555) 000-0000" className="h-12 bg-slate-50 border-slate-100 rounded-xl pl-12" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-
-              <FormField control={form.control} name="cuisine" render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <div className="flex items-center gap-3 mb-1">
-                    <Label className="font-bold text-slate-700">Cuisine Types</Label>
-                    <div className="flex flex-wrap gap-1.5">
-                      {field.value?.map((c: string) => (
-                        <Badge key={c} variant="secondary" className="bg-primary/10 text-primary border-none text-[10px] font-bold px-2 py-0.5">
-                          {c}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <Popover>
-                    <PopoverTrigger asChild>
+                <div className="grid grid-cols-2 gap-6">
+                  <FormField control={form.control} name="contactName" render={({ field }) => (
+                    <FormItem>
+                      <Label className="font-bold text-slate-700">Contact Person</Label>
                       <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          className={cn(
-                            "h-12 justify-between bg-slate-50 border-slate-100 rounded-xl text-left font-normal",
-                            !field.value?.length && "text-muted-foreground"
-                          )}
-                        >
-                          <div className="flex items-center gap-2 truncate">
-                            <UtensilsCrossed className="h-4 w-4 shrink-0" />
-                            {field.value?.length > 0 
-                              ? `${field.value.length} cuisines selected`
-                              : "Select cuisine types..."}
-                          </div>
-                          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[400px] p-0 rounded-2xl border-none shadow-2xl" align="start">
-                      <div className="p-4 border-b">
                         <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <User className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input placeholder="Manager Name" className="h-14 bg-slate-50 border-slate-100 rounded-2xl pl-12" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="contactPhone" render={({ field }) => (
+                    <FormItem>
+                      <Label className="font-bold text-slate-700">Phone</Label>
+                      <FormControl>
+                        <div className="relative">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input placeholder="+1..." className="h-14 bg-slate-50 border-slate-100 rounded-2xl pl-12" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+
+                <FormField control={form.control} name="cuisine" render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="font-bold text-slate-700">Cuisine Types</Label>
+                      <div className="flex flex-wrap gap-1.5 justify-end">
+                        {field.value?.slice(0, 3).map((c: string) => (
+                          <Badge key={c} variant="secondary" className="bg-primary/10 text-primary border-none text-[10px] font-bold">
+                            {c}
+                          </Badge>
+                        ))}
+                        {field.value?.length > 3 && <Badge variant="outline">+{field.value.length - 3}</Badge>}
+                      </div>
+                    </div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button variant="outline" className="h-14 justify-between bg-slate-50 border-slate-100 rounded-2xl font-medium">
+                            <div className="flex items-center gap-2">
+                              <UtensilsCrossed className="h-4 w-4 text-slate-400" />
+                              {field.value?.length > 0 ? `${field.value.length} selected` : "Select cuisines..."}
+                            </div>
+                            <Search className="h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0 rounded-2xl shadow-2xl" align="start">
+                        <div className="p-4 border-b">
                           <Input 
                             placeholder="Search cuisines..." 
-                            className="h-10 pl-10 bg-slate-50 border-none rounded-xl"
+                            className="bg-slate-50 border-none"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                           />
                         </div>
+                        <ScrollArea className="h-72">
+                          <div className="p-2">
+                            {filteredCuisines.map((cuisine) => {
+                              const isSelected = field.value?.includes(cuisine);
+                              return (
+                                <div
+                                  key={cuisine}
+                                  onClick={() => {
+                                    const newValue = isSelected
+                                      ? field.value?.filter((v) => v !== cuisine)
+                                      : [...(field.value || []), cuisine];
+                                    field.onChange(newValue);
+                                  }}
+                                  className={cn("flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-slate-50", isSelected && "bg-primary/5 text-primary")}
+                                >
+                                  <Checkbox checked={isSelected} className="rounded-md" />
+                                  <span className="text-sm font-medium">{cuisine}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </ScrollArea>
+                      </PopoverContent>
+                    </Popover>
+                  </FormItem>
+                )} />
+
+                <FormField control={form.control} name="partnerId" render={({ field }) => (
+                  <FormItem>
+                    <Label className="font-bold text-slate-700">Assigned Marketing Partner</Label>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-14 bg-slate-50 border-slate-100 rounded-2xl">
+                          <SelectValue placeholder="Direct (No Partner)" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="rounded-2xl">
+                        <SelectItem value="none">Direct Onboarding</SelectItem>
+                        {partners?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.commissionRate}%)</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )} />
+              </CardContent>
+            </Card>
+
+            <div className="space-y-8">
+              <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden h-fit">
+                <CardHeader className="bg-slate-50/50 border-b px-10 py-6">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Location & Billing</h3>
+                </CardHeader>
+                <CardContent className="p-10 space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <FormField control={form.control} name="country" render={({ field }) => (
+                      <FormItem>
+                        <Label className="font-bold text-slate-700">Country</Label>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl><SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent className="rounded-xl">
+                            {WORLD_COUNTRIES.map(c => <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="baseCurrency" render={({ field }) => (
+                      <FormItem>
+                        <Label className="font-bold text-slate-700">Currency</Label>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl><SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100"><SelectValue /></SelectTrigger></FormControl>
+                          <SelectContent className="rounded-xl">
+                            {WORLD_CURRENCIES.map(curr => <SelectItem key={curr.code} value={curr.code}>{curr.code} ({curr.symbol})</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <FormField control={form.control} name="city" render={({ field }) => (
+                      <FormItem>
+                        <Label className="font-bold text-slate-700">City</Label>
+                        <FormControl><Input className="h-12 rounded-xl bg-slate-50 border-slate-100" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="postcode" render={({ field }) => (
+                      <FormItem>
+                        <Label className="font-bold text-slate-700">Postal Code</Label>
+                        <FormControl><Input className="h-12 rounded-xl bg-slate-50 border-slate-100" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+                  <FormField control={form.control} name="address" render={({ field }) => (
+                    <FormItem>
+                      <Label className="font-bold text-slate-700">Street Address</Label>
+                      <FormControl>
+                        <div className="relative">
+                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input className="h-12 rounded-xl bg-slate-50 border-slate-100 pl-12" {...field} />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )} />
+                </CardContent>
+              </Card>
+
+              <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden h-fit">
+                <CardHeader className="bg-slate-50/50 border-b px-10 py-6">
+                  <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Admin Credentials</h3>
+                </CardHeader>
+                <CardContent className="p-10 space-y-6">
+                  <FormField control={form.control} name="adminEmail" render={({ field }) => (
+                    <FormItem>
+                      <div className="flex justify-between items-center mb-1">
+                        <Label className="font-bold text-slate-700">Email Address</Label>
+                        {checkingEmail && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
                       </div>
-                      <ScrollArea className="h-72">
-                        <div className="p-2 space-y-1">
-                          {filteredCuisines.map((cuisine) => {
-                            const isSelected = field.value?.includes(cuisine);
-                            return (
-                              <div
-                                key={cuisine}
-                                onClick={() => {
-                                  const newValue = isSelected
-                                    ? field.value?.filter((v) => v !== cuisine)
-                                    : [...(field.value || []), cuisine];
-                                  field.onChange(newValue);
-                                }}
-                                className={cn(
-                                  "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors group",
-                                  isSelected ? "bg-primary/10 text-primary" : "hover:bg-slate-50"
-                                )}
-                              >
-                                <Checkbox 
-                                  checked={isSelected}
-                                  className={cn("rounded-md", isSelected && "bg-primary border-primary")}
-                                />
-                                <span className="text-sm font-medium">{cuisine}</span>
-                                {isSelected && <Check className="ml-auto h-4 w-4" />}
-                              </div>
-                            );
-                          })}
-                          {filteredCuisines.length === 0 && (
-                            <div className="p-4 text-center text-sm text-slate-500">No cuisine found.</div>
-                          )}
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input 
+                            type="email" 
+                            className={cn(
+                              "h-12 rounded-xl bg-slate-50 border-slate-100 pl-12 transition-colors",
+                              emailInUse && "border-destructive ring-destructive bg-destructive/5"
+                            )} 
+                            {...field} 
+                          />
                         </div>
-                      </ScrollArea>
-                      {field.value?.length > 0 && (
-                        <div className="p-4 border-t bg-slate-50/50 flex flex-wrap gap-1.5">
-                          {field.value.map(c => (
-                            <Badge key={c} variant="secondary" className="bg-white border-slate-100 flex items-center gap-1 py-1 px-2 rounded-lg">
-                              {c}
-                              <X 
-                                className="h-3 w-3 cursor-pointer hover:text-destructive" 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  field.onChange(field.value.filter(v => v !== c));
-                                }}
-                              />
-                            </Badge>
-                          ))}
-                        </div>
+                      </FormControl>
+                      {emailInUse && (
+                        <p className="text-[10px] font-bold text-destructive flex items-center gap-1 mt-1 uppercase tracking-widest">
+                          <AlertCircle className="h-3 w-3" /> Email is already in use
+                        </p>
                       )}
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </CardContent>
-          </Card>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
 
-          <Card className="rounded-[2rem] border-none shadow-xl overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b px-10 py-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Location & Payments</h3>
-            </CardHeader>
-            <CardContent className="p-10 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <FormField control={form.control} name="country" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Country</Label>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-12 bg-slate-50 border-slate-100 rounded-xl">
-                          <SelectValue placeholder="Select Country" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="rounded-xl">
-                        {WORLD_COUNTRIES.map(c => <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="baseCurrency" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Payment Currency</Label>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-12 bg-slate-50 border-slate-100 rounded-xl">
-                          <SelectValue placeholder="Select Currency" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="rounded-xl">
-                        {WORLD_CURRENCIES.map(curr => <SelectItem key={curr.code} value={curr.code}>{curr.code} ({curr.symbol})</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <FormField control={form.control} name="password" render={({ field }) => (
+                      <FormItem>
+                        <Label className="font-bold text-slate-700">Password</Label>
+                        <FormControl>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input type="password" className="h-12 rounded-xl bg-slate-50 border-slate-100 pl-12" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                      <FormItem>
+                        <Label className="font-bold text-slate-700">Confirm</Label>
+                        <FormControl><Input type="password" className="h-12 rounded-xl bg-slate-50 border-slate-100" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                  </div>
+                </CardContent>
+              </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <FormField control={form.control} name="city" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">City</Label>
-                    <FormControl><Input placeholder="London" className="h-12 bg-slate-50 border-slate-100 rounded-xl" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="state" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">State / Province</Label>
-                    <FormControl><Input placeholder="e.g. NSW" className="h-12 bg-slate-50 border-slate-100 rounded-xl" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <FormField control={form.control} name="postcode" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Post Code</Label>
-                    <FormControl><Input placeholder="2000" className="h-12 bg-slate-50 border-slate-100 rounded-xl" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="address" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Street Address</Label>
-                    <FormControl>
-                      <div className="relative">
-                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="123 Signature Way" className="h-12 bg-slate-50 border-slate-100 rounded-xl pl-12" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-[2rem] border-none shadow-xl overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b px-10 py-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Admin Credentials</h3>
-            </CardHeader>
-            <CardContent className="p-10 space-y-6">
-              <FormField control={form.control} name="adminEmail" render={({ field }) => (
-                <FormItem>
-                  <Label className="font-bold text-slate-700">Admin Email</Label>
-                  <FormControl>
-                    <div className="relative">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input type="email" placeholder="admin@restaurant.com" className="h-12 bg-slate-50 border-slate-100 rounded-xl pl-12" {...field} />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <FormField control={form.control} name="password" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Password</Label>
-                    <FormControl>
-                      <div className="relative">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input type="password" placeholder="••••••••" className="h-12 bg-slate-50 border-slate-100 rounded-xl pl-12" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-                <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Confirm Password</Label>
-                    <FormControl><Input type="password" placeholder="••••••••" className="h-12 bg-slate-50 border-slate-100 rounded-xl" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Button type="submit" className="w-full h-16 text-xl font-black rounded-2xl shadow-xl shadow-primary/20 transition-all hover:scale-[1.01]" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : "Initialize Global Instance"}
-          </Button>
+              <Button type="submit" className="w-full h-20 text-xl font-black rounded-[1.5rem] shadow-2xl" disabled={loading || emailInUse}>
+                {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : "Initialize Tenant Instance"}
+              </Button>
+            </div>
+          </div>
         </form>
       </Form>
     </div>
