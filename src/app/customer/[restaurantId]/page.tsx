@@ -309,50 +309,64 @@ export default function CustomerOrderPage({ params }: { params: Promise<{ restau
               {loadingItems ? (
                 <div className="col-span-full flex justify-center py-20"><Loader2 className="h-12 w-12 animate-spin text-primary opacity-20" /></div>
               ) : (
-                items?.map((item: any) => (
-                  <Card key={item.id} className={cn(
-                    "overflow-hidden border-none shadow-sm transition-all duration-300 group rounded-[2rem]",
-                    !isOpen ? "opacity-60 grayscale-[0.5] scale-95" : "hover:shadow-xl hover:-translate-y-1"
-                  )}>
-                    <div className="relative h-64 overflow-hidden bg-muted">
-                      <img 
-                        src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/600`} 
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                        alt={item.name}
-                      />
-                      {!item.isAvailable && <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center"><Badge variant="destructive" className="px-6 py-2 text-sm font-black uppercase">Sold Out</Badge></div>}
-                      {isOpen ? (
-                        <div className="absolute top-4 right-4">
-                          <Button 
-                            size="icon" 
-                            className="rounded-full h-12 w-12 shadow-2xl transition-transform hover:scale-110 active:scale-95" 
-                            onClick={() => addToCart(item)}
-                            style={{ backgroundColor: designStyles['--primary'] as string }}
-                          >
-                            <Plus className="h-6 w-6" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="absolute top-4 right-4">
-                          <div className="bg-black/40 backdrop-blur-md p-3 rounded-full text-white">
-                            <Lock className="h-5 w-5" />
+                items?.map((item: any) => {
+                  const cartItem = cart.find(i => i.item.id === item.id);
+                  const qty = cartItem ? cartItem.qty : 0;
+
+                  return (
+                    <Card key={item.id} className={cn(
+                      "overflow-hidden border-none shadow-sm transition-all duration-300 group rounded-[2rem]",
+                      !isOpen ? "opacity-60 grayscale-[0.5] scale-95" : "hover:shadow-xl hover:-translate-y-1"
+                    )}>
+                      <div className="relative h-64 overflow-hidden bg-muted">
+                        <img 
+                          src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/600`} 
+                          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
+                          alt={item.name}
+                        />
+                        {!item.isAvailable && <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center"><Badge variant="destructive" className="px-6 py-2 text-sm font-black uppercase">Sold Out</Badge></div>}
+                        {isOpen ? (
+                          <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+                            {qty > 0 && (
+                              <Badge className="bg-white text-primary border-2 border-primary font-black px-3 py-1 shadow-lg animate-in zoom-in" style={{ color: designStyles['--primary'] as string, borderColor: designStyles['--primary'] as string }}>
+                                {qty} in cart
+                              </Badge>
+                            )}
+                            <Button 
+                              size={qty > 0 ? "default" : "icon"} 
+                              className={cn(
+                                "rounded-full shadow-2xl transition-all hover:scale-110 active:scale-95",
+                                qty > 0 ? "h-12 px-6" : "h-12 w-12"
+                              )} 
+                              onClick={() => addToCart(item)}
+                              style={{ backgroundColor: designStyles['--primary'] as string }}
+                            >
+                              <Plus className={cn("h-6 w-6", qty > 0 && "mr-2")} />
+                              {qty > 0 && <span className="font-bold">Add more</span>}
+                            </Button>
                           </div>
+                        ) : (
+                          <div className="absolute top-4 right-4">
+                            <div className="bg-black/40 backdrop-blur-md p-3 rounded-full text-white">
+                              <Lock className="h-5 w-5" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <CardContent className="p-8">
+                        <div className="flex justify-between items-start mb-4">
+                          <h3 className="font-bold text-xl leading-tight" style={{ fontFamily: designStyles['--heading-font'] as string, color: designStyles['--text'] as string }}>{item.name}</h3>
+                          <span className="font-black text-lg" style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{item.price.toFixed(2)}</span>
                         </div>
-                      )}
-                    </div>
-                    <CardContent className="p-8">
-                      <div className="flex justify-between items-start mb-4">
-                        <h3 className="font-bold text-xl leading-tight" style={{ fontFamily: designStyles['--heading-font'] as string, color: designStyles['--text'] as string }}>{item.name}</h3>
-                        <span className="font-black text-lg" style={{ color: designStyles['--primary'] as string }}>{currencySymbol}{item.price.toFixed(2)}</span>
-                      </div>
-                      <p className="text-sm text-slate-500 font-medium leading-relaxed line-clamp-3 mb-6">{item.description}</p>
-                      <div className="flex items-center gap-2">
-                         <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest">{item.category}</Badge>
-                         <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest">Recommended</Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                        <p className="text-sm text-slate-500 font-medium leading-relaxed line-clamp-3 mb-6">{item.description}</p>
+                        <div className="flex items-center gap-2">
+                           <Badge variant="outline" className="text-[10px] font-black uppercase tracking-widest">{item.category}</Badge>
+                           <Badge variant="secondary" className="text-[10px] font-black uppercase tracking-widest">Recommended</Badge>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
               )}
             </div>
           </section>
