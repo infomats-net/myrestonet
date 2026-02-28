@@ -22,21 +22,19 @@ import Link from 'next/link';
 import { 
   ChartContainer, 
   ChartTooltip, 
-  ChartTooltipContent 
+  ChartTooltipContent,
+  type ChartConfig
 } from '@/components/ui/chart';
 import { 
   Area, 
   AreaChart, 
-  ResponsiveContainer, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
-  Tooltip, 
   PieChart, 
   Pie, 
   Cell,
-  BarChart,
-  Bar
+  Tooltip
 } from 'recharts';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +60,28 @@ const TOP_RESTAURANTS = [
   { name: 'Le Petit Bistro', revenue: '$7,200', growth: '+5%', color: 'bg-amber-500' },
   { name: 'Pasta Paradiso', revenue: '$6,500', growth: '+15%', color: 'bg-purple-500' },
 ];
+
+const revenueChartConfig = {
+  revenue: {
+    label: "Revenue",
+    color: "hsl(var(--primary))",
+  },
+} satisfies ChartConfig;
+
+const distributionChartConfig = {
+  active: {
+    label: "Active",
+    color: "hsl(var(--primary))",
+  },
+  trial: {
+    label: "Trial",
+    color: "hsl(var(--accent))",
+  },
+  suspended: {
+    label: "Suspended",
+    color: "hsl(var(--destructive))",
+  },
+} satisfies ChartConfig;
 
 export default function SuperAdminDashboard() {
   return (
@@ -141,40 +161,38 @@ export default function SuperAdminDashboard() {
             </div>
           </CardHeader>
           <CardContent className="p-8">
-            <div className="h-[350px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="month" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 12, fontWeight: 600, fill: '#94a3b8' }} 
-                    dy={10}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 12, fontWeight: 600, fill: '#94a3b8' }} 
-                  />
-                  <Tooltip content={<ChartTooltipContent />} />
-                  <Area 
-                    type="monotone" 
-                    dataKey="revenue" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={4} 
-                    fillOpacity={1} 
-                    fill="url(#colorRevenue)" 
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+            <ChartContainer config={revenueChartConfig} className="h-[350px] w-full">
+              <AreaChart data={REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="month" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12, fontWeight: 600, fill: '#94a3b8' }} 
+                  dy={10}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontSize: 12, fontWeight: 600, fill: '#94a3b8' }} 
+                />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="revenue" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={4} 
+                  fillOpacity={1} 
+                  fill="url(#colorRevenue)" 
+                />
+              </AreaChart>
+            </ChartContainer>
           </CardContent>
         </Card>
 
@@ -185,7 +203,7 @@ export default function SuperAdminDashboard() {
           </CardHeader>
           <CardContent className="p-8 flex flex-col items-center justify-center">
             <div className="h-[250px] w-full relative">
-              <ResponsiveContainer width="100%" height="100%">
+              <ChartContainer config={distributionChartConfig} className="h-full w-full">
                 <PieChart>
                   <Pie
                     data={TENANT_DISTRIBUTION}
@@ -200,9 +218,9 @@ export default function SuperAdminDashboard() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<ChartTooltipContent />} />
                 </PieChart>
-              </ResponsiveContainer>
+              </ChartContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <span className="text-3xl font-black text-slate-900">142</span>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
