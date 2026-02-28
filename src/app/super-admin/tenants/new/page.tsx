@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -9,7 +8,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormMessage } from '@/form';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -108,17 +107,13 @@ export default function NewTenantPage() {
 
     let secondaryApp;
     try {
-      // 1. Initialize a secondary Firebase app to create the new Auth user 
-      // without kicking the Super Admin out of their current session.
       const secondaryAppName = `tenant-gen-${Date.now()}`;
       secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
       
-      // 2. Create the Auth User (Immediate login capability)
       const userCredential = await createUserWithEmailAndPassword(secondaryAuth, values.adminEmail, values.password);
       const adminUid = userCredential.user.uid;
 
-      // 3. Create the Restaurant Document
       const restaurantRef = doc(collection(firestore, 'restaurants'));
       const restaurantId = restaurantRef.id;
 
@@ -151,7 +146,6 @@ export default function NewTenantPage() {
         updatedAt: serverTimestamp(),
       });
 
-      // 4. Create the Users Collection mapping (Required for Security Rules)
       await setDoc(doc(firestore, 'users', adminUid), {
         id: adminUid,
         email: values.adminEmail,
@@ -160,7 +154,6 @@ export default function NewTenantPage() {
         createdAt: serverTimestamp(),
       });
 
-      // 5. Cleanup secondary session
       await signOut(secondaryAuth);
       await deleteApp(secondaryApp);
 
@@ -260,7 +253,16 @@ export default function NewTenantPage() {
 
               <FormField control={form.control} name="cuisine" render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <Label className="font-bold text-slate-700">Cuisine Types</Label>
+                  <div className="flex items-center gap-3 mb-1">
+                    <Label className="font-bold text-slate-700">Cuisine Types</Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {field.value?.map((c: string) => (
+                        <Badge key={c} variant="secondary" className="bg-primary/10 text-primary border-none text-[10px] font-bold px-2 py-0.5">
+                          {c}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                   <Popover>
                     <PopoverTrigger asChild>
                       <FormControl>
