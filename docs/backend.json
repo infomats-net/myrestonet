@@ -2,204 +2,78 @@
 {
   "entities": {
     "UserProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
+      "description": "Represents a user in the system.",
       "type": "object",
-      "description": "Represents a user within the system, encompassing Super Admins, Restaurant Admins, and End Customers. It stores non-authentication related profile information and their assigned roles.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the UserProfile entity."
-        },
-        "email": {
-          "type": "string",
-          "description": "The user's email address, used for communication and identification, but not for direct authentication data storage.",
-          "format": "email"
-        },
-        "firstName": {
-          "type": "string",
-          "description": "The first name of the user."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The last name of the user."
-        },
-        "role": {
-          "type": "string",
-          "description": "The primary role of the user within the system (e.g., 'super_admin', 'restaurant_admin', 'customer')."
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "The user's phone number, optional for customers but potentially required for restaurant admins."
-        },
-        "restaurantId": {
-          "type": "string",
-          "description": "Optional reference to a restaurant for restaurant admins."
-        }
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["super_admin", "restaurant_admin", "staff"] },
+        "restaurantId": { "type": "string", "description": "The tenant ID this user belongs to." },
+        "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "email",
-        "role"
-      ]
+      "required": ["id", "role"]
     },
     "Restaurant": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Restaurant",
       "type": "object",
-      "description": "Represents a specific restaurant managed within the platform, including its operational details, localization settings, and payment configurations.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Restaurant entity."
-        },
-        "name": {
-          "type": "string",
-          "description": "The official name of the restaurant."
-        },
-        "description": {
-          "type": "string",
-          "description": "A brief description of the restaurant."
-        },
-        "address": {
-          "type": "string",
-          "description": "The street address of the restaurant."
-        },
-        "city": {
-          "type": "string",
-          "description": "The city where the restaurant is located."
-        },
-        "stateProvince": {
-          "type": "string",
-          "description": "The state or province where the restaurant is located."
-        },
-        "postalCode": {
-          "type": "string",
-          "description": "The postal code of the restaurant's location."
-        },
-        "country": {
-          "type": "string",
-          "description": "The country where the restaurant is located."
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "The main contact phone number for the restaurant."
-        },
-        "email": {
-          "type": "string",
-          "description": "The primary email address for the restaurant.",
-          "format": "email"
-        },
-        "websiteUrl": {
-          "type": "string",
-          "description": "The official website URL for the restaurant.",
-          "format": "uri"
-        },
-        "adminUserIds": {
-          "type": "array",
-          "description": "References to UserProfile IDs who have administrative access to this restaurant. (Relationship: Restaurant N:N UserProfile)",
-          "items": {
-            "type": "string"
-          }
-        },
-        "deliveryChargeAmount": {
-          "type": "number",
-          "description": "The standard delivery charge amount set by the restaurant."
-        },
-        "enabledPaymentMethods": {
-          "type": "array",
-          "description": "A list of payment method identifiers (e.g., 'paypal', 'cash_on_delivery') that are enabled for this restaurant.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "currency": {
-          "type": "string",
-          "description": "The primary currency used by the restaurant for pricing and transactions (e.g., 'USD', 'EUR', 'GBP')."
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the restaurant entity was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the restaurant entity was last updated.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "adminUserId": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "country": { "type": "string" },
+        "baseCurrency": { "type": "string" },
+        "baseLanguage": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "name",
-        "address",
-        "city",
-        "country",
-        "adminUserIds",
-        "createdAt"
-      ]
+      "required": ["id", "name", "adminUserId"]
     },
     "Order": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Order",
       "type": "object",
-      "description": "Represents a customer's placed order, including details about the customer, restaurant, payment, and delivery.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Order entity."
-        },
-        "customerId": {
-          "type": "string",
-          "description": "Reference to the UserProfile of the customer who placed the order."
-        },
-        "restaurantId": {
-          "type": "string",
-          "description": "Reference to the Restaurant where the order was placed."
-        },
-        "status": {
-          "type": "string",
-          "description": "The current status of the order (e.g., 'pending', 'accepted', 'preparing', 'out_for_delivery', 'delivered', 'cancelled', 'rejected')."
-        },
-        "totalAmount": {
-          "type": "number",
-          "description": "The final total amount of the order."
-        },
-        "adminUserIds": {
-          "type": "array",
-          "description": "Denormalized admin IDs for authorization.",
-          "items": { "type": "string" }
-        }
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "status": { "type": "string" },
+        "totalAmount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MenuItem": {
+      "title": "MenuItem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "category": { "type": "string" },
+        "isAvailable": { "type": "boolean" }
       }
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous"
-    ]
+    "providers": ["password", "anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/users/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": {
-            "$ref": "#/backend/entities/UserProfile"
-          },
-          "description": "Stores user profile information. Collection name is 'users' to match app implementation."
-        }
-      },
-      {
-        "path": "/restaurants/{restaurantId}",
-        "definition": {
-          "entityName": "Restaurant",
-          "schema": {
-            "$ref": "#/backend/entities/Restaurant"
-          },
-          "description": "Represents a single restaurant."
-        }
-      }
-    ]
+    "/users/{userId}": {
+      "schema": { "$ref": "#/backend/entities/UserProfile" },
+      "description": "Global users collection."
+    },
+    "/restaurants/{restaurantId}": {
+      "schema": { "$ref": "#/backend/entities/Restaurant" },
+      "description": "Tenant root document."
+    },
+    "/restaurants/{restaurantId}/orders/{orderId}": {
+      "schema": { "$ref": "#/backend/entities/Order" },
+      "description": "Tenant-specific orders."
+    },
+    "/restaurants/{restaurantId}/menu/{menuItemId}": {
+      "schema": { "$ref": "#/backend/entities/MenuItem" },
+      "description": "Tenant-specific menu items."
+    }
   }
 }

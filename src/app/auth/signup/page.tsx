@@ -2,7 +2,6 @@
 "use client";
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,14 +12,10 @@ import { useFirebase } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [orgName, setOrgName] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { auth, firestore } = useFirebase();
@@ -36,40 +31,19 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Create user profile in Firestore
+      // Create global user profile
       const userDocRef = doc(firestore, 'users', user.uid);
-      const userData = {
+      await setDoc(userDocRef, {
         id: user.uid,
         email: email,
-        name: fullName || orgName,
         role: 'super_admin',
+        restaurantId: null,
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      setDoc(userDocRef, userData)
-        .catch(async (error) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: userDocRef.path,
-            operation: 'create',
-            requestResourceData: userData
-          }));
-        });
-
-      // Create superAdmin marker
-      const adminMarkerRef = doc(firestore, 'superAdmins', user.uid);
-      setDoc(adminMarkerRef, { id: user.uid })
-        .catch(async (error) => {
-           errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: adminMarkerRef.path,
-            operation: 'create',
-            requestResourceData: { id: user.uid }
-          }));
-        });
+      });
 
       toast({
-        title: "Account created",
-        description: "Welcome to MyRestoNet Global.",
+        title: "Platform Initialized",
+        description: "Super Admin account created.",
       });
 
       router.push('/super-admin/dashboard');
@@ -93,67 +67,24 @@ export default function SignupPage() {
               <ShieldCheck className="h-8 w-8 text-white" />
             </div>
           </div>
-          <CardTitle className="text-3xl font-headline font-bold text-primary">Platform Registration</CardTitle>
-          <CardDescription>Create your Super Admin account to manage MyRestoNet Global</CardDescription>
+          <CardTitle className="text-3xl font-headline font-bold text-primary">Platform Admin Setup</CardTitle>
+          <CardDescription>Initialize your MyRestoNet Super Admin account.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input 
-                id="fullName" 
-                placeholder="Jane Doe" 
-                required 
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="org">Organization / Platform Name</Label>
-              <Input 
-                id="org" 
-                placeholder="MyRestoNet Global" 
-                required 
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="email">Email Address</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="admin@myrestonet.com" 
-                required 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+              <Input id="email" type="email" placeholder="admin@myrestonet.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Security Password</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                required 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            <div className="bg-accent/5 p-3 rounded-lg flex items-start gap-3 border border-accent/10 mt-2">
-              <ShieldCheck className="h-5 w-5 text-accent shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground">
-                This account will serve as the master administrator for the entire multi-tenant infrastructure.
-              </p>
+              <Label htmlFor="password">Secure Password</Label>
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button className="w-full text-lg h-12 bg-primary hover:bg-primary/90" type="submit" disabled={loading}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Complete Registration"}
+            <Button className="w-full text-lg h-12" type="submit" disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Complete Setup"}
             </Button>
-            <div className="text-center text-sm">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="text-primary font-semibold hover:underline">Sign in</Link>
-            </div>
           </CardFooter>
         </form>
       </Card>
