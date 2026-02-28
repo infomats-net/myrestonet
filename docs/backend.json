@@ -34,7 +34,7 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "country": { "type": "string" },
-        "commissionRate": { "type": "number", "description": "Percentage commission earned per order." },
+        "commissionRate": { "type": "number" },
         "status": { "type": "string", "enum": ["active", "suspended"] },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -46,31 +46,55 @@
       "properties": {
         "id": { "type": "string" },
         "adminUserId": { "type": "string" },
-        "partnerId": { "type": "string", "description": "The partner that onboarded this restaurant." },
+        "partnerId": { "type": "string" },
         "name": { "type": "string" },
+        "city": { "type": "string" },
+        "country": { "type": "string" },
         "customDomain": { "type": "string" },
         "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "trial"] },
+        "tables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "size": { "type": "number" },
+              "location": { "type": "string", "enum": ["Indoor", "Outdoor", "Window", "Bar"] },
+              "isActive": { "type": "boolean" }
+            }
+          }
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "name", "adminUserId"]
+      }
+    },
+    "Reservation": {
+      "title": "Reservation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "tableIds": { "type": "array", "items": { "type": "string" } },
+        "dateTime": { "type": "string", "format": "date-time" },
+        "partySize": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "completed"] },
+        "specialRequests": { "type": "string" },
+        "waitlist": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
     "providers": ["password", "anonymous"]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": { "$ref": "#/backend/entities/UserProfile" },
-      "description": "Global users collection."
-    },
-    "/partners/{partnerId}": {
-      "schema": { "$ref": "#/backend/entities/Partner" },
-      "description": "Marketing partners."
-    },
-    "/restaurants/{restaurantId}": {
-      "schema": { "$ref": "#/backend/entities/Restaurant" },
-      "description": "Restaurant tenants."
-    }
+    "/users/{userId}": { "schema": { "$ref": "#/backend/entities/UserProfile" }, "description": "Users." },
+    "/partners/{partnerId}": { "schema": { "$ref": "#/backend/entities/Partner" }, "description": "Partners." },
+    "/restaurants/{restaurantId}": { "schema": { "$ref": "#/backend/entities/Restaurant" }, "description": "Restaurants." },
+    "/restaurants/{restaurantId}/reservations/{resId}": { "schema": { "$ref": "#/backend/entities/Reservation" }, "description": "Reservations." }
   }
 }

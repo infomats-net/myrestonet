@@ -24,22 +24,27 @@ import {
   Truck,
   DollarSign,
   ChevronRight,
-  ListFilter
+  ListFilter,
+  Users,
+  LayoutGrid,
+  CalendarDays,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection, useAuth } from '@/firebase';
-import { doc, collection, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { doc, collection, addDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 function DashboardContent() {
   const router = useRouter();
-  const auth = useAuth();
   const searchParams = useSearchParams();
   const impersonateId = searchParams.get('impersonate');
   const activeTab = searchParams.get('tab') || 'overview';
@@ -64,82 +69,33 @@ function DashboardContent() {
 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
 
-  // Menus (Containers)
-  const menusQuery = useMemoFirebase(() => {
+  const reservationsQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
-    return collection(firestore, 'restaurants', effectiveRestaurantId, 'menus');
+    return collection(firestore, 'restaurants', effectiveRestaurantId, 'reservations');
   }, [firestore, effectiveRestaurantId]);
-  const { data: menus } = useCollection(menusQuery);
+  const { data: reservations } = useCollection(reservationsQuery);
 
-  const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
-
-  // Menu Items (for selected menu)
-  const menuItemsQuery = useMemoFirebase(() => {
-    if (!firestore || !effectiveRestaurantId || !selectedMenuId) return null;
-    return collection(firestore, 'restaurants', effectiveRestaurantId, 'menus', selectedMenuId, 'items');
-  }, [firestore, effectiveRestaurantId, selectedMenuId]);
-  const { data: menuItems } = useCollection(menuItemsQuery);
-
-  const ordersQuery = useMemoFirebase(() => {
-    if (!firestore || !effectiveRestaurantId) return null;
-    return collection(firestore, 'restaurants', effectiveRestaurantId, 'orders');
-  }, [firestore, effectiveRestaurantId]);
-  const { data: orders } = useCollection(ordersQuery);
-
-  // Dialog States
-  const [isMenuDialogOpen, setIsMenuDialogOpen] = useState(false);
-  const [editingMenuId, setEditingMenuId] = useState<string | null>(null);
-  const [menuForm, setMenuForm] = useState({ name: '', description: '', isAvailable: true });
-
-  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [itemForm, setItemForm] = useState({ name: '', price: '', category: 'Main', isAvailable: true });
-
+  const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
+  const [tableForm, setTableForm] = useState({ name: '', size: '2', location: 'Indoor' });
   const [isSaving, setIsSaving] = useState(false);
 
-  const [payDevForm, setPayDevForm] = useState({
-    paypal: { enabled: false, clientId: '' },
-    cod: { enabled: false },
-    delivery: { enabled: true, charge: '0', freeAbove: '' }
-  });
-
-  useEffect(() => {
-    if (restaurant) {
-      setPayDevForm({
-        paypal: restaurant.paymentSettings?.paypal || { enabled: false, clientId: '' },
-        cod: restaurant.paymentSettings?.cod || { enabled: false },
-        delivery: {
-          enabled: restaurant.deliverySettings?.deliveryEnabled ?? true,
-          charge: restaurant.deliverySettings?.deliveryCharge?.toString() || '0',
-          freeAbove: restaurant.deliverySettings?.freeDeliveryAbove?.toString() || ''
-        }
-      });
-    }
-  }, [restaurant]);
-
-  useEffect(() => {
-    if (menus && menus.length > 0 && !selectedMenuId) {
-      setSelectedMenuId(menus[0].id);
-    }
-  }, [menus, selectedMenuId]);
-
-  const handleSaveSettings = async () => {
+  const handleAddTable = async () => {
     if (!firestore || !effectiveRestaurantId) return;
     setIsSaving(true);
     try {
+      const newTable = {
+        id: `table-${Date.now()}`,
+        name: tableForm.name,
+        size: parseInt(tableForm.size),
+        location: tableForm.location,
+        isActive: true
+      };
       await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId), {
-        paymentSettings: {
-          paypal: payDevForm.paypal,
-          cod: payDevForm.cod,
-        },
-        deliverySettings: {
-          deliveryEnabled: payDevForm.delivery.enabled,
-          deliveryCharge: parseFloat(payDevForm.delivery.charge) || 0,
-          freeDeliveryAbove: payDevForm.delivery.freeAbove ? parseFloat(payDevForm.delivery.freeAbove) : null,
-        },
-        updatedAt: new Date().toISOString()
+        tables: arrayUnion(newTable)
       });
-      toast({ title: "Settings Saved", description: "Updated." });
+      setIsTableDialogOpen(false);
+      setTableForm({ name: '', size: '2', location: 'Indoor' });
+      toast({ title: "Table Added" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
@@ -147,46 +103,25 @@ function DashboardContent() {
     }
   };
 
-  const handleSaveMenu = async () => {
-    if (!firestore || !effectiveRestaurantId || !menuForm.name) return;
-    setIsSaving(true);
+  const handleDeleteTable = async (table: any) => {
+    if (!firestore || !effectiveRestaurantId) return;
     try {
-      const data = { ...menuForm, updatedAt: new Date().toISOString() };
-      if (editingMenuId) {
-        await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId, 'menus', editingMenuId), data);
-      } else {
-        const docRef = await addDoc(collection(firestore, 'restaurants', effectiveRestaurantId, 'menus'), { ...data, createdAt: new Date().toISOString() });
-        setSelectedMenuId(docRef.id);
-      }
-      setIsMenuDialogOpen(false);
-      toast({ title: "Success", description: "Menu updated." });
+      await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId), {
+        tables: arrayRemove(table)
+      });
+      toast({ title: "Table Removed" });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save menu." });
-    } finally {
-      setIsSaving(false);
+      toast({ variant: "destructive", title: "Error" });
     }
   };
 
-  const handleSaveMenuItem = async () => {
-    if (!firestore || !effectiveRestaurantId || !selectedMenuId || !itemForm.name) return;
-    setIsSaving(true);
+  const updateReservationStatus = async (resId: string, status: string) => {
+    if (!firestore || !effectiveRestaurantId) return;
     try {
-      const data = {
-        ...itemForm,
-        price: parseFloat(itemForm.price) || 0,
-        updatedAt: new Date().toISOString(),
-      };
-      if (editingItemId) {
-        await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId, 'menus', selectedMenuId, 'items', editingItemId), data);
-      } else {
-        await addDoc(collection(firestore, 'restaurants', effectiveRestaurantId, 'menus', selectedMenuId, 'items'), { ...data, createdAt: new Date().toISOString() });
-      }
-      setIsItemDialogOpen(false);
-      toast({ title: "Success", description: "Item saved." });
+      await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId, 'reservations', resId), { status });
+      toast({ title: "Reservation Updated" });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save item." });
-    } finally {
-      setIsSaving(false);
+      toast({ variant: "destructive", title: "Error" });
     }
   };
 
@@ -211,11 +146,18 @@ function DashboardContent() {
             <p className="text-muted-foreground text-sm font-medium">Merchant Dashboard</p>
           </div>
         </div>
-        <Button variant="outline" asChild className="rounded-xl">
-          <Link href={`/customer/${effectiveRestaurantId}`} target="_blank">
-            <ExternalLink className="mr-2 h-4 w-4" /> Live Store
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild className="rounded-xl">
+            <Link href={`/customer/${effectiveRestaurantId}/reserve`} target="_blank">
+              <CalendarDays className="mr-2 h-4 w-4" /> Booking Page
+            </Link>
+          </Button>
+          <Button variant="outline" asChild className="rounded-xl">
+            <Link href={`/customer/${effectiveRestaurantId}`} target="_blank">
+              <ExternalLink className="mr-2 h-4 w-4" /> Live Store
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => {
@@ -223,219 +165,210 @@ function DashboardContent() {
         params.set('tab', v);
         router.push(`/restaurant-admin/dashboard?${params.toString()}`, { scroll: false });
       }} className="space-y-6 w-full">
-        <TabsList className="bg-slate-100/50 border p-1 rounded-2xl h-14 w-full flex">
-          <TabsTrigger value="overview" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Overview</TabsTrigger>
-          <TabsTrigger value="menu" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Menus & Items</TabsTrigger>
-          <TabsTrigger value="orders" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Orders</TabsTrigger>
-          <TabsTrigger value="payments" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Payment & Delivery</TabsTrigger>
-          <TabsTrigger value="design" className="flex-1 rounded-xl h-full font-bold data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Design</TabsTrigger>
+        <TabsList className="bg-slate-100/50 border p-1 rounded-2xl h-14 w-full flex overflow-x-auto no-scrollbar">
+          <TabsTrigger value="overview" className="flex-1 rounded-xl h-full font-bold">Overview</TabsTrigger>
+          <TabsTrigger value="reservations" className="flex-1 rounded-xl h-full font-bold">Reservations</TabsTrigger>
+          <TabsTrigger value="tables" className="flex-1 rounded-xl h-full font-bold">Tables</TabsTrigger>
+          <TabsTrigger value="menu" className="flex-1 rounded-xl h-full font-bold">Menu</TabsTrigger>
+          <TabsTrigger value="payments" className="flex-1 rounded-xl h-full font-bold">Billing</TabsTrigger>
+          <TabsTrigger value="design" className="flex-1 rounded-xl h-full font-bold">Design</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card className="rounded-[2rem] border-none shadow-md">
-              <CardHeader><CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Total Menus</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-primary">{menus?.length || 0}</div></CardContent>
+              <CardHeader><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">Upcoming Reservations</CardTitle></CardHeader>
+              <CardContent><div className="text-4xl font-black text-primary">{reservations?.filter(r => r.status === 'confirmed').length || 0}</div></CardContent>
             </Card>
             <Card className="rounded-[2rem] border-none shadow-md">
-              <CardHeader><CardTitle className="text-xs font-black uppercase tracking-widest text-slate-500">Total Orders</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-blue-600">{orders?.length || 0}</div></CardContent>
+              <CardHeader><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">Waitlist Size</CardTitle></CardHeader>
+              <CardContent><div className="text-4xl font-black text-amber-500">{reservations?.filter(r => r.waitlist).length || 0}</div></CardContent>
             </Card>
-            <Card className="rounded-[2rem] border-none shadow-md bg-primary text-white">
-              <CardHeader><CardTitle className="text-xs font-black uppercase tracking-widest opacity-80">Subscription</CardTitle></CardHeader>
-              <CardContent><div className="text-2xl font-bold uppercase">{restaurant?.subscriptionStatus}</div></CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="menu" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Menu List Sidebar */}
-            <Card className="lg:col-span-1 rounded-[2rem] border-none shadow-xl overflow-hidden h-fit">
-              <CardHeader className="border-b bg-slate-50/50">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-black">My Menus</CardTitle>
-                  <Button variant="ghost" size="icon" onClick={() => { setEditingMenuId(null); setMenuForm({ name: '', description: '', isAvailable: true }); setIsMenuDialogOpen(true); }}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <div className="p-4 space-y-2">
-                {menus?.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => setSelectedMenuId(m.id)}
-                    className={cn(
-                      "w-full flex items-center justify-between p-4 rounded-2xl transition-all text-left group",
-                      selectedMenuId === m.id ? "bg-primary text-white shadow-lg" : "hover:bg-slate-100 text-slate-600"
-                    )}
-                  >
-                    <span className="font-bold truncate">{m.name}</span>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Pencil className="h-3 w-3" onClick={(e) => { e.stopPropagation(); setEditingMenuId(m.id); setMenuForm({ name: m.name, description: m.description, isAvailable: m.isAvailable }); setIsMenuDialogOpen(true); }} />
-                    </div>
-                  </button>
-                ))}
-                {(!menus || menus.length === 0) && (
-                  <p className="text-xs text-center text-muted-foreground p-4 italic">No menus created yet.</p>
-                )}
-              </div>
-            </Card>
-
-            {/* Items List Content */}
-            <Card className="lg:col-span-3 rounded-[2rem] border-none shadow-xl overflow-hidden">
-              <CardHeader className="border-b bg-slate-50/50 py-8 flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl font-black">
-                    {menus?.find(m => m.id === selectedMenuId)?.name || "Select a Menu"}
-                  </CardTitle>
-                  <CardDescription>Items in this menu section.</CardDescription>
-                </div>
-                {selectedMenuId && (
-                  <Button onClick={() => { setEditingItemId(null); setItemForm({ name: '', price: '', category: 'Main', isAvailable: true }); setIsItemDialogOpen(true); }}>
-                    <Plus className="mr-2 h-4 w-4" /> Add Item
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent className="p-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {menuItems?.map(item => (
-                    <div key={item.id} className="flex items-center justify-between p-4 border rounded-2xl bg-white hover:shadow-md transition-shadow">
-                      <div>
-                        <p className="font-bold">{item.name}</p>
-                        <p className="text-xs text-muted-foreground">${item.price} • {item.category}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => { setEditingItemId(item.id); setItemForm({ name: item.name, price: item.price.toString(), category: item.category, isAvailable: item.isAvailable }); setIsItemDialogOpen(true); }}><Pencil className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="text-destructive" onClick={() => deleteDoc(doc(firestore, 'restaurants', effectiveRestaurantId!, 'menus', selectedMenuId!, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </div>
-                  ))}
-                  {selectedMenuId && (!menuItems || menuItems.length === 0) && (
-                    <div className="col-span-full py-12 text-center text-muted-foreground italic border-2 border-dashed rounded-3xl bg-slate-50">
-                      No items in this menu yet. Click "Add Item" to begin.
-                    </div>
-                  )}
-                  {!selectedMenuId && (
-                    <div className="col-span-full py-12 text-center text-muted-foreground italic">
-                      Select a menu from the left to manage items.
-                    </div>
-                  )}
-                </div>
-              </CardContent>
+            <Card className="rounded-[2rem] border-none shadow-md">
+              <CardHeader><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Tables</CardTitle></CardHeader>
+              <CardContent><div className="text-4xl font-black text-blue-600">{restaurant?.tables?.length || 0}</div></CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="payments" className="space-y-6">
-          <Card className="rounded-[2rem] border-none shadow-xl overflow-hidden">
-            <CardHeader className="border-b py-8">
-              <div className="flex items-center gap-2">
-                <CreditCard className="h-6 w-6 text-primary" />
-                <CardTitle className="text-2xl font-black">Payment & Delivery</CardTitle>
+        <TabsContent value="reservations" className="space-y-6">
+          <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
+            <CardHeader className="bg-slate-50/50 border-b p-10 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-2xl font-black">Live Reservations</CardTitle>
+                <CardDescription>Manage your guest bookings and AI allocation.</CardDescription>
               </div>
+              <Badge variant="outline" className="h-8 rounded-full border-primary/20 bg-primary/5 text-primary font-bold">
+                {reservations?.length || 0} Total
+              </Badge>
             </CardHeader>
-            <CardContent className="p-8 space-y-12">
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-black flex items-center gap-2"><Truck className="h-5 w-5" /> Delivery Settings</h3>
-                  <Switch checked={payDevForm.delivery.enabled} onCheckedChange={(v) => setPayDevForm({...payDevForm, delivery: {...payDevForm.delivery, enabled: v}})} />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>Delivery Charge ($)</Label>
-                    <Input type="number" value={payDevForm.delivery.charge} onChange={(e) => setPayDevForm({...payDevForm, delivery: {...payDevForm.delivery, charge: e.target.value}})} disabled={!payDevForm.delivery.enabled} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Free Delivery Above ($)</Label>
-                    <Input type="number" value={payDevForm.delivery.freeAbove} onChange={(e) => setPayDevForm({...payDevForm, delivery: {...payDevForm.delivery, freeAbove: e.target.value}})} disabled={!payDevForm.delivery.enabled} />
-                  </div>
-                </div>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-slate-50 border-b">
+                    <tr>
+                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</th>
+                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Date & Time</th>
+                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Party</th>
+                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Table(s)</th>
+                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
+                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {reservations?.sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime()).map(res => (
+                      <tr key={res.id} className={cn("hover:bg-slate-50/50 transition-colors", res.waitlist && "bg-amber-50/30")}>
+                        <td className="p-6">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500">
+                              {res.customerName?.[0] || 'G'}
+                            </div>
+                            <div>
+                              <p className="font-bold text-slate-900">{res.customerName}</p>
+                              <p className="text-[10px] text-slate-400 font-medium">{res.customerEmail}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-6">
+                          <div className="flex items-center gap-2 text-slate-600">
+                            <Clock className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-sm font-bold">{format(new Date(res.dateTime), 'MMM d, h:mm a')}</span>
+                          </div>
+                        </td>
+                        <td className="p-6 text-sm font-black text-slate-900">{res.partySize} Guests</td>
+                        <td className="p-6">
+                          {res.waitlist ? (
+                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">WAITLIST</Badge>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {res.tableIds?.map((tid: string) => (
+                                <Badge key={tid} variant="secondary" className="bg-slate-100 text-slate-600 font-bold">
+                                  {restaurant?.tables?.find((t: any) => t.id === tid)?.name || tid}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-6">
+                          <Badge className={cn(
+                            res.status === 'confirmed' ? 'bg-emerald-500' : 
+                            res.status === 'pending' ? 'bg-amber-500' : 'bg-slate-400'
+                          )}>
+                            {res.status}
+                          </Badge>
+                        </td>
+                        <td className="p-6">
+                          <div className="flex gap-2">
+                            {res.status === 'pending' && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" onClick={() => updateReservationStatus(res.id, 'confirmed')}><CheckCircle2 className="h-4 w-4" /></Button>
+                            )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => updateReservationStatus(res.id, 'cancelled')}><XCircle className="h-4 w-4" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {(!reservations || reservations.length === 0) && (
+                      <tr><td colSpan={6} className="p-20 text-center text-muted-foreground italic">No reservations found.</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
-
-              <div className="space-y-6">
-                <h3 className="text-lg font-black flex items-center gap-2"><DollarSign className="h-5 w-5" /> Payment Methods</h3>
-                <div className="grid gap-4">
-                  <div className="flex items-center justify-between p-4 border rounded-2xl">
-                    <Label className="font-bold">PayPal</Label>
-                    <Switch checked={payDevForm.paypal.enabled} onCheckedChange={(v) => setPayDevForm({...payDevForm, paypal: {...payDevForm.paypal, enabled: v}})} />
-                  </div>
-                  {payDevForm.paypal.enabled && (
-                    <div className="p-4 bg-slate-50 rounded-2xl space-y-2">
-                      <Label className="text-xs">PayPal Client ID</Label>
-                      <Input value={payDevForm.paypal.clientId} onChange={(e) => setPayDevForm({...payDevForm, paypal: {...payDevForm.paypal, clientId: e.target.value}})} />
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between p-4 border rounded-2xl">
-                    <Label className="font-bold">Cash on Delivery</Label>
-                    <Switch checked={payDevForm.cod.enabled} onCheckedChange={(v) => setPayDevForm({...payDevForm, cod: {...payDevForm.cod, enabled: v}})} />
-                  </div>
-                </div>
-              </div>
-
-              <Button className="w-full h-14 rounded-2xl font-bold text-lg" onClick={handleSaveSettings} disabled={isSaving}>
-                {isSaving ? <Loader2 className="animate-spin" /> : <Save className="mr-2" />}
-                Save Settings
-              </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
+        <TabsContent value="tables" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-black text-slate-900">Floor Plan & Tables</h2>
+            <Button onClick={() => setIsTableDialogOpen(true)} className="rounded-2xl h-12 shadow-xl"><Plus className="mr-2" /> New Table</Button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {restaurant?.tables?.map((table: any) => (
+              <Card key={table.id} className="rounded-3xl border-none shadow-lg overflow-hidden group">
+                <CardHeader className="bg-slate-50 p-6 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-white border shadow-sm flex items-center justify-center">
+                      <LayoutGrid className="h-5 w-5 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg font-black">{table.name}</CardTitle>
+                  </div>
+                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-destructive" onClick={() => handleDeleteTable(table)}><Trash2 className="h-4 w-4" /></Button>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capacity</span>
+                    <span className="font-black text-slate-900 text-xl">{table.size} People</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Location</span>
+                    <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10">{table.location}</Badge>
+                  </div>
+                  <div className="pt-4 border-t flex items-center gap-2">
+                    <Switch checked={table.isActive} />
+                    <span className="text-xs font-bold text-slate-500">Active Seating</span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+            {(!restaurant?.tables || restaurant.tables.length === 0) && (
+              <div className="col-span-full py-20 text-center border-2 border-dashed rounded-[3rem] text-muted-foreground bg-slate-50/50">
+                <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <p className="font-bold">No tables configured yet.</p>
+                <Button variant="link" onClick={() => setIsTableDialogOpen(true)}>Add your first table</Button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Existing Tabs */}
+        <TabsContent value="menu">
+          <Card className="rounded-[2rem] border-none shadow-md p-10"><p className="text-center italic text-muted-foreground">Menu management is located in the sidebar tab.</p></Card>
+        </TabsContent>
+        <TabsContent value="payments">
+          <Card className="rounded-[2rem] border-none shadow-md p-10"><p className="text-center italic text-muted-foreground">Billing settings coming soon.</p></Card>
+        </TabsContent>
         <TabsContent value="design">
           <DesignSystemEditor restaurantId={effectiveRestaurantId!} />
         </TabsContent>
-        
-        <TabsContent value="orders">
-          <Card className="rounded-[2rem] border-none shadow-xl overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b py-8">
-              <CardTitle className="text-2xl font-black">Incoming Orders</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              {orders?.map(order => (
-                <div key={order.id} className="p-4 border rounded-2xl flex justify-between items-center bg-white hover:shadow-md transition-all">
-                  <div>
-                    <p className="font-bold">Order #{order.id.slice(-6)}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleString()}</p>
-                    <Badge variant="secondary" className="mt-1">{order.status}</Badge>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-black text-xl text-primary">${order.totalAmount.toFixed(2)}</p>
-                    <p className="text-[10px] uppercase font-bold text-slate-400">{order.paymentMethod}</p>
-                  </div>
-                </div>
-              ))}
-              {(!orders || orders.length === 0) && (
-                <div className="py-20 text-center text-muted-foreground italic border-2 border-dashed rounded-3xl">No orders yet.</div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
-      {/* Menu Dialog */}
-      <Dialog open={isMenuDialogOpen} onOpenChange={setIsMenuDialogOpen}>
-        <DialogContent className="rounded-[2rem]">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingMenuId ? 'Edit Menu' : 'New Menu'}</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Menu Name</Label><Input value={menuForm.name} onChange={e => setMenuForm({...menuForm, name: e.target.value})} placeholder="e.g. Summer Specials" /></div>
-            <div className="space-y-2"><Label>Description</Label><Input value={menuForm.description} onChange={e => setMenuForm({...menuForm, description: e.target.value})} placeholder="Seasonal fresh dishes..." /></div>
-          </div>
-          <DialogFooter><Button className="w-full h-12 rounded-xl" onClick={handleSaveMenu} disabled={isSaving}>{isSaving ? <Loader2 className="animate-spin" /> : "Save Menu"}</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Item Dialog */}
-      <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
-        <DialogContent className="rounded-[2rem]">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingItemId ? 'Edit Item' : 'New Item'}</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2"><Label>Dish Name</Label><Input value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} /></div>
+      {/* Table Dialog */}
+      <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>
+        <DialogContent className="rounded-[2.5rem]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">Configure Table</DialogTitle>
+            <DialogDescription>Define a table for AI allocation and reservations.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-6">
+            <div className="space-y-2">
+              <Label>Table Name / Number</Label>
+              <Input value={tableForm.name} onChange={e => setTableForm({...tableForm, name: e.target.value})} placeholder="e.g. Table 1 or Terrace 4" />
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Price ($)</Label><Input type="number" step="0.01" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} /></div>
-              <div className="space-y-2"><Label>Category</Label><Input value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})} /></div>
+              <div className="space-y-2">
+                <Label>Max Size</Label>
+                <Input type="number" value={tableForm.size} onChange={e => setTableForm({...tableForm, size: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>Location</Label>
+                <Select value={tableForm.location} onValueChange={v => setTableForm({...tableForm, location: v})}>
+                  <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="Indoor">Indoor</SelectItem>
+                    <SelectItem value="Outdoor">Outdoor</SelectItem>
+                    <SelectItem value="Window">Window</SelectItem>
+                    <SelectItem value="Bar">Bar</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-          <DialogFooter><Button className="w-full h-12 rounded-xl" onClick={handleSaveMenuItem} disabled={isSaving}>{isSaving ? <Loader2 className="animate-spin" /> : "Save Item"}</Button></DialogFooter>
+          <DialogFooter>
+            <Button className="w-full h-14 rounded-2xl font-black" onClick={handleAddTable} disabled={isSaving || !tableForm.name}>
+              {isSaving ? <Loader2 className="animate-spin" /> : "Save Table"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
