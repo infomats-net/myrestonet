@@ -111,7 +111,6 @@ function DashboardContent() {
     if (!firestore || !effectiveRestaurantId) return;
     setIsSaving(true);
     try {
-      // Validations
       if (payDevForm.stripe.enabled && !payDevForm.stripe.publishableKey) {
         throw new Error("Stripe requires a Publishable Key");
       }
@@ -204,13 +203,13 @@ function DashboardContent() {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="bg-slate-100/50 border p-1 rounded-2xl h-14">
-          <TabsTrigger value="overview" className="flex-1 rounded-xl h-full">Overview</TabsTrigger>
-          <TabsTrigger value="menu" className="flex-1 rounded-xl h-full">Menu</TabsTrigger>
-          <TabsTrigger value="orders" className="flex-1 rounded-xl h-full">Orders</TabsTrigger>
-          <TabsTrigger value="payments" className="flex-1 rounded-xl h-full">Payment & Delivery</TabsTrigger>
-          <TabsTrigger value="design" className="flex-1 rounded-xl h-full">Design</TabsTrigger>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full">
+        <TabsList className="bg-slate-100/50 border p-1 rounded-2xl h-14 w-full flex">
+          <TabsTrigger value="overview" className="flex-1 rounded-xl h-full font-bold">Overview</TabsTrigger>
+          <TabsTrigger value="menu" className="flex-1 rounded-xl h-full font-bold">Menu</TabsTrigger>
+          <TabsTrigger value="orders" className="flex-1 rounded-xl h-full font-bold">Orders</TabsTrigger>
+          <TabsTrigger value="payments" className="flex-1 rounded-xl h-full font-bold">Payment & Delivery</TabsTrigger>
+          <TabsTrigger value="design" className="flex-1 rounded-xl h-full font-bold">Design</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -270,7 +269,6 @@ function DashboardContent() {
               <CardDescription>Configure how your customers pay and how delivery is calculated.</CardDescription>
             </CardHeader>
             <CardContent className="p-8 space-y-12">
-              {/* Delivery Section */}
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-black flex items-center gap-2"><Truck className="h-5 w-5" /> Delivery Options</h3>
@@ -292,12 +290,10 @@ function DashboardContent() {
                 </div>
               </div>
 
-              {/* Payment Methods Section */}
               <div className="space-y-8">
                 <h3 className="text-lg font-black flex items-center gap-2"><DollarSign className="h-5 w-5" /> Payment Methods</h3>
                 
                 <div className="grid gap-6">
-                  {/* Stripe */}
                   <Card className="p-6 border-slate-200">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -323,7 +319,6 @@ function DashboardContent() {
                     )}
                   </Card>
 
-                  {/* PayPal */}
                   <Card className="p-6 border-slate-200">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
@@ -343,7 +338,6 @@ function DashboardContent() {
                     )}
                   </Card>
 
-                  {/* COD */}
                   <Card className="p-6 border-slate-200">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
