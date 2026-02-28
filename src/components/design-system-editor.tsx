@@ -115,10 +115,11 @@ const DEFAULT_SETTINGS: DesignSettings = {
 };
 
 const THEME_PRESETS = [
-  { name: 'Light', colors: { primary: '#22c55e', secondary: '#F0F9FF', accent: '#16a34a', background: '#FFFFFF', text: '#0F172A' } },
-  { name: 'Dark', colors: { primary: '#38BDF8', secondary: '#1E293B', accent: '#0284C7', background: '#0F172A', text: '#F8FAFC' } },
-  { name: 'Modern', colors: { primary: '#10B981', secondary: '#ECFDF5', accent: '#059669', background: '#F0FDFA', text: '#064E3B' } },
-  { name: 'Elegant', colors: { primary: '#1A1A1A', secondary: '#F5F5F5', accent: '#D4AF37', background: '#F9F9F9', text: '#1A1A1A' } },
+  { name: 'Light', colors: { primary: '#22c55e', secondary: '#f0fdf4', accent: '#16a34a', background: '#ffffff', text: '#0f172a' } },
+  { name: 'Dark', colors: { primary: '#38bdf8', secondary: '#1e293b', accent: '#0284c7', background: '#0f172a', text: '#f8fafc' } },
+  { name: 'Modern', colors: { primary: '#10b981', secondary: '#ecfdf5', accent: '#059669', background: '#f8fafc', text: '#064e3b' } },
+  { name: 'Vibrant', colors: { primary: '#f43f5e', secondary: '#fff1f2', accent: '#e11d48', background: '#ffffff', text: '#111827' } },
+  { name: 'Minimalist', colors: { primary: '#18181b', secondary: '#f5f5f5', accent: '#52525b', background: '#ffffff', text: '#09090b' } },
 ];
 
 const FONT_OPTIONS = [
@@ -209,6 +210,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
         ...preset.colors
       }
     }));
+    toast({ title: "Preset Applied", description: `Theme set to ${preset.name}.` });
   };
 
   const handleAiGenerate = async () => {
@@ -334,7 +336,28 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
 
             <ScrollArea className="flex-1 min-h-0">
               <div className="px-8 py-4 pb-20">
-                <TabsContent value="theme" className="space-y-6 mt-0">
+                <TabsContent value="theme" className="space-y-8 mt-0">
+                  <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase">Template Presets</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {THEME_PRESETS.map((preset) => (
+                        <Button
+                          key={preset.name}
+                          variant="outline"
+                          className={cn(
+                            "h-16 rounded-2xl border-2 transition-all font-bold",
+                            settings.theme.primary === preset.colors.primary && settings.theme.background === preset.colors.background
+                              ? "bg-primary/5 border-primary/20 text-primary shadow-sm"
+                              : "bg-slate-50/50 hover:bg-slate-100 hover:border-slate-200 text-slate-600"
+                          )}
+                          onClick={() => applyPreset(preset)}
+                        >
+                          {preset.name}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="p-5 rounded-2xl bg-white border border-primary/10 shadow-sm relative overflow-hidden group">
                     <div className="flex items-center gap-2 mb-3">
                       <Sparkles className="h-4 w-4 text-primary" />
