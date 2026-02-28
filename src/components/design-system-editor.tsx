@@ -313,10 +313,22 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
           <Tabs defaultValue="theme" className="flex-1 flex flex-col min-h-0">
             <div className="px-8 pt-6 pb-2 shrink-0">
               <TabsList className="w-full h-14 bg-slate-50 border p-1 rounded-2xl">
-                <TabsTrigger value="theme" className="flex-1 rounded-xl h-full data-[state=active]:bg-white"><Palette className="h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="layout" className="flex-1 rounded-xl h-full data-[state=active]:bg-white"><Layout className="h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="fonts" className="flex-1 rounded-xl h-full data-[state=active]:bg-white"><Type className="h-4 w-4" /></TabsTrigger>
-                <TabsTrigger value="code" className="flex-1 rounded-xl h-full data-[state=active]:bg-white"><Code className="h-4 w-4" /></TabsTrigger>
+                <TabsTrigger value="theme" className="flex-1 rounded-xl h-full data-[state=active]:bg-white gap-2">
+                  <Palette className="h-4 w-4" />
+                  <span className="text-xs font-bold">Theme</span>
+                </TabsTrigger>
+                <TabsTrigger value="layout" className="flex-1 rounded-xl h-full data-[state=active]:bg-white gap-2">
+                  <Layout className="h-4 w-4" />
+                  <span className="text-xs font-bold">Layout</span>
+                </TabsTrigger>
+                <TabsTrigger value="fonts" className="flex-1 rounded-xl h-full data-[state=active]:bg-white gap-2">
+                  <Type className="h-4 w-4" />
+                  <span className="text-xs font-bold">Fonts</span>
+                </TabsTrigger>
+                <TabsTrigger value="code" className="flex-1 rounded-xl h-full data-[state=active]:bg-white gap-2">
+                  <Code className="h-4 w-4" />
+                  <span className="text-xs font-bold">CSS</span>
+                </TabsTrigger>
               </TabsList>
             </div>
 
