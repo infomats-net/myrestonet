@@ -6,15 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Users, 
   Plus, 
   Search, 
   LifeBuoy, 
-  ShieldCheck, 
   Loader2,
   Trash2,
+  Settings2,
+  X,
   Calendar,
-  Settings2
+  ShieldCheck
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { 
@@ -28,18 +28,21 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, serverTimestamp, query, where, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, where, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function SupportManagementPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
@@ -48,11 +51,23 @@ export default function SupportManagementPage() {
     role: 'support' as 'support' | 'helper',
   });
 
+  const [assignmentForm, setAssignmentForm] = useState({
+    restaurantId: '',
+    permissions: ['read'] as string[],
+    expiryDate: '',
+  });
+
   const supportQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'users'), where('role', 'in', ['support', 'helper']));
   }, [firestore]);
   const { data: supportUsers, isLoading } = useCollection(supportQuery);
+
+  const restaurantsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'restaurants');
+  }, [firestore]);
+  const { data: restaurants } = useCollection(restaurantsQuery);
 
   const handleCreateSupport = async () => {
     if (!firestore || !form.email || !form.password) return;
@@ -86,6 +101,41 @@ export default function SupportManagementPage() {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!firestore || !selectedStaff || !assignmentForm.restaurantId) return;
+    setLoading(true);
+    try {
+      const currentAssignments = selectedStaff.assignedRestaurants || [];
+      const updated = [
+        ...currentAssignments.filter((a: any) => a.restaurantId !== assignmentForm.restaurantId),
+        {
+          restaurantId: assignmentForm.restaurantId,
+          permissions: assignmentForm.permissions,
+          expiryDate: assignmentForm.expiryDate ? new Date(assignmentForm.expiryDate).toISOString() : null,
+        }
+      ];
+      await updateDoc(doc(firestore, 'users', selectedStaff.id), { assignedRestaurants: updated });
+      toast({ title: "Assignments Updated", description: "Permissions synced successfully." });
+      setIsAssignDialogOpen(false);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const removeAssignment = async (staffId: string, restaurantId: string) => {
+    if (!firestore) return;
+    try {
+      const staff = supportUsers?.find(u => u.id === staffId);
+      const updated = (staff.assignedRestaurants || []).filter((a: any) => a.restaurantId !== restaurantId);
+      await updateDoc(doc(firestore, 'users', staffId), { assignedRestaurants: updated });
+      toast({ title: "Access Revoked" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
     }
   };
 
@@ -155,7 +205,7 @@ export default function SupportManagementPage() {
               <tr>
                 <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Account</th>
                 <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Role</th>
-                <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Assignments</th>
+                <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Active Assignments</th>
                 <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Actions</th>
               </tr>
             </thead>
@@ -175,16 +225,23 @@ export default function SupportManagementPage() {
                       {u.role}
                     </Badge>
                   </td>
-                  <td className="p-6 text-sm font-medium text-slate-600">
-                    {u.assignedRestaurants?.length || 0} active assignments
+                  <td className="p-6">
+                    <div className="flex flex-wrap gap-2">
+                      {u.assignedRestaurants?.map((a: any) => (
+                        <Badge key={a.restaurantId} variant="outline" className="pr-1 gap-1">
+                          {restaurants?.find(r => r.id === a.restaurantId)?.name || 'Unknown'}
+                          <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => removeAssignment(u.id, a.restaurantId)} />
+                        </Badge>
+                      ))}
+                      {(!u.assignedRestaurants || u.assignedRestaurants.length === 0) && (
+                        <span className="text-xs text-muted-foreground italic">None</span>
+                      )}
+                    </div>
                   </td>
                   <td className="p-6">
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" title="Manage Assignments">
+                      <Button variant="ghost" size="icon" title="Manage Assignments" onClick={() => { setSelectedStaff(u); setIsAssignDialogOpen(true); }}>
                         <Settings2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="text-destructive">
-                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </td>
@@ -197,6 +254,63 @@ export default function SupportManagementPage() {
           </table>
         </div>
       </Card>
+
+      {/* Assignment Dialog */}
+      <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+        <DialogContent className="rounded-[2.5rem] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">Assign Restaurant</DialogTitle>
+            <DialogDescription>Grant {selectedStaff?.email} access to a tenant.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label>Select Restaurant</Label>
+              <Select onValueChange={v => setAssignmentForm({...assignmentForm, restaurantId: v})}>
+                <SelectTrigger className="h-12 rounded-xl bg-slate-50"><SelectValue placeholder="Choose a restaurant..." /></SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {restaurants?.map(r => <SelectItem key={r.id} value={r.id}>{r.name} ({r.city})</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Permissions</Label>
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { id: 'read', label: 'Read Only' },
+                  { id: 'update_settings', label: 'Write Access' },
+                  { id: 'guide', label: 'Onboarding Guide' }
+                ].map(p => (
+                  <div key={p.id} className="flex items-center space-x-2">
+                    <Checkbox 
+                      id={`perm-${p.id}`} 
+                      checked={assignmentForm.permissions.includes(p.id)} 
+                      onCheckedChange={(v) => {
+                        const next = v 
+                          ? [...assignmentForm.permissions, p.id] 
+                          : assignmentForm.permissions.filter(x => x !== p.id);
+                        setAssignmentForm({...assignmentForm, permissions: next});
+                      }} 
+                    />
+                    <Label htmlFor={`perm-${p.id}`} className="text-xs">{p.label}</Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Expiry Date (Optional)</Label>
+              <Input type="date" value={assignmentForm.expiryDate} onChange={e => setAssignmentForm({...assignmentForm, expiryDate: e.target.value})} className="h-12 rounded-xl bg-slate-50" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="w-full h-14 rounded-2xl font-black" onClick={handleAssign} disabled={loading}>
+              {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck className="mr-2" />}
+              Grant Access
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

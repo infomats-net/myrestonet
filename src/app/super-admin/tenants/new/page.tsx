@@ -19,14 +19,11 @@ import { Badge } from '@/components/ui/badge';
 import { 
   ChevronLeft, 
   Loader2, 
-  Globe, 
   User, 
   Phone, 
   Mail, 
   Lock, 
   Search,
-  Check,
-  X,
   UtensilsCrossed,
   MapPin,
   AlertCircle
@@ -39,22 +36,8 @@ import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
+import { WORLD_CUISINES } from '@/lib/cuisines-data';
 import { cn } from '@/lib/utils';
-
-const WORLD_CUISINES = [
-  "Afghan", "African", "American", "Argentine", "Armenian", "Asian", "Australian", "Austrian", 
-  "Bakery", "Balkan", "BBQ", "Belgian", "Brazilian", "British", "Burmese", 
-  "Cajun", "Cambodian", "Caribbean", "Central Asian", "Chilean", "Chinese", "Colombian", "Creole", "Cuban", 
-  "Czech", "Danish", "Deli", "Dessert", "Dutch", "Eastern European", "Ecuadorian", "Egyptian", 
-  "Ethiopian", "European", "Filipino", "French", "German", "Greek", "Grill", "Guatemalan", 
-  "Healthy", "Himalayan", "Hungarian", "Indian", "Indonesian", "International", "Iranian", "Irish", 
-  "Israeli", "Italian", "Jamaican", "Japanese", "Jewish", "Korean", "Latin American", "Lebanese", 
-  "Mediterranean", "Mexican", "Middle Eastern", "Moroccan", "Nepalese", "Nordic", "North African", 
-  "Pakistani", "Persian", "Peruvian", "Pizza", "Polish", "Portuguese", "Pub", "Russian", 
-  "Scandinavian", "Seafood", "Singaporean", "Southern", "Spanish", "Sri Lankan", "Steakhouse", 
-  "Sushi", "Swedish", "Swiss", "Syrian", "Taiwanese", "Tapas", "Thai", "Tibetan", "Turkish", 
-  "Ukrainian", "Uzbek", "Vegan", "Vegetarian", "Venezuelan", "Vietnamese", "Wine Bar"
-].sort();
 
 const formSchema = z.object({
   restaurantName: z.string().min(2, "Restaurant name is required"),
@@ -86,7 +69,6 @@ export default function NewTenantPage() {
   const [emailInUse, setEmailInUse] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
 
-  // Fetch partners for the dropdown
   const partnersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'partners');
@@ -116,7 +98,6 @@ export default function NewTenantPage() {
 
   const adminEmail = form.watch('adminEmail');
 
-  // Live Email Uniqueness Check
   useEffect(() => {
     const checkEmail = async () => {
       if (!adminEmail || !firestore || !adminEmail.includes('@')) {
@@ -145,7 +126,6 @@ export default function NewTenantPage() {
 
     let secondaryApp;
     try {
-      // Atomic Onboarding Logic
       const secondaryAppName = `tenant-gen-${Date.now()}`;
       secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
@@ -156,7 +136,6 @@ export default function NewTenantPage() {
       const restaurantRef = doc(collection(firestore, 'restaurants'));
       const restaurantId = restaurantRef.id;
 
-      // 1. Create Restaurant Document
       await setDoc(restaurantRef, {
         id: restaurantId,
         name: values.restaurantName,
@@ -178,7 +157,6 @@ export default function NewTenantPage() {
         updatedAt: serverTimestamp(),
       });
 
-      // 2. Create users/{uid} Document (Crucial for Security Rules)
       await setDoc(doc(firestore, 'users', adminUid), {
         id: adminUid,
         email: values.adminEmail.toLowerCase(),
@@ -233,8 +211,15 @@ export default function NewTenantPage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden h-fit">
-              <CardHeader className="bg-slate-50/50 border-b px-10 py-8">
+              <CardHeader className="bg-slate-50/50 border-b px-10 py-8 flex flex-row items-center justify-between">
                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Restaurant Profile</h3>
+                <div className="flex flex-wrap gap-1.5 justify-end max-w-[200px]">
+                  {form.watch('cuisine')?.map((c: string) => (
+                    <Badge key={c} variant="secondary" className="bg-primary/10 text-primary border-none text-[9px] font-bold">
+                      {c}
+                    </Badge>
+                  ))}
+                </div>
               </CardHeader>
               <CardContent className="p-10 space-y-8">
                 <FormField control={form.control} name="restaurantName" render={({ field }) => (
@@ -274,17 +259,7 @@ export default function NewTenantPage() {
 
                 <FormField control={form.control} name="cuisine" render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label className="font-bold text-slate-700">Cuisine Types</Label>
-                      <div className="flex flex-wrap gap-1.5 justify-end">
-                        {field.value?.slice(0, 3).map((c: string) => (
-                          <Badge key={c} variant="secondary" className="bg-primary/10 text-primary border-none text-[10px] font-bold">
-                            {c}
-                          </Badge>
-                        ))}
-                        {field.value?.length > 3 && <Badge variant="outline">+{field.value.length - 3}</Badge>}
-                      </div>
-                    </div>
+                    <Label className="font-bold text-slate-700 mb-2">Cuisine Types</Label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <FormControl>
