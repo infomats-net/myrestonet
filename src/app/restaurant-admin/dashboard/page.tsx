@@ -27,7 +27,8 @@ import {
   ShieldAlert,
   Trash2,
   ChevronDown,
-  Wand2
+  Wand2,
+  Pencil
 } from 'lucide-react';
 import {
   Dialog,
@@ -47,7 +48,7 @@ import { localizedSeoContentGenerator, LocalizedSeoContentOutput } from '@/ai/fl
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
 import Link from 'next/link';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, addDoc, query, where, deleteDoc } from 'firebase/firestore';
+import { doc, collection, addDoc, query, where, deleteDoc, updateDoc } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { useToast } from '@/hooks/use-toast';
@@ -56,7 +57,17 @@ import { DesignSystemEditor } from '@/components/design-system-editor';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 // Sub-component to manage items for a specific menu
-function MenuItemManager({ restaurantId, menuId, currency, onAddItem }: { restaurantId: string, menuId: string, currency: string, onAddItem: (menuId: string) => void }) {
+function MenuItemManager({ 
+  restaurantId, 
+  menuId, 
+  currency, 
+  onEditItem 
+}: { 
+  restaurantId: string, 
+  menuId: string, 
+  currency: string, 
+  onEditItem: (item: any) => void 
+}) {
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -109,8 +120,9 @@ function MenuItemManager({ restaurantId, menuId, currency, onAddItem }: { restau
                   variant="ghost" 
                   size="icon" 
                   className="h-8 w-8 text-muted-foreground hover:text-blue-600"
+                  onClick={() => onEditItem(item)}
                 >
-                  <ArrowUpRight className="h-4 w-4" />
+                  <Pencil className="h-4 w-4" />
                 </Button>
                 <Button 
                   variant="ghost" 
@@ -182,6 +194,7 @@ function DashboardContent() {
   const [isMenuDialogOpen, setIsMenuDialogOpen] = useState(false);
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [targetMenuId, setTargetMenuId] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
 
   // Menu Form State
@@ -212,7 +225,7 @@ function DashboardContent() {
     if (initialTab && initialTab !== activeTab) {
       setActiveTab(initialTab);
     }
-  }, [initialTab]);
+  }, [initialTab, activeTab]);
 
   useEffect(() => {
     if (restaurant) {
@@ -322,11 +335,10 @@ function DashboardContent() {
       .finally(() => setIsCreating(false));
   };
 
-  const handleCreateMenuItem = () => {
+  const handleSaveMenuItem = () => {
     if (!firestore || !effectiveRestaurantId || !targetMenuId || !itemForm.name) return;
     setIsCreating(true);
 
-    const itemsColRef = collection(firestore, 'restaurants', effectiveRestaurantId, 'menus', targetMenuId, 'menuItems');
     const newItemData = {
       menuId: targetMenuId,
       name: itemForm.name,
@@ -337,27 +349,67 @@ function DashboardContent() {
       category: itemForm.category,
       imageUrl: itemForm.imageUrl || `https://picsum.photos/seed/${Date.now()}/600/400`,
       isAvailable: itemForm.isAvailable,
-      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    addDoc(itemsColRef, newItemData)
-      .then(() => {
-        toast({
-          title: "Item Added",
-          description: `${newItemData.name} has been created.`,
-        });
-        setIsItemDialogOpen(false);
-        setItemForm({ name: '', description: '', price: '', category: 'Main Course', imageUrl: '', isAvailable: true });
-      })
-      .catch(async (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: itemsColRef.path,
-          operation: 'create',
-          requestResourceData: newItemData
-        }));
-      })
-      .finally(() => setIsCreating(false));
+    if (editingItemId) {
+      const itemDocRef = doc(firestore, 'restaurants', effectiveRestaurantId, 'menus', targetMenuId, 'menuItems', editingItemId);
+      updateDoc(itemDocRef, newItemData)
+        .then(() => {
+          toast({
+            title: "Item Updated",
+            description: `${newItemData.name} has been updated.`,
+          });
+          setIsItemDialogOpen(false);
+          setEditingItemId(null);
+          setItemForm({ name: '', description: '', price: '', category: 'Main Course', imageUrl: '', isAvailable: true });
+        })
+        .catch(async (error) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: itemDocRef.path,
+            operation: 'update',
+            requestResourceData: newItemData
+          }));
+        })
+        .finally(() => setIsCreating(false));
+    } else {
+      const itemsColRef = collection(firestore, 'restaurants', effectiveRestaurantId, 'menus', targetMenuId, 'menuItems');
+      const createData = {
+        ...newItemData,
+        createdAt: new Date().toISOString(),
+      };
+      addDoc(itemsColRef, createData)
+        .then(() => {
+          toast({
+            title: "Item Added",
+            description: `${createData.name} has been created.`,
+          });
+          setIsItemDialogOpen(false);
+          setItemForm({ name: '', description: '', price: '', category: 'Main Course', imageUrl: '', isAvailable: true });
+        })
+        .catch(async (error) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: itemsColRef.path,
+            operation: 'create',
+            requestResourceData: createData
+          }));
+        })
+        .finally(() => setIsCreating(false));
+    }
+  };
+
+  const handleEditItemRequest = (item: any) => {
+    setTargetMenuId(item.menuId);
+    setEditingItemId(item.id);
+    setItemForm({
+      name: item.name,
+      description: item.description,
+      price: item.price.toString(),
+      category: item.category,
+      imageUrl: item.imageUrl,
+      isAvailable: item.isAvailable
+    });
+    setIsItemDialogOpen(true);
   };
 
   const handleDeleteMenu = (menuId: string) => {
@@ -558,7 +610,10 @@ function DashboardContent() {
               </div>
               <Button 
                 className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm w-full md:w-auto"
-                onClick={() => setIsMenuDialogOpen(true)}
+                onClick={() => {
+                  setMenuForm({ name: '', description: '', isActive: true });
+                  setIsMenuDialogOpen(true);
+                }}
               >
                 <Plus className="mr-2 h-4 w-4" /> Create New Menu Section
               </Button>
@@ -599,6 +654,8 @@ function DashboardContent() {
                               size="sm" 
                               className="text-xs h-9 border-blue-600 text-blue-600 hover:bg-blue-50 gap-1.5"
                               onClick={() => {
+                                setEditingItemId(null);
+                                setItemForm({ name: '', description: '', price: '', category: 'Main Course', imageUrl: '', isAvailable: true });
                                 setTargetMenuId(menu.id);
                                 setIsItemDialogOpen(true);
                               }}
@@ -616,15 +673,11 @@ function DashboardContent() {
                           </div>
                         </div>
                         
-                        {/* Recursive Item Management */}
                         <MenuItemManager 
                           restaurantId={effectiveRestaurantId!} 
                           menuId={menu.id} 
                           currency={currencySymbol}
-                          onAddItem={(id) => {
-                            setTargetMenuId(id);
-                            setIsItemDialogOpen(true);
-                          }}
+                          onEditItem={handleEditItemRequest}
                         />
                       </AccordionContent>
                     </AccordionItem>
@@ -688,13 +741,13 @@ function DashboardContent() {
           </DialogContent>
         </Dialog>
 
-        {/* Create Item Dialog */}
+        {/* Create/Edit Item Dialog */}
         <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Add Menu Item</DialogTitle>
+              <DialogTitle>{editingItemId ? 'Edit Menu Item' : 'Add Menu Item'}</DialogTitle>
               <DialogDescription>
-                Fill in the details for your new culinary creation.
+                Fill in the details for your {editingItemId ? 'updated' : 'new'} culinary creation.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
@@ -768,9 +821,12 @@ function DashboardContent() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsItemDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreateMenuItem} disabled={isCreating || !itemForm.name} className="bg-blue-600">
-                {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Item"}
+              <Button variant="outline" onClick={() => {
+                setIsItemDialogOpen(false);
+                setEditingItemId(null);
+              }}>Cancel</Button>
+              <Button onClick={handleSaveMenuItem} disabled={isCreating || !itemForm.name} className="bg-blue-600">
+                {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : editingItemId ? "Update Item" : "Save Item"}
               </Button>
             </DialogFooter>
           </DialogContent>
