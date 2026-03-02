@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -29,8 +28,9 @@ service cloud.firestore {
 
     function hasPermission(restaurantId, action) {
       if (isSuperAdmin()) return true;
+      if (request.auth == null) return false;
       let userData = getUser();
-      if (request.auth != null && userData.restaurantId == restaurantId) return true;
+      if (userData.restaurantId == restaurantId) return true;
       
       let restaurantData = get(/databases/$(database)/documents/restaurants/$(restaurantId)).data;
       if (isPartner() && restaurantData.partnerId == userData.partnerId) return true;
@@ -55,7 +55,7 @@ service cloud.firestore {
       allow get: if true;
       allow read: if hasPermission(restaurantId, "read");
       allow update: if hasPermission(restaurantId, "update_settings");
-      allow write: if isSuperAdmin() || (isPartner() && request.resource.data.partnerId == getUser().partnerId);
+      allow create: if isSuperAdmin() || isPartner();
 
       match /menus/{menuId} {
         allow read: if true;
@@ -67,20 +67,36 @@ service cloud.firestore {
       match /reservations/{reservationId} {
         allow read: if hasPermission(restaurantId, "read");
         allow write: if hasPermission(restaurantId, "update_settings") || isSuperAdmin();
-        allow create: if request.auth != null; 
+        allow create: if true; 
       }
 
-      match /{subcollection=**} {
-        allow get: if true;
-        allow list: if hasPermission(restaurantId, "read");
-        allow read, write: if hasPermission(restaurantId, "update_settings");
+      match /orders/{orderId} {
+        allow read: if hasPermission(restaurantId, "read");
+        allow update: if hasPermission(restaurantId, "update_settings");
+        allow create: if true;
+      }
+
+      match /gallery/{imageId} {
+        allow read: if true;
+        allow write: if hasPermission(restaurantId, "update_settings");
+      }
+
+      match /design/{docId} {
+        allow read: if true;
+        allow write: if hasPermission(restaurantId, "update_settings");
+      }
+
+      match /config/{docId} {
+        allow read: if true;
+        allow write: if hasPermission(restaurantId, "update_settings");
       }
     }
 
     match /users/{userId} {
-      allow list: if request.auth != null;
-      allow read: if request.auth.uid == userId || isSuperAdmin();
+      allow list: if isSuperAdmin();
+      allow read: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       allow update: if isSuperAdmin() || (request.auth.uid == userId && request.resource.data.role == resource.data.role);
+      allow create: if isSuperAdmin() || isPartner();
       allow delete: if isSuperAdmin();
     }
   }
