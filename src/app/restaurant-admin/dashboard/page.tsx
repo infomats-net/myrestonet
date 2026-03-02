@@ -41,6 +41,7 @@ import { doc, collection, addDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove 
 import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
 import { OperatingHoursEditor } from '@/components/operating-hours-editor';
+import { MenuCatalogEditor } from '@/components/menu-catalog-editor';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -325,7 +326,7 @@ function DashboardContent() {
         </TabsContent>
 
         <TabsContent value="menu">
-          <Card className="rounded-[2rem] border-none shadow-md p-10"><p className="text-center italic text-muted-foreground">Menu management is located in the sidebar tab.</p></Card>
+          <MenuCatalogEditor restaurantId={effectiveRestaurantId!} />
         </TabsContent>
         <TabsContent value="design">
           <DesignSystemEditor restaurantId={effectiveRestaurantId!} />
