@@ -208,8 +208,6 @@ function DashboardContent() {
           <TabsTrigger value="overview" className={tabTriggerStyle}>Overview</TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
           <TabsTrigger value="tables" className={tabTriggerStyle}>Tables</TabsTrigger>
-          <TabsTrigger value="menu" className={tabTriggerStyle}>Menu</TabsTrigger>
-          <TabsTrigger value="settings" className={tabTriggerStyle}>Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">

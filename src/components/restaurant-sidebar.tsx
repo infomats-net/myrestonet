@@ -1,3 +1,4 @@
+
 "use client"
 
 import { 
@@ -146,12 +147,12 @@ function SidebarLinks() {
                     <ExternalLink />
                     <span>Show My Website</span>
                   </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+      </SidebarFooter>
       <SidebarFooter className="border-t p-2">
         <SidebarMenu>
           <SidebarMenuItem>
