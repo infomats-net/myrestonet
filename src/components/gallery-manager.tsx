@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -14,7 +13,8 @@ import {
   Sparkles,
   Search,
   CheckCircle2,
-  Camera
+  Camera,
+  Upload
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -29,6 +29,7 @@ import { collection, doc, addDoc, deleteDoc, serverTimestamp } from 'firebase/fi
 import { useToast } from '@/hooks/use-toast';
 import { selectPlaceholder } from '@/ai/flows/select-placeholder';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { ImageUploader } from '@/components/image-uploader';
 
 export function GalleryManager({ restaurantId }: { restaurantId: string }) {
   const firestore = useFirestore();
@@ -76,7 +77,6 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
   const handleAiSuggestion = async () => {
     setLoading(true);
     try {
-      // Find current images to exclude
       const currentUrls = images?.map(img => img.url) || [];
       const currentPlaceholderIds = PlaceHolderImages.filter(p => currentUrls.includes(p.imageUrl)).map(p => p.id);
 
@@ -87,7 +87,7 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
       
       const placeholder = PlaceHolderImages.find(p => p.id === placeholderId);
       if (placeholder) {
-        setForm({ url: placeholder.imageUrl, caption: placeholder.description });
+        setForm({ ...form, url: placeholder.imageUrl });
         toast({ title: "AI Suggestion", description: "Found a relevant atmospheric image." });
       }
     } catch (e) {
@@ -157,13 +157,19 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
         <DialogContent className="rounded-[2.5rem] max-w-md">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black">Add Photo</DialogTitle>
-            <DialogDescription>Upload or link a new photo to your public gallery.</DialogDescription>
+            <DialogDescription>Upload a new photo to your public gallery.</DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6 py-6">
+            <ImageUploader 
+              path={`restaurants/${restaurantId}/gallery/${Date.now()}`}
+              currentUrl={form.url}
+              onUploadSuccess={(url) => setForm({...form, url})}
+            />
+
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label>Image URL</Label>
+                <Label>Or use URL / AI</Label>
                 <Button 
                   variant="link" 
                   size="sm" 
@@ -191,12 +197,6 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
                 className="h-12 rounded-xl"
               />
             </div>
-
-            {form.url && (
-              <div className="aspect-video bg-slate-100 rounded-2xl overflow-hidden border">
-                <img src={form.url} className="w-full h-full object-cover" alt="Preview" />
-              </div>
-            )}
           </div>
 
           <DialogFooter className="pt-6 border-t">

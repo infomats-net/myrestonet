@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -20,7 +19,8 @@ import {
   Search,
   CheckCircle2,
   DollarSign,
-  Tag
+  Tag,
+  Upload
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -36,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
 import { selectPlaceholder } from '@/ai/flows/select-placeholder';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { ImageUploader } from '@/components/image-uploader';
 import { cn } from '@/lib/utils';
 
 export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
@@ -169,7 +170,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     if (!itemForm.name) return;
     setLoading(true);
     try {
-      // Find the ID of the currently selected image to exclude it and get a variety
       const currentPlaceholderId = PlaceHolderImages.find(p => p.imageUrl === itemForm.imageUrl)?.id;
       
       const { placeholderId } = await selectPlaceholder({ 
@@ -461,9 +461,16 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
             </div>
 
             <div className="space-y-6">
+              <ImageUploader 
+                label="Item Image"
+                path={`restaurants/${restaurantId}/menus/${selectedMenuId}/items/${editingItemId || Date.now()}`}
+                currentUrl={itemForm.imageUrl}
+                onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})}
+              />
+
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <Label>Visual Representation</Label>
+                  <Label>Fallback / AI Option</Label>
                   <Button 
                     variant="link" 
                     size="sm" 
@@ -474,21 +481,11 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                     <ImageIcon className="h-3 w-3" /> Auto-Image
                   </Button>
                 </div>
-                <div className="aspect-video bg-slate-100 rounded-2xl overflow-hidden border-2 border-dashed border-slate-200 flex items-center justify-center relative">
-                  {itemForm.imageUrl ? (
-                    <img src={itemForm.imageUrl} className="w-full h-full object-cover" alt="Preview" />
-                  ) : (
-                    <div className="text-center p-6 space-y-2">
-                      <ImageIcon className="h-8 w-8 mx-auto text-slate-300" />
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Image Preview</p>
-                    </div>
-                  )}
-                </div>
                 <Input 
                   value={itemForm.imageUrl} 
                   onChange={e => setItemForm({...itemForm, imageUrl: e.target.value})} 
-                  placeholder="Paste image URL here..." 
-                  className="h-10 text-xs rounded-xl mt-4"
+                  placeholder="Or paste URL..." 
+                  className="h-10 text-xs rounded-xl"
                 />
               </div>
 

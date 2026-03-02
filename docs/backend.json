@@ -13,7 +13,7 @@
         "assignedRestaurants": {
           "type": "array",
           "items": {
-            "type": "object",
+            "object",
             "properties": {
               "restaurantId": { "type": "string" },
               "permissions": { "type": "array", "items": { "type": "string", "enum": ["read", "update_settings", "guide"] } },
@@ -50,6 +50,8 @@
         "city": { "type": "string" },
         "country": { "type": "string" },
         "customDomain": { "type": "string" },
+        "logoUrl": { "type": "string", "description": "URL to the restaurant logo image." },
+        "bannerUrl": { "type": "string", "description": "URL to the restaurant hero banner image." },
         "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "trial"] },
         "tables": {
           "type": "array",
@@ -124,13 +126,15 @@
       "properties": {
         "id": { "type": "string" },
         "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerEmail": { "type": "string" },
         "items": { "type": "array", "items": { "type": "object" } },
         "subtotal": { "type": "number" },
-        "deliveryCharge": { "type": "number" },
+        "deliveryCharges": { "type": "number" },
         "totalAmount": { "type": "number" },
         "paymentMethod": { "type": "string", "enum": ["cod", "stripe", "paypal"] },
         "paymentStatus": { "type": "string", "enum": ["pending", "paid"] },
-        "status": { "type": "string", "enum": ["pending", "preparing", "delivered", "cancelled"] },
+        "orderStatus": { "type": "string", "enum": ["new", "preparing", "delivered", "cancelled"] },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }

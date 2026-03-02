@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -34,7 +33,8 @@ import {
   ChevronDown,
   Map as MapIcon,
   Menu,
-  CalendarDays
+  CalendarDays,
+  ShieldCheck
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -43,6 +43,7 @@ import { cn } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { generatePalette } from '@/ai/flows/generate-palette';
+import { ImageUploader } from '@/components/image-uploader';
 
 interface DesignSettings {
   theme: {
@@ -53,6 +54,10 @@ interface DesignSettings {
     text: string;
     headerColor: string;
     footerColor: string;
+  };
+  branding: {
+    logoUrl?: string;
+    bannerUrl?: string;
   };
   typography: {
     fontFamily: string;
@@ -106,6 +111,10 @@ const DEFAULT_SETTINGS: DesignSettings = {
     text: '#0F172A',
     headerColor: '#FFFFFF',
     footerColor: '#1A1A1A'
+  },
+  branding: {
+    logoUrl: '',
+    bannerUrl: ''
   },
   typography: {
     fontFamily: 'Inter',
@@ -173,7 +182,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
         if (snap.exists()) {
           const data = snap.data();
           
-          // Merge logic to ensure new keys (like bookingCTA) are included even if older data exists
           const rawOrder = data.sectionOrder || DEFAULT_ORDER;
           const mergedOrder = [...rawOrder];
           DEFAULT_ORDER.forEach(key => {
@@ -186,6 +194,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
             ...DEFAULT_SETTINGS,
             ...data,
             theme: { ...DEFAULT_SETTINGS.theme, ...data.theme },
+            branding: { ...DEFAULT_SETTINGS.branding, ...data.branding },
             typography: { ...DEFAULT_SETTINGS.typography, ...data.typography },
             sections: { 
               ...DEFAULT_SETTINGS.sections, 
@@ -359,6 +368,10 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   <Palette className="h-4 w-4" />
                   <span className="text-xs font-bold">Theme</span>
                 </TabsTrigger>
+                <TabsTrigger value="branding" className="flex-1 rounded-xl h-full data-[state=active]:bg-white gap-2">
+                  <ShieldCheck className="h-4 w-4" />
+                  <span className="text-xs font-bold">Assets</span>
+                </TabsTrigger>
                 <TabsTrigger value="layout" className="flex-1 rounded-xl h-full data-[state=active]:bg-white gap-2">
                   <Layout className="h-4 w-4" />
                   <span className="text-xs font-bold">Layout</span>
@@ -366,10 +379,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 <TabsTrigger value="fonts" className="flex-1 rounded-xl h-full data-[state=active]:bg-white gap-2">
                   <Type className="h-4 w-4" />
                   <span className="text-xs font-bold">Fonts</span>
-                </TabsTrigger>
-                <TabsTrigger value="code" className="flex-1 rounded-xl h-full data-[state=active]:bg-white gap-2">
-                  <Code className="h-4 w-4" />
-                  <span className="text-xs font-bold">CSS</span>
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -447,6 +456,26 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="branding" className="space-y-8 mt-0">
+                  <div className="space-y-6">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase">Restaurant Visuals</h4>
+                    
+                    <ImageUploader 
+                      label="Restaurant Logo"
+                      path={`restaurants/${restaurantId}/branding/logo`}
+                      currentUrl={settings.branding.logoUrl}
+                      onUploadSuccess={(url) => setSettings({...settings, branding: {...settings.branding, logoUrl: url}})}
+                    />
+
+                    <ImageUploader 
+                      label="Hero Banner"
+                      path={`restaurants/${restaurantId}/branding/banner`}
+                      currentUrl={settings.branding.bannerUrl}
+                      onUploadSuccess={(url) => setSettings({...settings, branding: {...settings.branding, bannerUrl: url}})}
+                    />
                   </div>
                 </TabsContent>
 
@@ -547,15 +576,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                     </Select>
                   </div>
                 </TabsContent>
-
-                <TabsContent value="code" className="space-y-4 mt-0">
-                  <Textarea 
-                    className="min-h-[300px] font-mono text-[10px] bg-[#0F172A] text-slate-300 border-none rounded-2xl p-4 resize-none"
-                    spellCheck={false}
-                    value={settings.customCss}
-                    onChange={(e) => setSettings({...settings, customCss: e.target.value})}
-                  />
-                </TabsContent>
               </div>
             </ScrollArea>
           </Tabs>
@@ -574,7 +594,13 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
             }}>
               {settings.sections.navbar.visible && (
                 <nav className="h-16 flex items-center justify-between px-8 border-b" style={{ backgroundColor: settings.theme.headerColor }}>
-                  <span className="font-bold text-sm" style={{ color: settings.theme.primary, fontFamily: settings.typography.headingFont }}>Signature Dining</span>
+                  <div className="flex items-center gap-2">
+                    {settings.branding.logoUrl ? (
+                      <img src={settings.branding.logoUrl} className="h-8 w-auto" alt="Logo" />
+                    ) : (
+                      <span className="font-bold text-sm" style={{ color: settings.theme.primary, fontFamily: settings.typography.headingFont }}>Signature Dining</span>
+                    )}
+                  </div>
                   <div className="flex gap-4 text-[9px] uppercase font-bold text-slate-400">
                     <span>Menu</span>
                     <span>About</span>
@@ -590,9 +616,16 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   switch(sectionKey) {
                     case 'hero':
                       return (
-                        <section key="hero" className="h-64 flex flex-col items-center justify-center text-center p-8" style={{ backgroundColor: `${settings.theme.primary}10` }}>
-                          <h2 className="text-4xl font-black mb-4" style={{ fontFamily: settings.typography.headingFont }}>Taste the Future</h2>
-                          <Button size="sm" style={{ backgroundColor: settings.theme.primary }}>View Menu</Button>
+                        <section key="hero" className="h-64 flex flex-col items-center justify-center text-center p-8 relative overflow-hidden">
+                          {settings.branding.bannerUrl ? (
+                            <img src={settings.branding.bannerUrl} className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
+                          ) : (
+                            <div className="absolute inset-0" style={{ backgroundColor: `${settings.theme.primary}10` }} />
+                          )}
+                          <div className="relative z-10 p-6 rounded-2xl backdrop-blur-sm bg-black/20">
+                            <h2 className="text-4xl font-black mb-4 text-white" style={{ fontFamily: settings.typography.headingFont }}>Taste the Future</h2>
+                            <Button size="sm" style={{ backgroundColor: settings.theme.primary }}>View Menu</Button>
+                          </div>
                         </section>
                       );
                     case 'welcomeCard':
@@ -624,69 +657,6 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                             )}
                           </div>
                         </div>
-                      );
-                    case 'about':
-                      return (
-                        <section key="about" className="px-8 space-y-4">
-                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>About Us</h3>
-                          <p className="text-xs opacity-70">Crafting excellence in every menu item, sourced locally and inspired globally.</p>
-                        </section>
-                      );
-                    case 'menuList':
-                      return (
-                        <section key="menuList" className="px-8 space-y-4">
-                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Our Menu</h3>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="aspect-square bg-slate-100 rounded-2xl" />
-                            <div className="aspect-square bg-slate-100 rounded-2xl" />
-                          </div>
-                        </section>
-                      );
-                    case 'gallery':
-                      return (
-                        <section key="gallery" className="px-8 space-y-4">
-                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Gallery</h3>
-                          <div className="grid grid-cols-3 gap-2">
-                            {[1,2,3].map(i => <div key={i} className="aspect-square bg-slate-50 rounded-lg" />)}
-                          </div>
-                        </section>
-                      );
-                    case 'testimonials':
-                      return (
-                        <section key="testimonials" className="px-8 space-y-4">
-                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Guest Experiences</h3>
-                          <div className="p-4 bg-slate-50 rounded-2xl italic text-[10px]">
-                            "The best dining experience I've had in years. Highly recommended!"
-                          </div>
-                        </section>
-                      );
-                    case 'map':
-                      return (
-                        <section key="map" className="px-8 space-y-4">
-                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Visit Us</h3>
-                          <div className="aspect-video bg-slate-100 rounded-2xl flex items-center justify-center">
-                            <MapIcon className="h-8 w-8 text-slate-300" />
-                          </div>
-                        </section>
-                      );
-                    case 'contact':
-                      return (
-                        <section key="contact" className="px-8 space-y-4">
-                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Get In Touch</h3>
-                          <div className="space-y-2 text-[10px] opacity-70">
-                            <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> +1 234 567 890</p>
-                            <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> 123 Culinary St, Flavor City</p>
-                          </div>
-                        </section>
-                      );
-                    case 'bookingCTA':
-                      return (
-                        <section key="bookingCTA" className="px-8 space-y-4">
-                          <div className="bg-slate-900 rounded-2xl p-6 text-white space-y-4">
-                            <h3 className="font-bold" style={{ fontFamily: settings.typography.headingFont }}>Plan Your Visit</h3>
-                            <Button size="sm" className="w-full" style={{ backgroundColor: settings.theme.primary }}>Book Now</Button>
-                          </div>
-                        </section>
                       );
                     default:
                       return null;
