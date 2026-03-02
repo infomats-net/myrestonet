@@ -47,6 +47,7 @@ import { DesignSystemEditor } from '@/components/design-system-editor';
 import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import { MenuCatalogEditor } from '@/components/menu-catalog-editor';
 import { GalleryManager } from '@/components/gallery-manager';
+import { OrdersManager } from '@/components/orders-manager';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -112,7 +113,7 @@ function DashboardContent() {
     email: '', 
     date: new Date() as Date | undefined, 
     time: '19:00', 
-    partySize: '2',
+    partySize: '2', 
     tableIds: [] as string[]
   });
 
@@ -203,22 +204,11 @@ function DashboardContent() {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, status: string) => {
-    if (!firestore || !effectiveRestaurantId) return;
-    try {
-      await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId, 'orders', orderId), { status });
-      toast({ title: "Order Updated", description: `Order is now ${status}.` });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error" });
-    }
-  };
-
   if (authLoading) return <LoadingScreen message="Checking authentication..." />;
   if (!authUser) return null; // Redirection in progress via useEffect
   
   if (loadingProfile) return <LoadingScreen message="Loading user profile..." />;
   
-  // If we have no restaurant context at all (e.g. admin logged in but not impersonating)
   if (!effectiveRestaurantId && !loadingProfile) {
     return (
       <div className="p-20 text-center space-y-6 max-w-xl mx-auto">
@@ -246,7 +236,7 @@ function DashboardContent() {
         router.push(`/restaurant-admin/dashboard?${params.toString()}`, { scroll: false });
       }} className="space-y-6 w-full bg-black p-8 md:p-12 rounded-[3rem] shadow-2xl">
         <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full flex gap-1 overflow-x-auto no-scrollbar">
-          <TabsTrigger value="overview" className={tabTriggerStyle}>Overview</TabsTrigger>
+          <TabsTrigger value="overview" className={tabTriggerStyle}>Dashboard</TabsTrigger>
           <TabsTrigger value="orders" className={tabTriggerStyle}>Orders</TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
           <TabsTrigger value="tables" className={tabTriggerStyle}>Tables</TabsTrigger>
@@ -260,7 +250,7 @@ function DashboardContent() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="rounded-[2rem] border-none shadow-md bg-white/5 border-white/5 backdrop-blur-sm">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">New Orders</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-primary">{orders?.filter(o => o.status === 'pending').length || 0}</div></CardContent>
+              <CardContent><div className="text-4xl font-black text-primary">{orders?.filter(o => o.orderStatus === 'new').length || 0}</div></CardContent>
             </Card>
             <Card className="rounded-[2rem] border-none shadow-md bg-white/5 border-white/5 backdrop-blur-sm">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Confirmed Bookings</CardTitle></CardHeader>
@@ -277,104 +267,8 @@ function DashboardContent() {
           </div>
         </TabsContent>
 
-        <TabsContent value="orders" className="space-y-6">
-          <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50/50 border-b p-10 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl font-black">Incoming Orders</CardTitle>
-                <CardDescription>Monitor and process active customer orders.</CardDescription>
-              </div>
-              <Badge variant="outline" className="h-8 rounded-full border-primary/20 bg-primary/5 text-primary font-bold">
-                {orders?.length || 0} Total
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 border-b">
-                    <tr>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Order ID & Date</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Items</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Financials</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Payment</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
-                      <th className="p-6 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {orders?.map(order => (
-                      <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="p-6">
-                          <p className="font-bold text-slate-900 text-sm">#{order.id.slice(0, 8).toUpperCase()}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">{format(new Date(order.createdAt), 'MMM d, h:mm a')}</p>
-                        </td>
-                        <td className="p-6">
-                          <div className="space-y-1">
-                            {order.items?.map((item: any, i: number) => (
-                              <p key={i} className="text-xs font-medium text-slate-600">
-                                <span className="font-black text-primary">{item.quantity}x</span> {item.name}
-                              </p>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="p-6">
-                          <div className="text-xs font-medium text-slate-500">
-                            <p>Sub: ${order.subtotal?.toFixed(2)}</p>
-                            <p>Del: ${order.deliveryCharge?.toFixed(2)}</p>
-                            <p className="text-sm font-black text-slate-900 mt-1">Total: ${order.totalAmount?.toFixed(2)}</p>
-                          </div>
-                        </td>
-                        <td className="p-6">
-                          <div className="flex flex-col gap-1">
-                            <Badge variant="outline" className="w-fit text-[9px] font-black uppercase">
-                              {order.paymentMethod === 'cod' ? 'CASH' : order.paymentMethod}
-                            </Badge>
-                            <span className={cn(
-                              "text-[10px] font-bold uppercase",
-                              order.paymentStatus === 'paid' ? 'text-emerald-500' : 'text-amber-500'
-                            )}>
-                              {order.paymentStatus}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="p-6">
-                          <Badge className={cn(
-                            "rounded-lg font-black text-[10px] uppercase",
-                            order.status === 'pending' && 'bg-amber-500',
-                            order.status === 'preparing' && 'bg-blue-500',
-                            order.status === 'completed' && 'bg-emerald-500',
-                            order.status === 'cancelled' && 'bg-destructive'
-                          )}>
-                            {order.status}
-                          </Badge>
-                        </td>
-                        <td className="p-6 text-right">
-                          <div className="flex justify-end gap-2">
-                            {order.status === 'pending' && (
-                              <Button size="sm" variant="outline" className="h-8 rounded-lg text-[10px] font-black" onClick={() => updateOrderStatus(order.id, 'preparing')}>
-                                START PREP
-                              </Button>
-                            )}
-                            {(order.status === 'preparing' || order.status === 'pending') && (
-                              <Button size="sm" className="h-8 rounded-lg text-[10px] font-black bg-emerald-600" onClick={() => updateOrderStatus(order.id, 'completed')}>
-                                <CheckCircle2 className="h-3 w-3 mr-1" /> COMPLETE
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => updateOrderStatus(order.id, 'cancelled')}>
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {(!orders || orders.length === 0) && (
-                      <tr><td colSpan={6} className="p-20 text-center text-muted-foreground italic">No orders found yet.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="orders">
+          <OrdersManager restaurantId={effectiveRestaurantId!} />
         </TabsContent>
 
         <TabsContent value="reservations" className="space-y-6">

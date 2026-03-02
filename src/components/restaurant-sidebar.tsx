@@ -1,4 +1,3 @@
-
 "use client"
 
 import { 
@@ -79,10 +78,10 @@ function SidebarLinks() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Overview" isActive={isTabActive('overview')}>
+                <SidebarMenuButton asChild tooltip="Dashboard" isActive={isTabActive('overview')}>
                   <Link href={getHref('overview')}>
                     <LayoutDashboard />
-                    <span>Overview</span>
+                    <span>Dashboard</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
