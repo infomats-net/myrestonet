@@ -46,6 +46,15 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
+function LoadingScreen({ message }: { message: string }) {
+  return (
+    <div className="p-20 flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <p className="font-bold text-slate-500">{message}</p>
+    </div>
+  );
+}
+
 function DashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -56,6 +65,7 @@ function DashboardContent() {
   const { user: authUser, isUserLoading: authLoading } = useUser();
   const { toast } = useToast();
   
+  // 1. Resolve User Profile
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !authUser?.uid) return null;
     return doc(firestore, 'users', authUser.uid);
@@ -63,8 +73,10 @@ function DashboardContent() {
   
   const { data: userProfile, isLoading: loadingProfile } = useDoc(userProfileRef);
   
+  // 2. Determine Restaurant ID Context
   const effectiveRestaurantId = impersonateId || userProfile?.restaurantId;
 
+  // 3. Fetch Restaurant Data
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return doc(firestore, 'restaurants', effectiveRestaurantId);
@@ -72,6 +84,7 @@ function DashboardContent() {
 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
 
+  // 4. Fetch Reservations
   const reservationsQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return collection(firestore, 'restaurants', effectiveRestaurantId, 'reservations');
@@ -81,6 +94,13 @@ function DashboardContent() {
   const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
   const [tableForm, setTableForm] = useState({ name: '', size: '2', location: 'Indoor' });
   const [isSaving, setIsSaving] = useState(false);
+
+  // Auth & Role Protection
+  useEffect(() => {
+    if (!authLoading && !authUser) {
+      router.push('/auth/login');
+    }
+  }, [authLoading, authUser, router]);
 
   const handleAddTable = async () => {
     if (!firestore || !effectiveRestaurantId) return;
@@ -128,26 +148,40 @@ function DashboardContent() {
     }
   };
 
-  if (authLoading || loadingProfile || loadingRes) {
+  if (authLoading) return <LoadingScreen message="Checking authentication..." />;
+  if (!authUser) return null; // Redirection in progress via useEffect
+  
+  if (loadingProfile) return <LoadingScreen message="Loading user profile..." />;
+  
+  // If we have no restaurant context at all (e.g. admin logged in but not impersonating)
+  if (!effectiveRestaurantId && !loadingProfile) {
     return (
-      <div className="p-20 flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="font-bold">Loading Dashboard...</p>
+      <div className="p-20 text-center space-y-6 max-w-xl mx-auto">
+        <ShieldAlert className="h-16 w-16 mx-auto text-amber-500 opacity-50" />
+        <h1 className="text-2xl font-black">No Restaurant Context</h1>
+        <p className="text-slate-500">You are logged in as a platform administrator or partner. Please select a tenant from your specific dashboard to manage their instance.</p>
+        <Button asChild className="rounded-xl h-12 px-8">
+          <Link href={userProfile?.role === 'marketing_partner' ? '/partner-admin/dashboard' : '/super-admin/dashboard'}>
+            Go to Platform Dashboard
+          </Link>
+        </Button>
       </div>
     );
   }
 
+  if (loadingRes) return <LoadingScreen message="Loading restaurant instance..." />;
+
   const tabTriggerStyle = "flex-1 rounded-xl h-full font-bold bg-primary text-primary-foreground data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all";
 
   return (
-    <div className="p-8 space-y-8 w-full">
+    <div className="p-8 space-y-8 w-full animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border shadow-sm">
         <div className="flex items-center gap-4">
           <div className="bg-primary/10 w-14 h-14 rounded-2xl flex items-center justify-center text-primary border border-primary/5">
             <Utensils className="h-7 w-7" />
           </div>
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">{restaurant?.name}</h1>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight">{restaurant?.name || 'Untitled Restaurant'}</h1>
             <p className="text-muted-foreground text-sm font-medium">Merchant Dashboard</p>
           </div>
         </div>
@@ -380,7 +414,7 @@ function DashboardContent() {
 
 export default function RestaurantAdminDashboard() {
   return (
-    <Suspense fallback={<div className="p-20 text-center"><Loader2 className="animate-spin mx-auto h-10 w-10 text-primary" /></div>}>
+    <Suspense fallback={<LoadingScreen message="Initializing merchant portal..." />}>
       <DashboardContent />
     </Suspense>
   );
