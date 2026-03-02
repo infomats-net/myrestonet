@@ -200,6 +200,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const typography = designSettings?.typography || { fontFamily: 'Inter', headingFont: 'Inter', baseSize: '16px' };
   
   const sections = {
+    navbar: designSettings?.sections?.navbar ?? { visible: true },
     hero: designSettings?.sections?.hero ?? { visible: true },
     welcomeCard: designSettings?.sections?.welcomeCard ?? { 
       visible: true,
@@ -217,7 +218,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     map: designSettings?.sections?.map ?? { visible: true }
   };
 
-  const sectionOrder = designSettings?.sectionOrder || ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact'];
+  const sectionOrder = designSettings?.sectionOrder || ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact'];
 
   const globalStyle = { 
     backgroundColor: theme.background, 
@@ -528,46 +529,49 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   return (
     <div className="min-h-screen pb-24" style={globalStyle}>
       {/* Navigation Bar */}
-      <nav className="sticky top-0 z-[100] w-full border-b backdrop-blur-md transition-all h-20 flex items-center bg-white/90">
-        <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2 group">
-              <div className="bg-primary rounded-lg p-1.5 transition-transform group-hover:scale-110" style={{ backgroundColor: theme.primary }}>
-                <UtensilsCrossed className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
-            </Link>
-            <Badge className={cn(
-              "hidden sm:flex text-[10px] px-2 py-0.5 border-none font-black uppercase tracking-widest rounded-full h-fit",
-              isOpen ? "bg-emerald-100 text-emerald-700" : "bg-destructive/10 text-destructive"
-            )}>
-              {isOpen ? "Open" : "Closed"}
-            </Badge>
-          </div>
+      {sections.navbar.visible && (
+        <nav className="sticky top-0 z-[100] w-full border-b backdrop-blur-md transition-all h-20 flex items-center bg-white/90">
+          <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2 group">
+                <div className="bg-primary rounded-lg p-1.5 transition-transform group-hover:scale-110" style={{ backgroundColor: theme.primary }}>
+                  <UtensilsCrossed className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
+              </Link>
+              <Badge className={cn(
+                "hidden sm:flex text-[10px] px-2 py-0.5 border-none font-black uppercase tracking-widest rounded-full h-fit",
+                isOpen ? "bg-emerald-100 text-emerald-700" : "bg-destructive/10 text-destructive"
+              )}>
+                {isOpen ? "Open" : "Closed"}
+              </Badge>
+            </div>
 
-          <div className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
-            {sections.menuList.visible && <a href="#menu" className="hover:text-primary transition-colors">Menu</a>}
-            {sections.about.visible && <a href="#about" className="hover:text-primary transition-colors">About</a>}
-            {sections.contact.visible && <a href="#contact" className="hover:text-primary transition-colors">Contact</a>}
-          </div>
+            <div className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
+              {sections.menuList.visible && <a href="#menu" className="hover:text-primary transition-colors">Menu</a>}
+              {sections.about.visible && <a href="#about" className="hover:text-primary transition-colors">About</a>}
+              {sections.contact.visible && <a href="#contact" className="hover:text-primary transition-colors">Contact</a>}
+            </div>
 
-          <div className="flex items-center gap-4">
-             <Button className="hidden sm:flex rounded-xl font-black text-xs uppercase h-10 px-6 shadow-lg shadow-primary/20" style={{ backgroundColor: theme.primary }} asChild>
-                <Link href={`/customer/${restaurantId}/reserve`}>Reserve Now</Link>
-             </Button>
-             {cart.length > 0 && (
-               <button className="relative p-2 text-slate-600 hover:text-slate-900 transition-colors" onClick={() => setIsCheckoutOpen(true)}>
-                 <ShoppingBag className="h-6 w-6" />
-                 <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black shadow-md border-2 border-white" style={{ backgroundColor: theme.primary }}>{cart.length}</span>
-               </button>
-             )}
+            <div className="flex items-center gap-4">
+               <Button className="hidden sm:flex rounded-xl font-black text-xs uppercase h-10 px-6 shadow-lg shadow-primary/20" style={{ backgroundColor: theme.primary }} asChild>
+                  <Link href={`/customer/${restaurantId}/reserve`}>Reserve Now</Link>
+               </Button>
+               {cart.length > 0 && (
+                 <button className="relative p-2 text-slate-600 hover:text-slate-900 transition-colors" onClick={() => setIsCheckoutOpen(true)}>
+                   <ShoppingBag className="h-6 w-6" />
+                   <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black shadow-md border-2 border-white" style={{ backgroundColor: theme.primary }}>{cart.length}</span>
+                 </button>
+               )}
+            </div>
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
 
       {/* Main Dynamic Content Sections */}
       <div className="space-y-24">
         {sectionOrder.map(sectionKey => {
+          if (sectionKey === 'navbar') return null; // Navbar handled separately for stickiness
           const sectionConfig = (sections as any)[sectionKey];
           if (!sectionConfig?.visible) return null;
           return SECTION_COMPONENTS[sectionKey];

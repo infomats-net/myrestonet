@@ -32,7 +32,8 @@ import {
   Info,
   ChevronUp,
   ChevronDown,
-  Map as MapIcon
+  Map as MapIcon,
+  Menu
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -58,6 +59,7 @@ interface DesignSettings {
     baseSize: string;
   };
   sections: {
+    navbar: { visible: boolean };
     hero: { visible: boolean; height: string };
     welcomeCard: { 
       visible: boolean;
@@ -79,6 +81,7 @@ interface DesignSettings {
 }
 
 const SECTION_LABELS: Record<string, { label: string; icon: any }> = {
+  navbar: { label: 'Navigation Bar', icon: Menu },
   hero: { label: 'Hero Banner', icon: Monitor },
   welcomeCard: { label: 'Info Card', icon: Info },
   about: { label: 'About Us', icon: User },
@@ -89,7 +92,7 @@ const SECTION_LABELS: Record<string, { label: string; icon: any }> = {
   contact: { label: 'Contact Details', icon: Phone },
 };
 
-const DEFAULT_ORDER = ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact'];
+const DEFAULT_ORDER = ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact'];
 
 const DEFAULT_SETTINGS: DesignSettings = {
   theme: {
@@ -107,6 +110,7 @@ const DEFAULT_SETTINGS: DesignSettings = {
     baseSize: '16px'
   },
   sections: {
+    navbar: { visible: true },
     hero: { visible: true, height: '400px' },
     welcomeCard: { 
       visible: true,
@@ -554,18 +558,20 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               color: settings.theme.text,
               fontSize: settings.typography.baseSize
             }}>
-              <nav className="h-16 flex items-center justify-between px-8 border-b" style={{ backgroundColor: settings.theme.headerColor }}>
-                <span className="font-bold text-sm" style={{ color: settings.theme.primary, fontFamily: settings.typography.headingFont }}>Signature Dining</span>
-                <div className="flex gap-4 text-[9px] uppercase font-bold text-slate-400">
-                  <span>Menu</span>
-                  <span>About</span>
-                </div>
-              </nav>
+              {settings.sections.navbar.visible && (
+                <nav className="h-16 flex items-center justify-between px-8 border-b" style={{ backgroundColor: settings.theme.headerColor }}>
+                  <span className="font-bold text-sm" style={{ color: settings.theme.primary, fontFamily: settings.typography.headingFont }}>Signature Dining</span>
+                  <div className="flex gap-4 text-[9px] uppercase font-bold text-slate-400">
+                    <span>Menu</span>
+                    <span>About</span>
+                  </div>
+                </nav>
+              )}
 
               <div className="space-y-12 pb-20">
                 {settings.sectionOrder.map(sectionKey => {
                   const section = (settings.sections as any)[sectionKey];
-                  if (!section?.visible) return null;
+                  if (!section?.visible || sectionKey === 'navbar') return null;
 
                   switch(sectionKey) {
                     case 'hero':
