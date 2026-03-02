@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -239,7 +240,6 @@ function DashboardContent() {
           <TabsTrigger value="overview" className={tabTriggerStyle}>Dashboard</TabsTrigger>
           <TabsTrigger value="orders" className={tabTriggerStyle}>Orders</TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
-          <TabsTrigger value="menu" className={tabTriggerStyle}>Menu Catalog</TabsTrigger>
           <TabsTrigger value="gallery" className={tabTriggerStyle}>Photo Gallery</TabsTrigger>
           <TabsTrigger value="settings" className={tabTriggerStyle}>Hours & Settings</TabsTrigger>
         </TabsList>
