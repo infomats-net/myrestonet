@@ -463,7 +463,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
             <div className="space-y-6">
               <ImageUploader 
                 label="Item Image"
-                path={`restaurants/${restaurantId}/menus/${selectedMenuId}/items/${editingItemId || Date.now()}`}
+                path={`restaurants/${restaurantId}/items/${editingItemId || `new-${Date.now()}`}`}
                 currentUrl={itemForm.imageUrl}
                 onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})}
               />
