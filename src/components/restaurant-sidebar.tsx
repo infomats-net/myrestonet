@@ -1,4 +1,3 @@
-
 "use client"
 
 import { 
@@ -142,10 +141,10 @@ function SidebarLinks() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="View Storefront" className="text-primary hover:bg-primary/5">
+                <SidebarMenuButton asChild tooltip="View Website" className="text-primary hover:bg-primary/5">
                   <Link href={effectiveRestaurantId ? `/customer/${effectiveRestaurantId}` : "#"} target="_blank">
                     <ExternalLink />
-                    <span>Public Storefront</span>
+                    <span>Show My Website</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
