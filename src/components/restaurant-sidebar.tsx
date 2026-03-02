@@ -141,7 +141,7 @@ function SidebarLinks() {
                     <Camera className="text-accent" />
                     <span>Photo Gallery</span>
                   </Link>
-                </SidebarMenuItem>
+                </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="SEO" isActive={isTabActive('seo')}>
