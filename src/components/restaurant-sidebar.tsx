@@ -35,6 +35,52 @@ import { signOut } from "firebase/auth"
 import { doc } from "firebase/firestore"
 import { Suspense } from "react"
 
+function SidebarBrand() {
+  const db = useFirestore();
+  const { user: authUser } = useUser();
+  const searchParams = useSearchParams();
+  const impersonateId = searchParams.get('impersonate');
+
+  const userProfileRef = useMemoFirebase(() => {
+    if (!db || !authUser?.uid) return null;
+    return doc(db, 'users', authUser.uid);
+  }, [db, authUser?.uid]);
+
+  const { data: userProfile } = useDoc(userProfileRef);
+  const effectiveRestaurantId = impersonateId || userProfile?.restaurantId;
+
+  const restaurantRef = useMemoFirebase(() => {
+    if (!db || !effectiveRestaurantId) return null;
+    return doc(db, 'restaurants', effectiveRestaurantId);
+  }, [db, effectiveRestaurantId]);
+  const { data: restaurant } = useDoc(restaurantRef);
+
+  const designRef = useMemoFirebase(() => {
+    if (!db || !effectiveRestaurantId) return null;
+    return doc(db, 'restaurants', effectiveRestaurantId, 'design', 'settings');
+  }, [db, effectiveRestaurantId]);
+  const { data: designSettings } = useDoc(designRef);
+
+  return (
+    <Link href="/" className="flex items-center gap-3 w-full">
+      {designSettings?.branding?.logoUrl ? (
+        <img 
+          src={designSettings.branding.logoUrl} 
+          className="h-8 w-8 rounded-lg object-contain shrink-0" 
+          alt="Logo" 
+        />
+      ) : (
+        <div className="bg-accent rounded-lg p-1.5 shrink-0">
+          <ShoppingBag className="h-5 w-5 text-white" />
+        </div>
+      )}
+      <span className="font-bold text-sm text-primary truncate group-data-[collapsible=icon]:hidden">
+        {restaurant?.name || 'Merchant Panel'}
+      </span>
+    </Link>
+  );
+}
+
 function SidebarLinks() {
   const auth = useAuth();
   const db = useFirestore();
@@ -157,7 +203,7 @@ function SidebarLinks() {
                     <Sparkles className="text-accent" />
                     <span>AI Analytics</span>
                   </Link>
-                </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
@@ -209,14 +255,9 @@ export function RestaurantSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="bg-accent rounded-lg p-1.5 shrink-0">
-            <ShoppingBag className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-bold text-lg text-primary truncate group-data-[collapsible=icon]:hidden">
-            Merchant Panel
-          </span>
-        </Link>
+        <Suspense fallback={<div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />}>
+          <SidebarBrand />
+        </Suspense>
       </SidebarHeader>
       <Suspense fallback={<div className="p-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>}>
         <SidebarLinks />
