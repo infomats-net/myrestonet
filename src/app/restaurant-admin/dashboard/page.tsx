@@ -136,7 +136,6 @@ function DashboardContent() {
     );
   }
 
-  // Define styling for tabs triggers to ensure consistency
   const tabTriggerStyle = "flex-1 rounded-xl h-full font-bold bg-primary text-primary-foreground data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all";
 
   return (
@@ -175,7 +174,6 @@ function DashboardContent() {
           <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
           <TabsTrigger value="tables" className={tabTriggerStyle}>Tables</TabsTrigger>
           <TabsTrigger value="menu" className={tabTriggerStyle}>Menu</TabsTrigger>
-          <TabsTrigger value="design" className={tabTriggerStyle}>Design</TabsTrigger>
           <TabsTrigger value="settings" className={tabTriggerStyle}>Settings</TabsTrigger>
         </TabsList>
 
