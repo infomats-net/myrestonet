@@ -241,7 +241,6 @@ function DashboardContent() {
           <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
           <TabsTrigger value="menu" className={tabTriggerStyle}>Menu Catalog</TabsTrigger>
           <TabsTrigger value="gallery" className={tabTriggerStyle}>Photo Gallery</TabsTrigger>
-          <TabsTrigger value="design" className={tabTriggerStyle}>Store Designer</TabsTrigger>
           <TabsTrigger value="settings" className={tabTriggerStyle}>Hours & Settings</TabsTrigger>
         </TabsList>
 
