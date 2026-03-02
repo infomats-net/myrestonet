@@ -31,7 +31,8 @@ import {
   Star,
   Info,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Map as MapIcon
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -71,6 +72,7 @@ interface DesignSettings {
     gallery: { visible: boolean };
     testimonials: { visible: boolean };
     contact: { visible: boolean };
+    map: { visible: boolean };
   };
   sectionOrder: string[];
   customCss?: string;
@@ -83,10 +85,11 @@ const SECTION_LABELS: Record<string, { label: string; icon: any }> = {
   menuList: { label: 'Menu Catalog', icon: UtensilsCrossed },
   gallery: { label: 'Photo Gallery', icon: ImageIcon },
   testimonials: { label: 'Testimonials', icon: MessageSquare },
+  map: { label: 'Location Map', icon: MapIcon },
   contact: { label: 'Contact Details', icon: Phone },
 };
 
-const DEFAULT_ORDER = ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'contact'];
+const DEFAULT_ORDER = ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact'];
 
 const DEFAULT_SETTINGS: DesignSettings = {
   theme: {
@@ -117,7 +120,8 @@ const DEFAULT_SETTINGS: DesignSettings = {
     menuList: { visible: true },
     gallery: { visible: true },
     testimonials: { visible: true },
-    contact: { visible: true }
+    contact: { visible: true },
+    map: { visible: true }
   },
   sectionOrder: DEFAULT_ORDER,
   customCss: '/* Enter custom CSS here */\n.hero-title { font-size: 5rem; }'
@@ -633,6 +637,15 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                           <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Guest Experiences</h3>
                           <div className="p-4 bg-slate-50 rounded-2xl italic text-[10px]">
                             "The best dining experience I've had in years. Highly recommended!"
+                          </div>
+                        </section>
+                      );
+                    case 'map':
+                      return (
+                        <section key="map" className="px-8 space-y-4">
+                          <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Visit Us</h3>
+                          <div className="aspect-video bg-slate-100 rounded-2xl flex items-center justify-center">
+                            <MapIcon className="h-8 w-8 text-slate-300" />
                           </div>
                         </section>
                       );

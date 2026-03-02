@@ -213,10 +213,11 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     menuList: designSettings?.sections?.menuList ?? { visible: true },
     gallery: designSettings?.sections?.gallery ?? { visible: true },
     testimonials: designSettings?.sections?.testimonials ?? { visible: true },
-    contact: designSettings?.sections?.contact ?? { visible: true }
+    contact: designSettings?.sections?.contact ?? { visible: true },
+    map: designSettings?.sections?.map ?? { visible: true }
   };
 
-  const sectionOrder = designSettings?.sectionOrder || ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'contact'];
+  const sectionOrder = designSettings?.sectionOrder || ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact'];
 
   const globalStyle = { 
     backgroundColor: theme.background, 
@@ -465,6 +466,31 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             </Card>
           ))}
         </div>
+      </section>
+    ),
+    map: (
+      <section key="map" className="max-w-6xl mx-auto px-6 py-12">
+        <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden h-[450px] relative group">
+          <iframe 
+            width="100%" 
+            height="100%" 
+            style={{ border: 0, filter: 'grayscale(0.2) contrast(1.1)' }} 
+            loading="lazy" 
+            allowFullScreen 
+            src={`https://maps.google.com/maps?q=${encodeURIComponent(`${restaurant.address}, ${restaurant.city}, ${restaurant.country}`)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+          />
+          <div className="absolute bottom-8 left-8 z-20">
+            <Card className="bg-white/90 backdrop-blur-xl border-none shadow-2xl p-6 rounded-3xl max-w-xs animate-in slide-in-from-bottom-4 duration-700">
+              <h3 className="font-black text-slate-900 mb-1">Find Your Way</h3>
+              <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">
+                We're located in the heart of {restaurant.city}. Click the map for direct navigation instructions.
+              </p>
+              <Button className="w-full rounded-xl font-bold h-10 gap-2" style={{ backgroundColor: theme.primary }}>
+                <MapPin className="h-4 w-4" /> Open in Maps
+              </Button>
+            </Card>
+          </div>
+        </Card>
       </section>
     ),
     contact: (
