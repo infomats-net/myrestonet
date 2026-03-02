@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -31,7 +30,7 @@ import {
   DialogTitle 
 } from "@/components/ui/dialog";
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, getDocs } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
 import { selectPlaceholder } from '@/ai/flows/select-placeholder';
@@ -78,6 +77,20 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
       toast({ title: "Menu Created" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAiMenuDescription = async () => {
+    if (!menuForm.name) return;
+    setLoading(true);
+    try {
+      const { description } = await generateItemDescription({ itemName: menuForm.name });
+      setMenuForm(prev => ({ ...prev, description }));
+      toast({ title: "AI Description Generated" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "AI Error" });
     } finally {
       setLoading(false);
     }
@@ -349,7 +362,18 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Description (Optional)</Label>
+              <div className="flex justify-between items-center">
+                <Label>Description (Optional)</Label>
+                <Button 
+                  variant="link" 
+                  size="sm" 
+                  className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"
+                  onClick={handleAiMenuDescription}
+                  disabled={loading || !menuForm.name}
+                >
+                  <Sparkles className="h-3 w-3" /> Magic Write
+                </Button>
+              </div>
               <Textarea 
                 value={menuForm.description} 
                 onChange={e => setMenuForm({...menuForm, description: e.target.value})} 
