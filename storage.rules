@@ -1,0 +1,14 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /restaurants/{restaurantId}/{allPaths=**} {
+      // Allow public read access to restaurant assets (logo, banner, gallery, items)
+      allow read: if true;
+      
+      // Allow write access if the user is authenticated
+      // In a production app, you would ideally verify the user's role/restaurantId
+      // matching the path, but for this prototype we allow any authenticated user.
+      allow write: if request.auth != null;
+    }
+  }
+}
