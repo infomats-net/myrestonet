@@ -24,43 +24,88 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /**
+   * Converts a file to WebP format using HTML5 Canvas.
+   */
+  const convertToWebP = async (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Could not initialize image processing context.'));
+            return;
+          }
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) resolve(blob);
+              else reject(new Error('Image conversion failed.'));
+            },
+            'image/webp',
+            0.8 // Quality factor (0.8 is a great balance between size and quality)
+          );
+        };
+        img.onerror = () => reject(new Error('Failed to load image for processing.'));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('Failed to read selected file.'));
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleUpload = async (file: File) => {
     if (!storage || !file) return;
 
-    // Validate file type
+    // Validate initial file type
     if (!file.type.startsWith('image/')) {
       toast({ variant: 'destructive', title: 'Invalid file', description: 'Please select an image file.' });
       return;
     }
 
-    // Validate size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast({ variant: 'destructive', title: 'File too large', description: 'Images must be smaller than 5MB.' });
-      return;
-    }
-
     setUploading(true);
-    const storageRef = ref(storage, path);
-    const uploadTask = uploadBytesResumable(storageRef, file);
+    setProgress(0);
+    
+    try {
+      // 1. Process image to WebP
+      const webpBlob = await convertToWebP(file);
+      
+      // 2. Prepare path (ensure it ends with .webp)
+      const cleanPath = path.replace(/\.[^/.]+$/, ""); // Strip existing extension if present
+      const finalPath = `${cleanPath}.webp`;
+      
+      const storageRef = ref(storage, finalPath);
+      const uploadTask = uploadBytesResumable(storageRef, webpBlob, {
+        contentType: 'image/webp'
+      });
 
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setProgress(p);
-      },
-      (error) => {
-        setUploading(false);
-        toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
-      },
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        setUploading(false);
-        setProgress(0);
-        onUploadSuccess(downloadURL);
-        toast({ title: 'Success', description: 'Image uploaded successfully.' });
-      }
-    );
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const p = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          setProgress(p);
+        },
+        (error) => {
+          setUploading(false);
+          toast({ variant: 'destructive', title: 'Upload failed', description: error.message });
+        },
+        async () => {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          setUploading(false);
+          setProgress(0);
+          onUploadSuccess(downloadURL);
+          toast({ title: 'Success', description: 'Image optimized and uploaded successfully.' });
+        }
+      );
+    } catch (err: any) {
+      setUploading(false);
+      toast({ variant: 'destructive', title: 'Optimization failed', description: err.message || 'Could not optimize image.' });
+    }
   };
 
   return (
@@ -94,7 +139,7 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
               <div className="w-full space-y-4 px-4">
                 <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                 <div className="space-y-2">
-                  <p className="text-xs font-black text-primary uppercase tracking-widest">Uploading {Math.round(progress)}%</p>
+                  <p className="text-xs font-black text-primary uppercase tracking-widest">Optimizing & Uploading {Math.round(progress)}%</p>
                   <Progress value={progress} className="h-1.5" />
                 </div>
               </div>
@@ -105,7 +150,7 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
                 </div>
                 <div>
                   <p className="text-sm font-bold text-slate-900">Click to upload image</p>
-                  <p className="text-[10px] text-slate-400 font-medium">PNG, JPG or WebP (max 5MB)</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Files are auto-converted to lightweight WebP</p>
                 </div>
                 <Button 
                   type="button"
