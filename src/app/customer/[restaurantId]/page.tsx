@@ -150,7 +150,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const deliveryEnabled = restaurant?.deliverySettings?.deliveryEnabled ?? true;
-  const base deliveryCharge = restaurant?.deliverySettings?.deliveryCharge || 0;
+  const baseDeliveryCharge = restaurant?.deliverySettings?.deliveryCharge || 0;
   const freeThreshold = restaurant?.deliverySettings?.freeDeliveryAbove;
   const deliveryCharge = (deliveryEnabled && (freeThreshold === null || subtotal < (freeThreshold || 0))) ? baseDeliveryCharge : 0;
   const total = subtotal + deliveryCharge;
