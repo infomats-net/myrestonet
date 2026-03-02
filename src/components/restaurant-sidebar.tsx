@@ -13,7 +13,8 @@ import {
   Loader2,
   Palette,
   Camera,
-  LayoutGrid
+  LayoutGrid,
+  CalendarDays
 } from "lucide-react"
 import {
   Sidebar,
@@ -140,7 +141,7 @@ function SidebarLinks() {
                     <Camera className="text-accent" />
                     <span>Photo Gallery</span>
                   </Link>
-                </SidebarMenuButton>
+                </SidebarMenuItem>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="SEO" isActive={isTabActive('seo')}>
