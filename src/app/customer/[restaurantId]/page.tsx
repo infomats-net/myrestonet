@@ -150,7 +150,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const deliveryEnabled = restaurant?.deliverySettings?.deliveryEnabled ?? true;
-  const baseDeliveryCharge = restaurant?.deliverySettings?.deliveryCharge || 0;
+  const base deliveryCharge = restaurant?.deliverySettings?.deliveryCharge || 0;
   const freeThreshold = restaurant?.deliverySettings?.freeDeliveryAbove;
   const deliveryCharge = (deliveryEnabled && (freeThreshold === null || subtotal < (freeThreshold || 0))) ? baseDeliveryCharge : 0;
   const total = subtotal + deliveryCharge;
@@ -266,7 +266,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               <div className="flex items-center gap-3">
                 {sections.welcomeCard.showBadges && (
                   <Badge className={cn(
-                    "border-none font-bold",
+                    "border-none font-black text-2xl px-6 py-2 rounded-2xl",
                     isOpen ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-destructive/10 text-destructive hover:bg-destructive/10"
                   )}>
                     {isOpen ? "OPEN NOW" : "CLOSED NOW"}
