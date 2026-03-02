@@ -147,12 +147,12 @@ function SidebarLinks() {
                     <ExternalLink />
                     <span>Show My Website</span>
                   </Link>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-      </SidebarFooter>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
       <SidebarFooter className="border-t p-2">
         <SidebarMenu>
           <SidebarMenuItem>
