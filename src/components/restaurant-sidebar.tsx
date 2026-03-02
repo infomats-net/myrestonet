@@ -12,7 +12,8 @@ import {
   ExternalLink,
   Loader2,
   Palette,
-  Camera
+  Camera,
+  LayoutGrid
 } from "lucide-react"
 import {
   Sidebar,
@@ -90,6 +91,22 @@ function SidebarLinks() {
                   <Link href={getHref('orders')}>
                     <ShoppingCart />
                     <span>Orders</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Reservations" isActive={isTabActive('reservations')}>
+                  <Link href={getHref('reservations')}>
+                    <CalendarDays className="h-4 w-4" />
+                    <span>Reservations</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Tables" isActive={isTabActive('tables')}>
+                  <Link href={getHref('tables')}>
+                    <LayoutGrid />
+                    <span>Floor Plan</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
