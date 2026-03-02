@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -27,15 +28,12 @@ import {
   UtensilsCrossed,
   MessageSquare,
   Phone,
-  MapPin,
   Star,
   Info,
-  Clock,
-  Map as MapIcon,
   ChevronUp,
   ChevronDown
 } from 'lucide-react';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -73,7 +71,6 @@ interface DesignSettings {
     gallery: { visible: boolean };
     testimonials: { visible: boolean };
     contact: { visible: boolean };
-    map: { visible: boolean };
   };
   sectionOrder: string[];
   customCss?: string;
@@ -87,10 +84,9 @@ const SECTION_LABELS: Record<string, { label: string; icon: any }> = {
   gallery: { label: 'Photo Gallery', icon: ImageIcon },
   testimonials: { label: 'Testimonials', icon: MessageSquare },
   contact: { label: 'Contact Details', icon: Phone },
-  map: { label: 'Interactive Map', icon: MapIcon },
 };
 
-const DEFAULT_ORDER = ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'contact', 'map'];
+const DEFAULT_ORDER = ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'contact'];
 
 const DEFAULT_SETTINGS: DesignSettings = {
   theme: {
@@ -121,8 +117,7 @@ const DEFAULT_SETTINGS: DesignSettings = {
     menuList: { visible: true },
     gallery: { visible: true },
     testimonials: { visible: true },
-    contact: { visible: true },
-    map: { visible: true }
+    contact: { visible: true }
   },
   sectionOrder: DEFAULT_ORDER,
   customCss: '/* Enter custom CSS here */\n.hero-title { font-size: 5rem; }'
@@ -647,15 +642,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                           <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>Get In Touch</h3>
                           <div className="space-y-2 text-[10px] opacity-70">
                             <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> +1 234 567 890</p>
-                            <p className="flex items-center gap-2"><MapPin className="h-3 w-3" /> 123 Culinary St, Flavor City</p>
-                          </div>
-                        </section>
-                      );
-                    case 'map':
-                      return (
-                        <section key="map" className="px-8">
-                          <div className="h-32 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
-                            <MapIcon className="h-8 w-8" />
+                            <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> 123 Culinary St, Flavor City</p>
                           </div>
                         </section>
                       );

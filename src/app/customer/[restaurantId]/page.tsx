@@ -21,7 +21,6 @@ import {
   ChevronRight,
   CalendarDays,
   Quote,
-  Map as MapIcon,
   Image as ImageIcon,
   Mail
 } from 'lucide-react';
@@ -214,11 +213,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     menuList: designSettings?.sections?.menuList ?? { visible: true },
     gallery: designSettings?.sections?.gallery ?? { visible: true },
     testimonials: designSettings?.sections?.testimonials ?? { visible: true },
-    contact: designSettings?.sections?.contact ?? { visible: true },
-    map: designSettings?.sections?.map ?? { visible: true }
+    contact: designSettings?.sections?.contact ?? { visible: true }
   };
 
-  const sectionOrder = designSettings?.sectionOrder || ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'contact', 'map'];
+  const sectionOrder = designSettings?.sectionOrder || ['hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'contact'];
 
   const globalStyle = { 
     backgroundColor: theme.background, 
@@ -497,33 +495,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             </div>
           </div>
         </Card>
-      </section>
-    ),
-    map: (
-      <section key="map" className="max-w-6xl mx-auto px-6 py-12">
-        <div className="rounded-[3.5rem] overflow-hidden shadow-2xl relative h-[500px] group">
-          <img 
-            src="https://picsum.photos/seed/city-aerial-map/1200/800" 
-            alt="Location Map" 
-            className="w-full h-full object-cover grayscale brightness-75 transition-all duration-700"
-            data-ai-hint="city map"
-          />
-          <div className="absolute inset-0 bg-black/10" />
-          <div className="absolute bottom-6 left-6 right-6 p-8 md:p-10 bg-white/90 backdrop-blur-md rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 border border-white/20">
-            <div className="flex items-center gap-6">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center shrink-0">
-                <MapIcon className="h-8 w-8 text-emerald-600" />
-              </div>
-              <div className="text-left">
-                <h3 className="font-black text-2xl text-slate-900" style={headingStyle}>Find Your Way</h3>
-                <p className="text-slate-500 font-medium">Get directions to our premium location.</p>
-              </div>
-            </div>
-            <Button size="lg" className="rounded-[1.5rem] h-16 px-10 text-lg font-black shadow-lg hover:scale-105 transition-transform" style={{ backgroundColor: theme.primary }}>
-              Open Maps
-            </Button>
-          </div>
-        </div>
       </section>
     )
   };
