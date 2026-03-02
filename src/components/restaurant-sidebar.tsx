@@ -203,7 +203,7 @@ function SidebarLinks() {
                     <Sparkles className="text-accent" />
                     <span>AI Analytics</span>
                   </Link>
-                </SidebarMenuItem>
+                </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
