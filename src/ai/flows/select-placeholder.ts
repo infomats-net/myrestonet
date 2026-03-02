@@ -3,7 +3,7 @@
  * @fileOverview A Genkit flow for intelligently selecting a relevant placeholder image based on an item's name.
  *
  * - selectPlaceholder - A function that returns the best matching image ID from the library.
- * - SelectPlaceholderInput - Input type containing the item name.
+ * - SelectPlaceholderInput - Input type containing the item name and exclusion list.
  * - SelectPlaceholderOutput - Output type containing the chosen ID.
  */
 
@@ -13,6 +13,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const SelectPlaceholderInputSchema = z.object({
   itemName: z.string().describe('The name of the menu item (e.g., "Pepperoni Pizza").'),
+  excludeIds: z.array(z.string()).optional().describe('List of IDs to avoid to provide variety if requested again.'),
 });
 export type SelectPlaceholderInput = z.infer<typeof SelectPlaceholderInputSchema>;
 
@@ -38,13 +39,18 @@ Available Images:
 - ID: {{this.id}} (Description: {{this.description}})
 {{/each}}
 
+{{#if excludeIds}}
+IMPORTANT: Do not select any of the following IDs: {{#each excludeIds}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}. Provide a different relevant option that still fits the item.
+{{/if}}
+
 Instructions:
 1. Analyze the Item Name.
 2. Compare it to the Descriptions of the Available Images.
-3. Select the ID of the image that best represents the item.
+3. Select the ID of the image that best represents the item, excluding any IDs listed in the exclusion list.
 4. If it is a generic main course or meat dish, prefer 'food-steak'.
 5. If it is a drink, prefer 'food-drink'.
-6. If no specific match is found, select 'hero-restaurant' as a generic high-quality fallback.
+6. If the specific food item isn't available, prefer a relevant restaurant atmosphere (e.g. 'restaurant-1' for Italian, 'restaurant-2' for Asian).
+7. If no specific match is found, select 'hero-restaurant' as a generic high-quality fallback.
 
 Return only the JSON matching the output schema.`,
 });

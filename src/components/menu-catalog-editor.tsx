@@ -168,10 +168,17 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     if (!itemForm.name) return;
     setLoading(true);
     try {
-      const { placeholderId } = await selectPlaceholder({ itemName: itemForm.name });
+      // Find the ID of the currently selected image to exclude it and get a variety
+      const currentPlaceholderId = PlaceHolderImages.find(p => p.imageUrl === itemForm.imageUrl)?.id;
+      
+      const { placeholderId } = await selectPlaceholder({ 
+        itemName: itemForm.name,
+        excludeIds: currentPlaceholderId ? [currentPlaceholderId] : []
+      });
+      
       const img = PlaceHolderImages.find(p => p.id === placeholderId)?.imageUrl || '';
       setItemForm(prev => ({ ...prev, imageUrl: img }));
-      toast({ title: "Image Selected by AI" });
+      toast({ title: "New Image Option Found" });
     } catch (e) {
       toast({ variant: "destructive", title: "AI Error" });
     } finally {
