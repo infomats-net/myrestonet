@@ -338,7 +338,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         <div className="space-y-6">
           <h2 className="text-4xl font-black tracking-tight" style={headingStyle}>About Our Culinary Vision</h2>
           <p className="text-lg leading-relaxed opacity-70">
-            At {restaurant.name}, we believe that dining is an art form. Every dish we serve is a testament to our commitment to excellence, crafted with the freshest local ingredients and a touch of global inspiration.
+            At {restaurant.name}, we believe that dining is an art form. Every menu item we serve is a testament to our commitment to excellence, crafted with the freshest local ingredients and a touch of global inspiration.
           </p>
           <div className="space-y-4">
             <div className="flex items-start gap-4">
@@ -380,7 +380,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       <section key="menuList" id="menu" className="max-w-6xl mx-auto px-6 py-12 space-y-12 scroll-mt-24">
         <div className="text-center space-y-4">
           <h2 className="text-5xl font-black tracking-tight" style={headingStyle}>Our Signature Menu</h2>
-          <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of dishes, designed to delight and satisfy.</p>
+          <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of menu items, designed to delight and satisfy.</p>
         </div>
 
         {menus?.map(menu => (
@@ -397,7 +397,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                       src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/400`} 
                       alt={item.name} 
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                      data-ai-hint="food dish"
+                      data-ai-hint="food item"
                     />
                     <div className="absolute top-4 right-4">
                       <Badge className="bg-white/90 text-black border-none font-black backdrop-blur-md px-4 py-1.5 rounded-full text-lg shadow-xl">
@@ -479,7 +479,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8">
           {[
-            { name: "James Miller", role: "Food Critic", text: "The attention to detail in every dish is simply unmatched. A true gem in the city." },
+            { name: "James Miller", role: "Food Critic", text: "The attention to detail in every menu item is simply unmatched. A true gem in the city." },
             { name: "Sophia Chen", role: "Regular Guest", text: "My go-to spot for every special occasion. The atmosphere is always perfect." },
             { name: "Robert Wilson", role: "Local Resident", text: "Fast delivery, incredible flavors, and always consistent. Highly recommend the pizza!" }
           ].map((item, i) => (

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -628,7 +629,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       return (
                         <section key="about" className="px-8 space-y-4">
                           <h3 className="text-xl font-bold" style={{ fontFamily: settings.typography.headingFont }}>About Us</h3>
-                          <p className="text-xs opacity-70">Crafting excellence in every dish, sourced locally and inspired globally.</p>
+                          <p className="text-xs opacity-70">Crafting excellence in every menu item, sourced locally and inspired globally.</p>
                         </section>
                       );
                     case 'menuList':

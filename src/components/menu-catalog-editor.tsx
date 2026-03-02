@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -132,7 +133,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
       setIsItemDialogOpen(false);
       setItemForm({ name: '', description: '', price: '', category: 'Main', imageUrl: '' });
       setEditingItemId(null);
-      toast({ title: editingItemId ? "Item Updated" : "Item Added" });
+      toast({ title: editingItemId ? "Menu Item Updated" : "Menu Item Added" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error" });
     } finally {
@@ -144,7 +145,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     if (!firestore || !restaurantId || !selectedMenuId) return;
     try {
       await deleteDoc(doc(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items', id));
-      toast({ title: "Item Removed" });
+      toast({ title: "Menu Item Removed" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error" });
     }
@@ -246,7 +247,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
             </Button>
             <div className="flex gap-2 w-full md:w-auto">
               <Button onClick={() => setIsItemDialogOpen(true)} className="flex-1 md:flex-none rounded-2xl h-12 px-6 shadow-xl font-black">
-                <Plus className="mr-2 h-4 w-4" /> Add Dish
+                <Plus className="mr-2 h-4 w-4" /> Add Menu Item
               </Button>
             </div>
           </div>
@@ -270,7 +271,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 border-b">
                     <tr>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Dish Details</th>
+                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Menu Item Details</th>
                       <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Category</th>
                       <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Price</th>
                       <th className="p-6 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
@@ -337,7 +338,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                         <td colSpan={4} className="p-20 text-center">
                           <div className="space-y-4">
                             <Search className="h-12 w-12 mx-auto opacity-10" />
-                            <p className="text-slate-400 font-bold italic">No dishes in this menu yet.</p>
+                            <p className="text-slate-400 font-bold italic">No menu items in this menu yet.</p>
                             <Button variant="link" onClick={() => setIsItemDialogOpen(true)}>Add your first item</Button>
                           </div>
                         </td>
@@ -401,7 +402,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
       <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
         <DialogContent className="rounded-[2.5rem] max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-black">{editingItemId ? 'Update Dish' : 'Add New Dish'}</DialogTitle>
+            <DialogTitle className="text-2xl font-black">{editingItemId ? 'Update Menu Item' : 'Add New Menu Item'}</DialogTitle>
             <DialogDescription>Define the details and visuals for this item.</DialogDescription>
           </DialogHeader>
           
@@ -506,7 +507,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
             <Button variant="outline" onClick={() => setIsItemDialogOpen(false)} className="rounded-2xl h-12">Cancel</Button>
             <Button className="h-12 rounded-2xl px-10 font-black shadow-xl" onClick={handleSaveItem} disabled={loading || !itemForm.name}>
               {loading ? <Loader2 className="animate-spin mr-2" /> : <Plus className="mr-2" />}
-              {editingItemId ? 'Update Dish' : 'Add to Menu'}
+              {editingItemId ? 'Update Menu Item' : 'Add Menu Item'}
             </Button>
           </DialogFooter>
         </DialogContent>
