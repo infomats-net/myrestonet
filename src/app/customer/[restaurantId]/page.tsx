@@ -1,8 +1,7 @@
-
 "use client";
 
 import { use, useState, useEffect, ReactNode } from 'react';
-import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth } from '@/firebase';
+import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useFirebase } from '@/firebase';
 import { doc, collection, addDoc, getDocs } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { 
@@ -22,7 +21,8 @@ import {
   CalendarDays,
   Quote,
   Image as ImageIcon,
-  Mail
+  Mail,
+  Map as MapIcon
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,8 +52,7 @@ type CartItem = {
 export default function CustomerStorefront({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = use(params);
   const restaurantId = resolvedParams.restaurantId;
-  const firestore = useFirestore();
-  const auth = useAuth();
+  const { auth, firestore } = useFirebase();
   const { toast } = useToast();
 
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -113,10 +112,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     fetchAllItems();
   }, [firestore, restaurantId, menus]);
 
-  useEffect(() => {
-    if (auth) signInAnonymously(auth);
-  }, [auth]);
-
+  // Handle defaults based on settings
   useEffect(() => {
     if (restaurant?.paymentSettings) {
       const settings = restaurant.paymentSettings;
@@ -156,11 +152,18 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const total = subtotal + deliveryCharge;
 
   const handleCheckout = async () => {
-    if (!auth?.currentUser || !firestore || !restaurantId) return;
+    if (!auth || !firestore || !restaurantId) return;
     setIsProcessing(true);
     try {
+      // Sign in anonymously on-demand during checkout if not already authenticated
+      let user = auth.currentUser;
+      if (!user) {
+        const userCredential = await signInAnonymously(auth);
+        user = userCredential.user;
+      }
+
       const orderData = {
-        customerId: auth.currentUser.uid,
+        customerId: user.uid,
         items: cart,
         subtotal,
         deliveryCharge,
@@ -182,6 +185,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     }
   };
 
+  // Improved loading check to prevent flicker
   if (loadingRes || loadingMenus || loadingItems) return (
     <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
   );
@@ -487,7 +491,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 We're located in the heart of {restaurant.city}. Click the map for direct navigation instructions.
               </p>
               <Button className="w-full rounded-xl font-bold h-10 gap-2" style={{ backgroundColor: theme.primary }}>
-                <MapPin className="h-4 w-4" /> Open in Maps
+                <MapIcon className="h-4 w-4" /> Open in Maps
               </Button>
             </Card>
           </div>
