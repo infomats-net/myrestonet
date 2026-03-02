@@ -243,21 +243,21 @@ function DashboardContent() {
 
         <TabsContent value="overview">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <Card className="rounded-[2rem] border-none shadow-md bg-white/5 border-white/5 backdrop-blur-sm">
+            <Card className="rounded-[2rem] border-none shadow-md bg-white">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">New Orders</CardTitle></CardHeader>
               <CardContent><div className="text-4xl font-black text-primary">{orders?.filter(o => o.orderStatus === 'new').length || 0}</div></CardContent>
             </Card>
-            <Card className="rounded-[2rem] border-none shadow-md bg-white/5 border-white/5 backdrop-blur-sm">
+            <Card className="rounded-[2rem] border-none shadow-md bg-white">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Confirmed Bookings</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-blue-400">{reservations?.filter(r => r.status === 'confirmed').length || 0}</div></CardContent>
+              <CardContent><div className="text-4xl font-black text-blue-600">{reservations?.filter(r => r.status === 'confirmed').length || 0}</div></CardContent>
             </Card>
-            <Card className="rounded-[2rem] border-none shadow-md bg-white/5 border-white/5 backdrop-blur-sm">
+            <Card className="rounded-[2rem] border-none shadow-md bg-white">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Waitlist Size</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-amber-400">{reservations?.filter(r => r.waitlist).length || 0}</div></CardContent>
+              <CardContent><div className="text-4xl font-black text-amber-500">{reservations?.filter(r => r.waitlist).length || 0}</div></CardContent>
             </Card>
-            <Card className="rounded-[2rem] border-none shadow-md bg-white/5 border-white/5 backdrop-blur-sm">
+            <Card className="rounded-[2rem] border-none shadow-md bg-white">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Floor Capacity</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-white">{restaurant?.tables?.length || 0}</div></CardContent>
+              <CardContent><div className="text-4xl font-black text-slate-900">{restaurant?.tables?.length || 0}</div></CardContent>
             </Card>
           </div>
         </TabsContent>
@@ -357,50 +357,6 @@ function DashboardContent() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="tables" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-black text-white">Floor Plan & Tables</h2>
-            <Button onClick={() => setIsTableDialogOpen(true)} className="rounded-2xl h-12 shadow-xl bg-white text-black hover:bg-white/90"><Plus className="mr-2" /> New Table</Button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {restaurant?.tables?.map((table: any) => (
-              <Card key={table.id} className="rounded-3xl border-none shadow-lg overflow-hidden group bg-white/5 border-white/5 backdrop-blur-sm">
-                <CardHeader className="bg-white/5 p-6 flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-white border shadow-sm flex items-center justify-center">
-                      <LayoutGrid className="h-5 w-5 text-primary" />
-                    </div>
-                    <CardTitle className="text-lg font-black text-white">{table.name}</CardTitle>
-                  </div>
-                  <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-destructive" onClick={() => handleDeleteTable(table)}><Trash2 className="h-4 w-4" /></Button>
-                </CardHeader>
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capacity</span>
-                    <span className="font-black text-white text-xl">{table.size} People</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Location</span>
-                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/10">{table.location}</Badge>
-                  </div>
-                  <div className="pt-4 border-t border-white/10 flex items-center gap-2">
-                    <Switch checked={table.isActive} />
-                    <span className="text-xs font-bold text-slate-400">Active Seating</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {(!restaurant?.tables || restaurant.tables.length === 0) && (
-              <div className="col-span-full py-20 text-center border-2 border-dashed border-white/10 rounded-[3rem] text-muted-foreground bg-white/5">
-                <LayoutGrid className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p className="font-bold text-white">No tables configured yet.</p>
-                <Button variant="link" className="text-primary" onClick={() => setIsTableDialogOpen(true)}>Add your first table</Button>
-              </div>
-            )}
-          </div>
         </TabsContent>
 
         <TabsContent value="menu">
