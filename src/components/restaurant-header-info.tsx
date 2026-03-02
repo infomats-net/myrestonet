@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useSearchParams } from 'next/navigation';
@@ -30,14 +31,24 @@ function HeaderContent() {
 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
 
+  const designRef = useMemoFirebase(() => {
+    if (!firestore || !effectiveRestaurantId) return null;
+    return doc(firestore, 'restaurants', effectiveRestaurantId, 'design', 'settings');
+  }, [firestore, effectiveRestaurantId]);
+  const { data: designSettings } = useDoc(designRef);
+
   if (loadingRes) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
 
   return (
     <div className="flex items-center gap-4 flex-1">
       <div className="flex items-center gap-3">
-        <div className="bg-primary/10 w-9 h-9 rounded-xl flex items-center justify-center text-primary border border-primary/5 shrink-0">
-          <Utensils className="h-4 w-4" />
-        </div>
+        {designSettings?.branding?.logoUrl ? (
+          <img src={designSettings.branding.logoUrl} className="h-9 w-auto rounded-lg object-contain" alt="Logo" />
+        ) : (
+          <div className="bg-primary/10 w-9 h-9 rounded-xl flex items-center justify-center text-primary border border-primary/5 shrink-0">
+            <Utensils className="h-4 w-4" />
+          </div>
+        )}
         <div className="min-w-0">
           <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none truncate">
             {restaurant?.name || 'Untitled'}

@@ -173,13 +173,15 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       const orderData = {
         customerId: user.uid,
+        customerName: "Anonymous Guest", // Or capture from form
+        customerEmail: "guest@example.com",
         items: cart,
         subtotal,
-        deliveryCharge,
+        deliveryCharges: deliveryCharge,
         totalAmount: total,
-        paymentMethod,
-        paymentStatus: paymentMethod === 'cod' ? 'pending' : 'paid',
-        status: 'pending',
+        paymentMethod: 'cod',
+        paymentStatus: 'pending',
+        orderStatus: 'new',
         createdAt: new Date().toISOString()
       };
       await addDoc(collection(firestore, 'restaurants', restaurantId, 'orders'), orderData);
@@ -249,7 +251,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       <section key="hero" className="relative h-[60vh] flex items-center justify-center text-center px-6 overflow-hidden">
         <div className="absolute inset-0 bg-black/40 z-10" />
         <img 
-          src="https://picsum.photos/seed/restaurant-hero/1920/1080" 
+          src={designSettings?.branding?.bannerUrl || "https://picsum.photos/seed/restaurant-hero/1920/1080"} 
           alt="Hero" 
           className="absolute inset-0 w-full h-full object-cover"
           data-ai-hint="restaurant interior"
@@ -617,10 +619,16 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2 group">
-                <div className="bg-primary rounded-lg p-1.5 transition-transform group-hover:scale-110" style={{ backgroundColor: theme.primary }}>
-                  <UtensilsCrossed className="h-5 w-5 text-white" />
-                </div>
-                <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
+                {designSettings?.branding?.logoUrl ? (
+                  <img src={designSettings.branding.logoUrl} className="h-10 w-auto" alt="Logo" />
+                ) : (
+                  <>
+                    <div className="bg-primary rounded-lg p-1.5 transition-transform group-hover:scale-110" style={{ backgroundColor: theme.primary }}>
+                      <UtensilsCrossed className="h-5 w-5 text-white" />
+                    </div>
+                    <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
+                  </>
+                )}
               </Link>
               <Badge className={cn(
                 "hidden sm:flex text-2xl px-2 py-0.5 border-none font-black uppercase tracking-widest rounded-full h-fit",
