@@ -32,12 +32,15 @@ import {
   XCircle,
   Clock3,
   ShoppingCart,
-  Camera
+  Camera,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection, useAuth } from '@/firebase';
 import { doc, collection, addDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -103,6 +106,17 @@ function DashboardContent() {
 
   const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
   const [tableForm, setTableForm] = useState({ name: '', size: '2', location: 'Indoor' });
+  
+  const [isResDialogOpen, setIsResDialogOpen] = useState(false);
+  const [resForm, setResForm] = useState({ 
+    name: '', 
+    email: '', 
+    date: new Date() as Date | undefined, 
+    time: '19:00', 
+    partySize: '2',
+    tableIds: [] as string[]
+  });
+
   const [isSaving, setIsSaving] = useState(false);
 
   // Auth & Role Protection
@@ -129,6 +143,38 @@ function DashboardContent() {
       setIsTableDialogOpen(false);
       setTableForm({ name: '', size: '2', location: 'Indoor' });
       toast({ title: "Table Added" });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddReservation = async () => {
+    if (!firestore || !effectiveRestaurantId || !resForm.date) return;
+    setIsSaving(true);
+    try {
+      const reservationDateTime = new Date(resForm.date);
+      const [h, m] = resForm.time.split(':');
+      reservationDateTime.setHours(parseInt(h), parseInt(m), 0, 0);
+
+      const reservationData = {
+        customerId: `admin-added-${Date.now()}`,
+        customerName: resForm.name,
+        customerEmail: resForm.email,
+        tableIds: resForm.tableIds,
+        dateTime: reservationDateTime.toISOString(),
+        partySize: parseInt(resForm.partySize),
+        status: 'confirmed',
+        waitlist: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await addDoc(collection(firestore, 'restaurants', effectiveRestaurantId, 'reservations'), reservationData);
+      setIsResDialogOpen(false);
+      setResForm({ name: '', email: '', date: new Date(), time: '19:00', partySize: '2', tableIds: [] });
+      toast({ title: "Reservation Added", description: "Table has been booked successfully." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
@@ -353,11 +399,18 @@ function DashboardContent() {
         </TabsContent>
 
         <TabsContent value="reservations" className="space-y-6">
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-black text-slate-900">Live Reservations</h2>
+            <Button onClick={() => setIsResDialogOpen(true)} className="rounded-2xl h-12 shadow-xl bg-primary hover:bg-primary/90 text-white font-black">
+              <Plus className="mr-2" /> New Reservation
+            </Button>
+          </div>
+
           <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
             <CardHeader className="bg-slate-50/50 border-b p-10 flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-2xl font-black">Live Reservations</CardTitle>
-                <CardDescription>Manage your guest bookings and AI allocation.</CardDescription>
+                <CardTitle className="text-xl font-black">Active Bookings</CardTitle>
+                <CardDescription>Manage your guest list and table allocations.</CardDescription>
               </div>
               <Badge variant="outline" className="h-8 rounded-full border-primary/20 bg-primary/5 text-primary font-bold">
                 {reservations?.length || 0} Total
@@ -530,6 +583,96 @@ function DashboardContent() {
           <DialogFooter>
             <Button className="w-full h-14 rounded-2xl font-black" onClick={handleAddTable} disabled={isSaving || !tableForm.name}>
               {isSaving ? <Loader2 className="animate-spin" /> : "Save Table"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Reservation Dialog */}
+      <Dialog open={isResDialogOpen} onOpenChange={setIsResDialogOpen}>
+        <DialogContent className="rounded-[2.5rem] max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">New Manual Booking</DialogTitle>
+            <DialogDescription>Manually register a customer reservation.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-6 overflow-y-auto max-h-[70vh] no-scrollbar">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Customer Name</Label>
+                <Input value={resForm.name} onChange={e => setResForm({...resForm, name: e.target.value})} placeholder="Full Name" className="rounded-xl h-12" />
+              </div>
+              <div className="space-y-2">
+                <Label>Email (Optional)</Label>
+                <Input type="email" value={resForm.email} onChange={e => setResForm({...resForm, email: e.target.value})} placeholder="customer@email.com" className="rounded-xl h-12" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-slate-50">
+                      <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                      {resForm.date ? format(resForm.date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-2xl" align="start">
+                    <Calendar mode="single" selected={resForm.date} onSelect={(d) => setResForm({...resForm, date: d})} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Time Slot</Label>
+                <Select value={resForm.time} onValueChange={v => setResForm({...resForm, time: v})}>
+                  <SelectTrigger className="h-12 rounded-xl bg-slate-50"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"].map(t => (
+                      <SelectItem key={t} value={t}>{t}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Party Size</Label>
+              <Input type="number" value={resForm.partySize} onChange={e => setResForm({...resForm, partySize: e.target.value})} className="rounded-xl h-12" />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Assign Table(s)</Label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-2xl border">
+                {restaurant?.tables?.filter((t: any) => t.isActive).map((table: any) => (
+                  <button
+                    key={table.id}
+                    onClick={() => {
+                      const selected = resForm.tableIds.includes(table.id);
+                      const next = selected 
+                        ? resForm.tableIds.filter(id => id !== table.id)
+                        : [...resForm.tableIds, table.id];
+                      setResForm({...resForm, tableIds: next});
+                    }}
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl border text-left transition-all",
+                      resForm.tableIds.includes(table.id) 
+                        ? "bg-primary/10 border-primary text-primary" 
+                        : "bg-white hover:bg-slate-50"
+                    )}
+                  >
+                    <div>
+                      <p className="text-xs font-black">{table.name}</p>
+                      <p className="text-[10px] opacity-60">Seats {table.size}</p>
+                    </div>
+                    {resForm.tableIds.includes(table.id) && <CheckCircle2 className="h-4 w-4" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleAddReservation} disabled={isSaving || !resForm.name || !resForm.date}>
+              {isSaving ? <Loader2 className="animate-spin" /> : "Confirm Reservation"}
             </Button>
           </DialogFooter>
         </DialogContent>
