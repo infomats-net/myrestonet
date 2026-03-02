@@ -14,16 +14,17 @@ import {
   Minus, 
   CreditCard, 
   Truck, 
-  Phone,
-  Clock,
-  Star,
-  Info,
-  ChevronRight,
-  CalendarDays,
-  Quote,
-  Image as ImageIcon,
-  Mail,
-  Map as MapIcon
+  Phone, 
+  Clock, 
+  Star, 
+  Info, 
+  ChevronRight, 
+  CalendarDays, 
+  Quote, 
+  Image as ImageIcon, 
+  Mail, 
+  Map as MapIcon,
+  CheckCircle2
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -193,7 +194,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     }
   };
 
-  // Improved loading check to prevent flicker
   if (loadingRes || loadingMenus || loadingItems) return (
     <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>
   );
@@ -338,7 +338,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         <div className="space-y-6">
           <h2 className="text-4xl font-black tracking-tight" style={headingStyle}>About Our Culinary Vision</h2>
           <p className="text-lg leading-relaxed opacity-70">
-            At {restaurant.name}, we believe that dining is an art form. Every menu item we serve is a testament to our commitment to excellence, crafted with the freshest local ingredients and a touch of global inspiration.
+            At {restaurant.name}, we believe that dining is an art form. Every Menu Item we serve is a testament to our commitment to excellence, crafted with the freshest local ingredients and a touch of global inspiration.
           </p>
           <div className="space-y-4">
             <div className="flex items-start gap-4">
@@ -380,7 +380,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       <section key="menuList" id="menu" className="max-w-6xl mx-auto px-6 py-12 space-y-12 scroll-mt-24">
         <div className="text-center space-y-4">
           <h2 className="text-5xl font-black tracking-tight" style={headingStyle}>Our Signature Menu</h2>
-          <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of menu items, designed to delight and satisfy.</p>
+          <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of Menu Items, designed to delight and satisfy.</p>
         </div>
 
         {menus?.map(menu => (
@@ -390,37 +390,47 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               <div className="h-px bg-slate-200 flex-1" />
             </div>
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-              {allMenuItems.filter(i => i.menuId === menu.id).map(item => (
-                <Card key={item.id} className="overflow-hidden border-none shadow-lg rounded-[2.5rem] group hover:shadow-2xl transition-all duration-500 bg-white text-slate-900">
-                  <div className="relative h-56 overflow-hidden">
-                    <img 
-                      src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/400`} 
-                      alt={item.name} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                      data-ai-hint="food item"
-                    />
-                    <div className="absolute top-4 right-4">
-                      <Badge className="bg-white/90 text-black border-none font-black backdrop-blur-md px-4 py-1.5 rounded-full text-lg shadow-xl">
-                        ${item.price}
-                      </Badge>
+              {allMenuItems.filter(i => i.menuId === menu.id).map(item => {
+                const quantityInCart = cart.find(ci => ci.id === item.id)?.quantity || 0;
+                return (
+                  <Card key={item.id} className="overflow-hidden border-none shadow-lg rounded-[2.5rem] group hover:shadow-2xl transition-all duration-500 bg-white text-slate-900">
+                    <div className="relative h-56 overflow-hidden">
+                      <img 
+                        src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/400`} 
+                        alt={item.name} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        data-ai-hint="food item"
+                      />
+                      <div className="absolute top-4 right-4 z-20">
+                        <Badge className="bg-white/90 text-black border-none font-black backdrop-blur-md px-4 py-1.5 rounded-full text-lg shadow-xl">
+                          ${item.price}
+                        </Badge>
+                      </div>
+                      {quantityInCart > 0 && (
+                        <div className="absolute top-4 left-4 z-20 animate-in zoom-in duration-300">
+                          <Badge className="bg-emerald-500 text-white border-none font-black px-4 py-1.5 rounded-full text-sm shadow-xl flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4" /> Added: {quantityInCart}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <CardContent className="p-8 space-y-4">
-                    <div className="space-y-2">
-                      <h4 className="font-black text-2xl group-hover:text-primary transition-colors" style={headingStyle}>{item.name}</h4>
-                      <p className="text-sm text-slate-500 line-clamp-2 font-medium">{item.description}</p>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                      <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold uppercase text-[10px] tracking-widest">
-                        {item.category}
-                      </Badge>
-                      <Button size="icon" className="rounded-full w-12 h-12 shadow-lg shadow-primary/20 hover:scale-110 transition-transform" style={{ backgroundColor: theme.primary }} onClick={() => addToCart(item)}>
-                        <Plus className="h-6 w-6" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    <CardContent className="p-8 space-y-4">
+                      <div className="space-y-2">
+                        <h4 className="font-black text-2xl group-hover:text-primary transition-colors" style={headingStyle}>{item.name}</h4>
+                        <p className="text-sm text-slate-500 line-clamp-2 font-medium">{item.description}</p>
+                      </div>
+                      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold uppercase text-[10px] tracking-widest">
+                          {item.category}
+                        </Badge>
+                        <Button size="icon" className="rounded-full w-12 h-12 shadow-lg shadow-primary/20 hover:scale-110 transition-transform" style={{ backgroundColor: theme.primary }} onClick={() => addToCart(item)}>
+                          <Plus className="h-6 w-6" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -479,7 +489,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8">
           {[
-            { name: "James Miller", role: "Food Critic", text: "The attention to detail in every menu item is simply unmatched. A true gem in the city." },
+            { name: "James Miller", role: "Food Critic", text: "The attention to detail in every Menu Item is simply unmatched. A true gem in the city." },
             { name: "Sophia Chen", role: "Regular Guest", text: "My go-to spot for every special occasion. The atmosphere is always perfect." },
             { name: "Robert Wilson", role: "Local Resident", text: "Fast delivery, incredible flavors, and always consistent. Highly recommend the pizza!" }
           ].map((item, i) => (
