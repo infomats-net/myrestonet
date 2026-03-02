@@ -12,7 +12,8 @@ import {
   ShoppingBag,
   ExternalLink,
   Loader2,
-  Palette
+  Palette,
+  Camera
 } from "lucide-react"
 import {
   Sidebar,
@@ -114,6 +115,14 @@ function SidebarLinks() {
                   <Link href={getHref('design')}>
                     <Palette className="text-accent" />
                     <span>Design Management</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Gallery" isActive={isTabActive('gallery')}>
+                  <Link href={getHref('gallery')}>
+                    <Camera className="text-accent" />
+                    <span>Photo Gallery</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

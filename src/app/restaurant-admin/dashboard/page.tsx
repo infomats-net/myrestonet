@@ -31,7 +31,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock3,
-  ShoppingCart
+  ShoppingCart,
+  Camera
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
 import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import { MenuCatalogEditor } from '@/components/menu-catalog-editor';
+import { GalleryManager } from '@/components/gallery-manager';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -482,6 +484,9 @@ function DashboardContent() {
 
         <TabsContent value="menu">
           <MenuCatalogEditor restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+        <TabsContent value="gallery">
+          <GalleryManager restaurantId={effectiveRestaurantId!} />
         </TabsContent>
         <TabsContent value="design">
           <DesignSystemEditor restaurantId={effectiveRestaurantId!} />

@@ -108,6 +108,16 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "GalleryImage": {
+      "title": "GalleryImage",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "url": { "type": "string" },
+        "caption": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -119,6 +129,7 @@
     "/restaurants/{restaurantId}": { "schema": { "$ref": "#/backend/entities/Restaurant" }, "description": "Restaurants." },
     "/restaurants/{restaurantId}/menus/{menuId}": { "schema": { "$ref": "#/backend/entities/Menu" }, "description": "Restaurant Menus." },
     "/restaurants/{restaurantId}/menus/{menuId}/items/{itemId}": { "schema": { "$ref": "#/backend/entities/MenuItem" }, "description": "Menu Items." },
-    "/restaurants/{restaurantId}/reservations/{resId}": { "schema": { "$ref": "#/backend/entities/Reservation" }, "description": "Reservations." }
+    "/restaurants/{restaurantId}/reservations/{resId}": { "schema": { "$ref": "#/backend/entities/Reservation" }, "description": "Reservations." },
+    "/restaurants/{restaurantId}/gallery/{imageId}": { "schema": { "$ref": "#/backend/entities/GalleryImage" }, "description": "Photo Gallery Images." }
   }
 }

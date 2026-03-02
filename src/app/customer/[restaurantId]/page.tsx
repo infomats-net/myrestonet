@@ -83,7 +83,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   }, [firestore, restaurantId]);
   const { data: operatingHours } = useDoc(hoursRef);
 
-  // 4. Fetch All Menus
+  // 4. Fetch Gallery
+  const galleryRef = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return collection(firestore, 'restaurants', restaurantId, 'gallery');
+  }, [firestore, restaurantId]);
+  const { data: galleryImages } = useCollection(galleryRef);
+
+  // 5. Fetch All Menus
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'menus');
@@ -93,7 +100,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [allMenuItems, setAllMenuItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  // 5. Fetch Items for all menus
+  // 6. Fetch Items for all menus
   useEffect(() => {
     if (!firestore || !restaurantId || !menus) return;
     
@@ -426,22 +433,40 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <p className="opacity-60">A glimpse into our kitchen and dining ambiance.</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div key={i} className={cn(
-              "relative rounded-3xl overflow-hidden shadow-xl group",
-              i % 3 === 0 ? "md:col-span-2 md:row-span-2 h-96 md:h-auto" : "h-48 md:h-64"
-            )}>
-              <img 
-                src={`https://picsum.photos/seed/gallery-${i}/800/800`} 
-                alt="Gallery" 
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                data-ai-hint="restaurant food"
-              />
-              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <ImageIcon className="text-white h-8 w-8" />
+          {galleryImages && galleryImages.length > 0 ? (
+            galleryImages.map((img, i) => (
+              <div key={img.id} className={cn(
+                "relative rounded-3xl overflow-hidden shadow-xl group",
+                i % 3 === 0 ? "md:col-span-2 md:row-span-2 h-96 md:h-auto" : "h-48 md:h-64"
+              )}>
+                <img 
+                  src={img.url} 
+                  alt={img.caption || "Gallery Image"} 
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <span className="text-white text-xs font-bold px-4 text-center">{img.caption}</span>
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            [1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className={cn(
+                "relative rounded-3xl overflow-hidden shadow-xl group",
+                i % 3 === 0 ? "md:col-span-2 md:row-span-2 h-96 md:h-auto" : "h-48 md:h-64"
+              )}>
+                <img 
+                  src={`https://picsum.photos/seed/gallery-${i}/800/800`} 
+                  alt="Gallery" 
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                  data-ai-hint="restaurant food"
+                />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <ImageIcon className="text-white h-8 w-8" />
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </section>
     ),
@@ -588,7 +613,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
               </Link>
               <Badge className={cn(
-                "hidden sm:flex text-[10px] px-2 py-0.5 border-none font-black uppercase tracking-widest rounded-full h-fit",
+                "hidden sm:flex text-2xl px-2 py-0.5 border-none font-black uppercase tracking-widest rounded-full h-fit",
                 isOpen ? "bg-emerald-100 text-emerald-700" : "bg-destructive/10 text-destructive"
               )}>
                 {isOpen ? "Open" : "Closed"}
