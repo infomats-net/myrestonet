@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -241,30 +240,6 @@ function DashboardContent() {
 
   return (
     <div className="p-8 space-y-8 w-full animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl border shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 w-14 h-14 rounded-2xl flex items-center justify-center text-primary border border-primary/5">
-            <Utensils className="h-7 w-7" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">{restaurant?.name || 'Untitled Restaurant'}</h1>
-            <p className="text-muted-foreground text-sm font-medium">Merchant Dashboard</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild className="rounded-xl">
-            <Link href={`/customer/${effectiveRestaurantId}/reserve`} target="_blank">
-              <CalendarDays className="mr-2 h-4 w-4" /> Booking Page
-            </Link>
-          </Button>
-          <Button variant="outline" asChild className="rounded-xl">
-            <Link href={`/customer/${effectiveRestaurantId}`} target="_blank">
-              <ExternalLink className="mr-2 h-4 w-4" /> Live Store
-            </Link>
-          </Button>
-        </div>
-      </div>
-
       <Tabs value={activeTab} onValueChange={(v) => {
         const params = new URLSearchParams(searchParams.toString());
         params.set('tab', v);
@@ -275,6 +250,10 @@ function DashboardContent() {
           <TabsTrigger value="orders" className={tabTriggerStyle}>Orders</TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
           <TabsTrigger value="tables" className={tabTriggerStyle}>Tables</TabsTrigger>
+          <TabsTrigger value="menu" className={tabTriggerStyle}>Menu Catalog</TabsTrigger>
+          <TabsTrigger value="gallery" className={tabTriggerStyle}>Photo Gallery</TabsTrigger>
+          <TabsTrigger value="design" className={tabTriggerStyle}>Store Designer</TabsTrigger>
+          <TabsTrigger value="settings" className={tabTriggerStyle}>Hours & Settings</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
