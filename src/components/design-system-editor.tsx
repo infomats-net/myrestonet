@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -92,7 +91,7 @@ const SECTION_LABELS: Record<string, { label: string; icon: any }> = {
   testimonials: { label: 'Testimonials', icon: MessageSquare },
   map: { label: 'Location Map', icon: MapIcon },
   contact: { label: 'Contact Details', icon: Phone },
-  bookingCTA: { label: 'Booking CTA', icon: CalendarDays },
+  bookingCTA: { label: 'Booking Section (Plan Your Visit)', icon: CalendarDays },
 };
 
 const DEFAULT_ORDER = ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
@@ -172,6 +171,16 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
       (snap) => {
         if (snap.exists()) {
           const data = snap.data();
+          
+          // Merge logic to ensure new keys (like bookingCTA) are included even if older data exists
+          const rawOrder = data.sectionOrder || DEFAULT_ORDER;
+          const mergedOrder = [...rawOrder];
+          DEFAULT_ORDER.forEach(key => {
+            if (!mergedOrder.includes(key)) {
+              mergedOrder.push(key);
+            }
+          });
+
           setSettings({
             ...DEFAULT_SETTINGS,
             ...data,
@@ -185,7 +194,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                 ...data.sections?.welcomeCard
               }
             },
-            sectionOrder: data.sectionOrder || DEFAULT_ORDER,
+            sectionOrder: mergedOrder,
             customCss: data.customCss ?? DEFAULT_SETTINGS.customCss
           } as DesignSettings);
         }
