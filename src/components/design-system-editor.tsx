@@ -33,7 +33,8 @@ import {
   ChevronUp,
   ChevronDown,
   Map as MapIcon,
-  Menu
+  Menu,
+  CalendarDays
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -75,6 +76,7 @@ interface DesignSettings {
     testimonials: { visible: boolean };
     contact: { visible: boolean };
     map: { visible: boolean };
+    bookingCTA: { visible: boolean };
   };
   sectionOrder: string[];
   customCss?: string;
@@ -90,9 +92,10 @@ const SECTION_LABELS: Record<string, { label: string; icon: any }> = {
   testimonials: { label: 'Testimonials', icon: MessageSquare },
   map: { label: 'Location Map', icon: MapIcon },
   contact: { label: 'Contact Details', icon: Phone },
+  bookingCTA: { label: 'Booking CTA', icon: CalendarDays },
 };
 
-const DEFAULT_ORDER = ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact'];
+const DEFAULT_ORDER = ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
 
 const DEFAULT_SETTINGS: DesignSettings = {
   theme: {
@@ -125,7 +128,8 @@ const DEFAULT_SETTINGS: DesignSettings = {
     gallery: { visible: true },
     testimonials: { visible: true },
     contact: { visible: true },
-    map: { visible: true }
+    map: { visible: true },
+    bookingCTA: { visible: true }
   },
   sectionOrder: DEFAULT_ORDER,
   customCss: '/* Enter custom CSS here */\n.hero-title { font-size: 5rem; }'
@@ -662,6 +666,15 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                           <div className="space-y-2 text-[10px] opacity-70">
                             <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> +1 234 567 890</p>
                             <p className="flex items-center gap-2"><Phone className="h-3 w-3" /> 123 Culinary St, Flavor City</p>
+                          </div>
+                        </section>
+                      );
+                    case 'bookingCTA':
+                      return (
+                        <section key="bookingCTA" className="px-8 space-y-4">
+                          <div className="bg-slate-900 rounded-2xl p-6 text-white space-y-4">
+                            <h3 className="font-bold" style={{ fontFamily: settings.typography.headingFont }}>Plan Your Visit</h3>
+                            <Button size="sm" className="w-full" style={{ backgroundColor: settings.theme.primary }}>Book Now</Button>
                           </div>
                         </section>
                       );

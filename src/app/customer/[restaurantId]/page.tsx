@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, ReactNode } from 'react';
@@ -219,10 +220,11 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     gallery: designSettings?.sections?.gallery ?? { visible: true },
     testimonials: designSettings?.sections?.testimonials ?? { visible: true },
     contact: designSettings?.sections?.contact ?? { visible: true },
-    map: designSettings?.sections?.map ?? { visible: true }
+    map: designSettings?.sections?.map ?? { visible: true },
+    bookingCTA: designSettings?.sections?.bookingCTA ?? { visible: true }
   };
 
-  const sectionOrder = designSettings?.sectionOrder || ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact'];
+  const sectionOrder = designSettings?.sectionOrder || ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
 
   const globalStyle = { 
     backgroundColor: theme.background, 
@@ -527,6 +529,48 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           </div>
         </Card>
       </section>
+    ),
+    bookingCTA: (
+      <section key="bookingCTA" className="max-w-6xl mx-auto px-6 py-12 scroll-mt-24">
+        <div className="bg-slate-900 text-white rounded-[3rem] p-8 md:p-20 overflow-hidden relative">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -mr-48 -mt-48" style={{ backgroundColor: `${theme.primary}30` }} />
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8">
+              <h2 className="text-4xl font-black" style={headingStyle}>Plan Your Visit</h2>
+              <p className="text-white/60 text-lg">We are ready to welcome you. For large parties or special events, please contact us directly or use our smart reservation system.</p>
+              <div className="space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Phone className="h-6 w-6" /></div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Call Us</p>
+                    <p className="text-xl font-bold">{restaurant.contactPhone}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-primary" style={{ color: theme.primary }}><MapPin className="h-6 w-6" /></div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Location</p>
+                    <p className="text-xl font-bold">{restaurant.address}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <Card className="rounded-[2.5rem] bg-white text-slate-900 border-none p-10 shadow-2xl space-y-8">
+              <div className="text-center space-y-2">
+                <CalendarDays className="h-12 w-12 text-primary mx-auto" style={{ color: theme.primary }} />
+                <h3 className="text-2xl font-black" style={headingStyle}>Secure Your Spot</h3>
+                <p className="text-slate-500">Instant confirmation via our AI-powered table allocator.</p>
+              </div>
+              <Button size="lg" className="w-full h-16 rounded-2xl text-xl font-black shadow-xl" style={{ backgroundColor: theme.primary }} asChild disabled={!isOpen}>
+                <Link href={`/customer/${restaurantId}/reserve`}>Book Now</Link>
+              </Button>
+              <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                {isOpen ? "No credit card required for booking" : "We are currently closed"}
+              </p>
+            </Card>
+          </div>
+        </div>
+      </section>
     )
   };
 
@@ -580,48 +624,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           if (!sectionConfig?.visible) return null;
           return SECTION_COMPONENTS[sectionKey];
         })}
-      </div>
-
-      <div className="max-w-6xl mx-auto px-6 py-12 space-y-24 mt-12">
-        {/* Final CTA / Booking Section - Always Last */}
-        <section className="bg-slate-900 text-white rounded-[3rem] p-8 md:p-20 overflow-hidden relative">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 rounded-full blur-[100px] -mr-48 -mt-48" style={{ backgroundColor: `${theme.primary}30` }} />
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-              <h2 className="text-4xl font-black" style={headingStyle}>Plan Your Visit</h2>
-              <p className="text-white/60 text-lg">We are ready to welcome you. For large parties or special events, please contact us directly or use our smart reservation system.</p>
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Phone className="h-6 w-6" /></div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Call Us</p>
-                    <p className="text-xl font-bold">{restaurant.contactPhone}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-primary" style={{ color: theme.primary }}><MapPin className="h-6 w-6" /></div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Location</p>
-                    <p className="text-xl font-bold">{restaurant.address}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <Card className="rounded-[2.5rem] bg-white text-slate-900 border-none p-10 shadow-2xl space-y-8">
-              <div className="text-center space-y-2">
-                <CalendarDays className="h-12 w-12 text-primary mx-auto" style={{ color: theme.primary }} />
-                <h3 className="text-2xl font-black" style={headingStyle}>Secure Your Spot</h3>
-                <p className="text-slate-500">Instant confirmation via our AI-powered table allocator.</p>
-              </div>
-              <Button size="lg" className="w-full h-16 rounded-2xl text-xl font-black shadow-xl" style={{ backgroundColor: theme.primary }} asChild disabled={!isOpen}>
-                <Link href={`/customer/${restaurantId}/reserve`}>Book Now</Link>
-              </Button>
-              <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                {isOpen ? "No credit card required for booking" : "We are currently closed"}
-              </p>
-            </Card>
-          </div>
-        </section>
       </div>
 
       {/* Cart Navigation Bar */}
