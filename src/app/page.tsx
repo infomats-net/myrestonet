@@ -118,15 +118,11 @@ export default function Home() {
                         </p>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <Button className="w-full rounded-2xl h-12 font-black shadow-lg shadow-primary/10" asChild>
-                          <Link href={`/customer/${res.id}`} target="_blank">
-                            Order Online <ArrowRight className="ml-2 h-4 w-4" />
-                          </Link>
+                        <Button className="w-full rounded-2xl h-12 font-black shadow-lg shadow-primary/10" disabled>
+                          Order Online <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" className="w-full rounded-2xl h-12 font-bold text-slate-500" asChild>
-                          <Link href={`/customer/${res.id}/reserve`} target="_blank">
-                            Book a Table
-                          </Link>
+                        <Button variant="ghost" className="w-full rounded-2xl h-12 font-bold text-slate-500" disabled>
+                          Book a Table
                         </Button>
                       </div>
                     </CardContent>
