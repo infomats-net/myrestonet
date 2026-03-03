@@ -86,7 +86,7 @@ export default function NewTenantPage() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    mode: "onChange", // Live check for passwords and required fields
+    mode: "onChange",
     defaultValues: {
       restaurantName: "",
       customDomain: "",
@@ -109,6 +109,17 @@ export default function NewTenantPage() {
   const adminEmail = form.watch('adminEmail');
   const password = form.watch('password');
   const confirmPassword = form.watch('confirmPassword');
+  const selectedCountry = form.watch('country');
+
+  // Auto-select currency when country changes
+  useEffect(() => {
+    if (selectedCountry) {
+      const countryData = WORLD_COUNTRIES.find(c => c.name === selectedCountry);
+      if (countryData) {
+        form.setValue('baseCurrency', countryData.currency, { shouldValidate: true });
+      }
+    }
+  }, [selectedCountry, form]);
 
   useEffect(() => {
     const checkEmail = async () => {
@@ -374,7 +385,7 @@ export default function NewTenantPage() {
                     <FormField control={form.control} name="country" render={({ field }) => (
                       <FormItem>
                         <Label className="font-bold text-slate-700">Country</Label>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                           <FormControl><SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100"><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent className="rounded-xl">
                             {WORLD_COUNTRIES.map(c => <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>)}
@@ -385,7 +396,7 @@ export default function NewTenantPage() {
                     <FormField control={form.control} name="baseCurrency" render={({ field }) => (
                       <FormItem>
                         <Label className="font-bold text-slate-700">Currency</Label>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                           <FormControl><SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100"><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent className="rounded-xl">
                             {WORLD_CURRENCIES.map(curr => <SelectItem key={curr.code} value={curr.code}>{curr.code} ({curr.symbol})</SelectItem>)}
