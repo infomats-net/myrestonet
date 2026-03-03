@@ -20,7 +20,12 @@ import {
   Clock,
   Save,
   Zap,
-  Globe
+  Globe,
+  Utensils,
+  Camera,
+  Palette,
+  Settings as SettingsIcon,
+  LayoutDashboard
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
@@ -169,28 +174,34 @@ function DashboardContent() {
 
   if (loadingRes) return <LoadingScreen message="Loading restaurant instance..." />;
 
-  const tabTriggerStyle = "flex-1 rounded-xl h-full font-bold bg-primary text-primary-foreground data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all px-4";
+  const tabTriggerStyle = "flex-1 rounded-xl h-full font-bold bg-primary text-primary-foreground data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-lg transition-all px-4 flex items-center justify-center gap-2";
+
+  const handleTabChange = (v: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', v);
+    router.push(`/restaurant-admin/dashboard?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <div className="p-8 space-y-8 w-full animate-in fade-in duration-500">
-      <Tabs value={activeTab} onValueChange={(v) => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set('tab', v);
-        router.push(`/restaurant-admin/dashboard?${params.toString()}`, { scroll: false });
-      }} className="space-y-6 w-full bg-black p-8 md:p-12 rounded-[3rem] shadow-2xl">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full bg-black p-8 md:p-12 rounded-[3rem] shadow-2xl">
         <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full flex gap-1 overflow-x-auto no-scrollbar">
-          <TabsTrigger value="overview" className={tabTriggerStyle}>Dashboard</TabsTrigger>
-          <TabsTrigger value="orders" className={tabTriggerStyle}>Orders</TabsTrigger>
-          <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
-          <TabsTrigger value="payments" className={tabTriggerStyle}>Payments</TabsTrigger>
-          <TabsTrigger value="billing" className={tabTriggerStyle}>Billing</TabsTrigger>
+          <TabsTrigger value="overview" className={tabTriggerStyle}><LayoutDashboard className="h-4 w-4" /> <span className="hidden lg:inline">Dashboard</span></TabsTrigger>
+          <TabsTrigger value="orders" className={tabTriggerStyle}><ShoppingBag className="h-4 w-4" /> <span className="hidden lg:inline">Orders</span></TabsTrigger>
+          <TabsTrigger value="reservations" className={tabTriggerStyle}><CalendarDays className="h-4 w-4" /> <span className="hidden lg:inline">Reservations</span></TabsTrigger>
+          <TabsTrigger value="menu" className={tabTriggerStyle}><Utensils className="h-4 w-4" /> <span className="hidden lg:inline">Menu</span></TabsTrigger>
+          <TabsTrigger value="gallery" className={tabTriggerStyle}><Camera className="h-4 w-4" /> <span className="hidden lg:inline">Gallery</span></TabsTrigger>
+          <TabsTrigger value="design" className={tabTriggerStyle}><Palette className="h-4 w-4" /> <span className="hidden lg:inline">Design</span></TabsTrigger>
+          <TabsTrigger value="payments" className={tabTriggerStyle}><DollarSign className="h-4 w-4" /> <span className="hidden lg:inline">Payments</span></TabsTrigger>
+          <TabsTrigger value="billing" className={tabTriggerStyle}><CreditCard className="h-4 w-4" /> <span className="hidden lg:inline">Billing</span></TabsTrigger>
+          <TabsTrigger value="settings" className={tabTriggerStyle}><SettingsIcon className="h-4 w-4" /> <span className="hidden lg:inline">Settings</span></TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview">
+        <TabsContent value="overview" className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card className="rounded-[2rem] border-none shadow-md bg-white">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">New Orders</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-primary">{orders?.filter(o => o.orderStatus === 'new').length || 0}</div></CardContent>
+              <CardContent><div className="text-4xl font-black text-primary">{orders?.filter(o => o.status === 'new' || o.status === 'pending').length || 0}</div></CardContent>
             </Card>
             <Card className="rounded-[2rem] border-none shadow-md bg-white">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Confirmed Bookings</CardTitle></CardHeader>
@@ -206,7 +217,63 @@ function DashboardContent() {
             </Card>
             <Card className="rounded-[2rem] border-none shadow-md bg-white">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capacity</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-slate-900">{restaurant?.tables?.length || 0}</div></CardContent>
+              <CardContent><div className="text-4xl font-black text-slate-900">{restaurant?.tables?.length || 0} Tables</div></CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
+              <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-black">Recent Activity</CardTitle>
+                  <CardDescription>Latest orders and status updates.</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" className="font-bold text-primary" onClick={() => handleTabChange('orders')}>View All</Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {orders?.slice(0, 5).map(order => (
+                    <div key={order.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-primary/10 p-2 rounded-lg"><ShoppingBag className="h-4 w-4 text-primary" /></div>
+                        <div>
+                          <p className="font-bold text-slate-900">Order #{order.id.slice(-4).toUpperCase()}</p>
+                          <p className="text-xs text-slate-400">{format(new Date(order.createdAt), 'h:mm a')}</p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="capitalize">{order.status}</Badge>
+                    </div>
+                  ))}
+                  {(!orders || orders.length === 0) && <div className="p-10 text-center text-slate-400 italic">No recent activity.</div>}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-[2.5rem] border-none shadow-xl bg-white overflow-hidden">
+              <CardHeader className="bg-slate-50/50 p-8 border-b flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl font-black">Upcoming Guests</CardTitle>
+                  <CardDescription>Next 5 confirmed reservations.</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" className="font-bold text-primary" onClick={() => handleTabChange('reservations')}>Manage</Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="divide-y">
+                  {reservations?.filter(r => r.status === 'confirmed').slice(0, 5).map(res => (
+                    <div key={res.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-blue-50 p-2 rounded-lg"><CalendarDays className="h-4 w-4 text-blue-600" /></div>
+                        <div>
+                          <p className="font-bold text-slate-900">{res.customerName}</p>
+                          <p className="text-xs text-slate-400">{format(new Date(res.dateTime), 'MMM d, h:mm a')}</p>
+                        </div>
+                      </div>
+                      <Badge className="bg-blue-100 text-blue-700 border-none">{res.partySize} Guests</Badge>
+                    </div>
+                  ))}
+                  {(!reservations || reservations.length === 0) && <div className="p-10 text-center text-slate-400 italic">No upcoming reservations.</div>}
+                </div>
+              </CardContent>
             </Card>
           </div>
         </TabsContent>
@@ -291,6 +358,18 @@ function DashboardContent() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="menu">
+          <MenuCatalogEditor restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+
+        <TabsContent value="gallery">
+          <GalleryManager restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+
+        <TabsContent value="design">
+          <DesignSystemEditor restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+
         <TabsContent value="payments">
           <PaymentsManager restaurantId={effectiveRestaurantId!} />
         </TabsContent>
@@ -299,15 +378,6 @@ function DashboardContent() {
           <RestaurantBilling restaurantId={effectiveRestaurantId!} />
         </TabsContent>
 
-        <TabsContent value="menu">
-          <MenuCatalogEditor restaurantId={effectiveRestaurantId!} />
-        </TabsContent>
-        <TabsContent value="gallery">
-          <GalleryManager restaurantId={effectiveRestaurantId!} />
-        </TabsContent>
-        <TabsContent value="design">
-          <DesignSystemEditor restaurantId={effectiveRestaurantId!} />
-        </TabsContent>
         <TabsContent value="settings">
           <OperatingHoursEditor restaurantId={effectiveRestaurantId!} />
         </TabsContent>

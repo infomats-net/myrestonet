@@ -14,7 +14,8 @@ import {
   Zap, 
   Globe,
   Coins,
-  ShieldCheck
+  ShieldCheck,
+  Info
 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -59,6 +60,19 @@ export function PaymentsManager({ restaurantId }: { restaurantId: string }) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      <Card className="rounded-[2rem] border-none shadow-lg bg-primary/5 border border-primary/10">
+        <CardContent className="p-6 flex items-start gap-4">
+          <Info className="h-6 w-6 text-primary shrink-0 mt-1" />
+          <div className="space-y-1">
+            <h3 className="font-black text-primary uppercase text-xs tracking-widest">Merchant Payouts Configuration</h3>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Use this section to connect your restaurant's bank account via **Stripe Connect**. This allows you to accept card payments from your customers and receive payouts directly. 
+              *Note: This is separate from your platform subscription billing.*
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
