@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -334,7 +333,7 @@ export default function NewTenantPage() {
                       <Label className="font-bold text-slate-700">Phone</Label>
                       <FormControl>
                         <div className="relative">
-                           Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                           <Input placeholder="+1..." className="h-14 bg-slate-50 border-slate-100 rounded-2xl pl-12" {...field} />
                         </div>
                       </FormControl>
