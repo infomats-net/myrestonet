@@ -37,7 +37,7 @@ export default function Home() {
           </Link>
           <nav className="flex gap-4 sm:gap-6">
             <Button variant="ghost" asChild className="font-bold text-slate-600">
-              <Link href="/auth/login">Merchant Login</Link>
+              <Link href="/auth/login">Login</Link>
             </Button>
           </nav>
         </div>
