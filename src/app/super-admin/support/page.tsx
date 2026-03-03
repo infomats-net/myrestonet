@@ -1,6 +1,7 @@
+
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,8 @@ import {
   Settings2,
   X,
   Calendar,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { 
@@ -34,13 +36,14 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, serverTimestamp, query, where, updateDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, where, updateDoc, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 export default function SupportManagementPage() {
   const firestore = useFirestore();
@@ -50,6 +53,8 @@ export default function SupportManagementPage() {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [emailInUse, setEmailInUse] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   const [form, setForm] = useState({
     email: '',
@@ -75,8 +80,30 @@ export default function SupportManagementPage() {
   }, [firestore]);
   const { data: restaurants } = useCollection(restaurantsQuery);
 
+  useEffect(() => {
+    const checkEmail = async () => {
+      if (!form.email || !firestore || !form.email.includes('@')) {
+        setEmailInUse(false);
+        return;
+      }
+      setCheckingEmail(true);
+      try {
+        const q = query(collection(firestore, 'users'), where('email', '==', form.email.toLowerCase()));
+        const snap = await getDocs(q);
+        setEmailInUse(!snap.empty);
+      } catch (e) {
+        console.error("Email check failed", e);
+      } finally {
+        setCheckingEmail(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkEmail, 500);
+    return () => clearTimeout(timeoutId);
+  }, [form.email, firestore]);
+
   const handleCreateSupport = async () => {
-    if (!firestore || !form.email || !form.password) return;
+    if (!firestore || !form.email || !form.password || emailInUse) return;
     setLoading(true);
     let secondaryApp;
 
@@ -168,8 +195,22 @@ export default function SupportManagementPage() {
             </DialogHeader>
             <div className="space-y-6 py-6">
               <div className="space-y-2">
-                <Label>Email Address</Label>
-                <Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="support@myrestonet.com" />
+                <div className="flex justify-between items-center">
+                  <Label>Email Address</Label>
+                  {checkingEmail && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                </div>
+                <Input 
+                  type="email" 
+                  value={form.email} 
+                  onChange={e => setForm({...form, email: e.target.value})} 
+                  placeholder="support@myrestonet.com" 
+                  className={cn(emailInUse && "border-destructive ring-destructive bg-destructive/5")}
+                />
+                {emailInUse && (
+                  <p className="text-[10px] font-bold text-destructive flex items-center gap-1 mt-1 uppercase tracking-widest">
+                    <AlertCircle className="h-3 w-3" /> Email already in use
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Initial Password</Label>
@@ -190,7 +231,7 @@ export default function SupportManagementPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleCreateSupport} disabled={loading}>
+              <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleCreateSupport} disabled={loading || emailInUse || checkingEmail}>
                 {loading ? <Loader2 className="animate-spin" /> : "Initialize Support Profile"}
               </Button>
             </DialogFooter>

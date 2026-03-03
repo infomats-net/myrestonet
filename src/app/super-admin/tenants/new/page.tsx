@@ -71,7 +71,6 @@ export default function NewTenantPage() {
   const [emailInUse, setEmailInUse] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
 
-  // Fetch the current user profile to determine role and auto-assign partnerId if needed
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !currentUser?.uid) return null;
     return doc(firestore, 'users', currentUser.uid);
@@ -145,7 +144,6 @@ export default function NewTenantPage() {
       const restaurantRef = doc(collection(firestore, 'restaurants'));
       const restaurantId = restaurantRef.id;
 
-      // Handle partner attribution logic
       let finalPartnerId = null;
       if (values.partnerId && values.partnerId !== 'none') {
         finalPartnerId = values.partnerId;
@@ -184,7 +182,6 @@ export default function NewTenantPage() {
         createdAt: serverTimestamp(),
       };
 
-      // Initiate writes (Non-blocking as per guidelines)
       setDoc(restaurantRef, restaurantData).catch(async (serverError) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: restaurantRef.path,
@@ -210,7 +207,6 @@ export default function NewTenantPage() {
         description: "Provisioning tenant instance and credentials." 
       });
       
-      // Navigate immediately - Firestore will sync in background
       router.push('/super-admin/tenants');
     } catch (error: any) {
       if (secondaryApp) {
@@ -487,7 +483,7 @@ export default function NewTenantPage() {
                 </CardContent>
               </Card>
 
-              <Button type="submit" className="w-full h-20 text-xl font-black rounded-[1.5rem] shadow-2xl" disabled={loading || emailInUse}>
+              <Button type="submit" className="w-full h-20 text-xl font-black rounded-[1.5rem] shadow-2xl" disabled={loading || emailInUse || checkingEmail}>
                 {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : "Initialize Tenant Instance"}
               </Button>
             </div>

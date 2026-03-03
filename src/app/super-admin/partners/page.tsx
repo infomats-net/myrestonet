@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,8 @@ import {
   MoreVertical,
   ShieldCheck,
   ShieldAlert,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { 
@@ -30,11 +31,12 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { cn } from '@/lib/utils';
 
 export default function PartnersPage() {
   const firestore = useFirestore();
@@ -42,6 +44,8 @@ export default function PartnersPage() {
   const [search, setSearch] = useState('');
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailInUse, setEmailInUse] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
@@ -57,13 +61,34 @@ export default function PartnersPage() {
   }, [firestore]);
   const { data: partners, isLoading } = useCollection(partnersQuery);
 
+  useEffect(() => {
+    const checkEmail = async () => {
+      if (!form.email || !firestore || !form.email.includes('@')) {
+        setEmailInUse(false);
+        return;
+      }
+      setCheckingEmail(true);
+      try {
+        const q = query(collection(firestore, 'users'), where('email', '==', form.email.toLowerCase()));
+        const snap = await getDocs(q);
+        setEmailInUse(!snap.empty);
+      } catch (e) {
+        console.error("Email check failed", e);
+      } finally {
+        setCheckingEmail(false);
+      }
+    };
+
+    const timeoutId = setTimeout(checkEmail, 500);
+    return () => clearTimeout(timeoutId);
+  }, [form.email, firestore]);
+
   const handleCreatePartner = async () => {
-    if (!firestore || !form.email || !form.password) return;
+    if (!firestore || !form.email || !form.password || emailInUse) return;
     setLoading(true);
     let secondaryApp;
 
     try {
-      // Atomic Partner Onboarding
       const secondaryAppName = `partner-gen-${Date.now()}`;
       secondaryApp = initializeApp(firebaseConfig, secondaryAppName);
       const secondaryAuth = getAuth(secondaryApp);
@@ -144,8 +169,21 @@ export default function PartnersPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Admin Email</Label>
-                  <Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+                  <div className="flex justify-between items-center">
+                    <Label>Admin Email</Label>
+                    {checkingEmail && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                  </div>
+                  <Input 
+                    type="email" 
+                    value={form.email} 
+                    onChange={e => setForm({...form, email: e.target.value})} 
+                    className={cn(emailInUse && "border-destructive ring-destructive bg-destructive/5")}
+                  />
+                  {emailInUse && (
+                    <p className="text-[10px] font-bold text-destructive flex items-center gap-1 mt-1 uppercase tracking-widest">
+                      <AlertCircle className="h-3 w-3" /> Email already registered
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label>Password</Label>
@@ -164,7 +202,7 @@ export default function PartnersPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleCreatePartner} disabled={loading}>
+              <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleCreatePartner} disabled={loading || emailInUse || checkingEmail}>
                 {loading ? <Loader2 className="animate-spin" /> : "Activate Partner Portal"}
               </Button>
             </DialogFooter>
