@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -37,12 +36,12 @@ import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@
 import { doc, collection, addDoc, updateDoc, arrayUnion, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
-import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import { MenuCatalogEditor } from '@/components/menu-catalog-editor';
 import { GalleryManager } from '@/components/gallery-manager';
 import { OrdersManager } from '@/components/orders-manager';
 import { RestaurantBilling } from '@/components/restaurant-billing';
 import { PaymentsManager } from '@/components/payments-manager';
+import { StoreSettingsManager } from '@/components/store-settings-manager';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -374,7 +373,7 @@ function DashboardContent() {
         </TabsContent>
 
         <TabsContent value="settings">
-          <OperatingHoursEditor restaurantId={effectiveRestaurantId!} />
+          <StoreSettingsManager restaurantId={effectiveRestaurantId!} />
         </TabsContent>
       </Tabs>
 

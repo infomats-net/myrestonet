@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -129,8 +128,8 @@ export default function TenantsPage() {
                         
                         <div className="hidden lg:flex items-center gap-6">
                            <div className="text-right">
-                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Currency</p>
-                             <p className="font-bold text-slate-900">{res.baseCurrency}</p>
+                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Domain</p>
+                             <p className="font-bold text-slate-900">{res.customDomain || 'System Default'}</p>
                            </div>
                            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 px-4 py-1 rounded-lg font-bold">
                              Active
@@ -202,9 +201,9 @@ export default function TenantsPage() {
                             <div className="flex justify-between items-center text-sm">
                               <div className="flex items-center gap-2 text-slate-400">
                                 <Globe className="h-3.5 w-3.5" />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Domain</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest">Custom Domain</span>
                               </div>
-                              <span className="font-bold text-slate-700 text-xs">{res.customDomain || 'System Default'}</span>
+                              <span className="font-bold text-slate-700 text-xs">{res.customDomain || 'None'}</span>
                             </div>
                             <div className="flex justify-between items-center text-sm">
                               <div className="flex items-center gap-2 text-slate-400">
