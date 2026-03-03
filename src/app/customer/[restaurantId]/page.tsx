@@ -23,18 +23,23 @@ import {
   Quote, 
   Mail, 
   CheckCircle2,
-  Lock
+  Lock,
+  User,
+  Map
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Sheet, 
   SheetContent, 
   SheetHeader, 
   SheetTitle, 
   SheetTrigger, 
-  SheetFooter 
+  SheetFooter,
+  SheetDescription 
 } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -65,6 +70,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [paymentMethod, setPaymentMethod] = useState<string>('cod');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+
+  // Customer Delivery Info
+  const [customerInfo, setCustomerInfo] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: ''
+  });
 
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
@@ -126,6 +139,13 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   const handleCheckout = async () => {
     if (!auth || !firestore || !restaurantId) return;
+
+    // Validation
+    if (!customerInfo.name || !customerInfo.email || !customerInfo.phone || !customerInfo.address) {
+      toast({ variant: "destructive", title: "Missing Information", description: "Please provide delivery and contact details." });
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
@@ -137,6 +157,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       const orderData = {
         customerId: user.uid,
+        customerName: customerInfo.name,
+        customerEmail: customerInfo.email,
+        customerPhone: customerInfo.phone,
+        deliveryAddress: customerInfo.address,
         items: cart,
         totalAmount: total,
         currency: restaurant?.baseCurrency || 'USD',
@@ -160,12 +184,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           // Background task: AI Email Notification
           generateEmailContent({
             type: 'order_confirmed',
-            recipientName: "Valued Customer",
+            recipientName: customerInfo.name,
             restaurantName: restaurant?.name,
             details: `Total: ${total} ${restaurant?.baseCurrency}. Items: ${cart.length}`
           }).then(emailContent => {
             addDoc(collection(firestore, 'mail'), {
-              to: [auth.currentUser?.email || 'customer@example.com'],
+              to: [customerInfo.email],
               message: emailContent,
               createdAt: new Date().toISOString()
             });
@@ -243,6 +267,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         <SheetContent className="w-full sm:max-w-md rounded-l-[3rem] p-0 flex flex-col">
           <SheetHeader className="p-8 border-b bg-slate-50/50">
             <SheetTitle className="text-2xl font-black">Your Order</SheetTitle>
+            <SheetDescription className="text-slate-500">Provide your details for fulfillment.</SheetDescription>
           </SheetHeader>
           
           <div className="flex-1 overflow-y-auto p-8 space-y-8">
@@ -260,9 +285,48 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             </div>
 
             {cart.length > 0 && (
-              <div className="space-y-6 pt-8 border-t">
+              <div className="space-y-8 pt-8 border-t">
+                {/* Delivery Form */}
                 <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payment Method</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                    <User className="h-3 w-3" /> Contact & Delivery
+                  </Label>
+                  <div className="space-y-3">
+                    <Input 
+                      placeholder="Full Name" 
+                      value={customerInfo.name}
+                      onChange={e => setCustomerInfo({...customerInfo, name: e.target.value})}
+                      className="h-12 rounded-xl bg-slate-50 border-slate-100"
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input 
+                        placeholder="Email" 
+                        type="email"
+                        value={customerInfo.email}
+                        onChange={e => setCustomerInfo({...customerInfo, email: e.target.value})}
+                        className="h-12 rounded-xl bg-slate-50 border-slate-100"
+                      />
+                      <Input 
+                        placeholder="Phone" 
+                        type="tel"
+                        value={customerInfo.phone}
+                        onChange={e => setCustomerInfo({...customerInfo, phone: e.target.value})}
+                        className="h-12 rounded-xl bg-slate-50 border-slate-100"
+                      />
+                    </div>
+                    <Textarea 
+                      placeholder="Delivery Address" 
+                      value={customerInfo.address}
+                      onChange={e => setCustomerInfo({...customerInfo, address: e.target.value})}
+                      className="rounded-xl bg-slate-50 border-slate-100 resize-none min-h-[80px]"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                    <CreditCard className="h-3 w-3" /> Payment Method
+                  </Label>
                   <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod} className="grid gap-3">
                     <div className={cn("flex items-center space-x-3 p-4 rounded-2xl border-2 transition-all cursor-pointer", paymentMethod === 'cod' ? "border-primary bg-primary/5" : "border-slate-100")}>
                       <RadioGroupItem value="cod" id="cod" />
@@ -301,7 +365,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             <Button 
               className="w-full h-16 rounded-2xl text-xl font-black shadow-xl" 
               style={{ backgroundColor: theme.primary }}
-              disabled={cart.length === 0 || isProcessing || !isOpen}
+              disabled={cart.length === 0 || isProcessing || !isOpen || !customerInfo.name || !customerInfo.address}
               onClick={handleCheckout}
             >
               {isProcessing ? <Loader2 className="animate-spin" /> : orderComplete ? <CheckCircle2 /> : "Confirm Order"}
@@ -317,7 +381,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           </div>
           <DialogTitle className="text-3xl font-black">Order Received!</DialogTitle>
           <DialogDescription className="text-slate-500 mt-2 mb-8">
-            We are preparing your meal. An AI-generated receipt has been sent to your email.
+            We are preparing your meal. An AI-generated receipt has been sent to <strong>{customerInfo.email}</strong>.
           </DialogDescription>
           <Button className="w-full h-14 rounded-2xl font-black" onClick={() => setOrderComplete(false)}>Perfect, Thanks!</Button>
         </DialogContent>

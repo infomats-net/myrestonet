@@ -80,9 +80,10 @@ service cloud.firestore {
       }
 
       match /orders/{orderId} {
-        allow read: if hasPermission(restaurantId, "read");
+        // Customers can read their own orders, staff can read all orders for their restaurant
+        allow read: if hasPermission(restaurantId, "read") || (request.auth != null && request.auth.uid == resource.data.customerId);
         allow update: if hasPermission(restaurantId, "update_settings");
-        allow create: if true;
+        allow create: if true; // Any visitor can create an order
       }
 
       match /gallery/{imageId} {
