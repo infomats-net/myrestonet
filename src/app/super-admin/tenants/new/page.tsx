@@ -77,6 +77,13 @@ export default function NewTenantPage() {
   }, [firestore, currentUser?.uid]);
   const { data: profile } = useDoc(userProfileRef);
 
+  // Fetch partner details if the user is a Marketing Partner to enforce region lock
+  const partnerRef = useMemoFirebase(() => {
+    if (!firestore || profile?.role !== 'marketing_partner' || !profile?.partnerId) return null;
+    return doc(firestore, 'partners', profile.partnerId);
+  }, [firestore, profile]);
+  const { data: partnerData } = useDoc(partnerRef);
+
   const partnersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'partners');
@@ -109,6 +116,13 @@ export default function NewTenantPage() {
   const password = form.watch('password');
   const confirmPassword = form.watch('confirmPassword');
   const selectedCountry = form.watch('country');
+
+  // Enforce Marketing Partner's region if applicable
+  useEffect(() => {
+    if (profile?.role === 'marketing_partner' && partnerData?.country) {
+      form.setValue('country', partnerData.country, { shouldValidate: true });
+    }
+  }, [profile, partnerData, form]);
 
   // Auto-select currency when country changes
   useEffect(() => {
@@ -159,10 +173,10 @@ export default function NewTenantPage() {
       const restaurantId = restaurantRef.id;
 
       let finalPartnerId = null;
-      if (values.partnerId && values.partnerId !== 'none') {
+      if (profile?.role === 'marketing_partner') {
+        finalPartnerId = profile.partnerId || currentUser?.uid || null;
+      } else if (values.partnerId && values.partnerId !== 'none') {
         finalPartnerId = values.partnerId;
-      } else if (profile?.role === 'marketing_partner') {
-        finalPartnerId = currentUser?.uid || null;
       }
 
       const restaurantData = {
@@ -240,6 +254,8 @@ export default function NewTenantPage() {
     c.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const isPartner = profile?.role === 'marketing_partner';
+
   return (
     <div className="p-8 w-full space-y-8 bg-slate-50/30 min-h-screen">
       <div className="flex items-center justify-between">
@@ -249,7 +265,9 @@ export default function NewTenantPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">New Restaurant Instance</h1>
-            <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1">Tenant isolation and global market parameters.</p>
+            <p className="text-sm text-muted-foreground uppercase font-bold tracking-widest mt-1">
+              {isPartner ? `Region Locked: ${partnerData?.country || 'Detecting...'}` : 'Tenant isolation and global market parameters.'}
+            </p>
           </div>
         </div>
       </div>
@@ -355,22 +373,24 @@ export default function NewTenantPage() {
                   </FormItem>
                 )} />
 
-                <FormField control={form.control} name="partnerId" render={({ field }) => (
-                  <FormItem>
-                    <Label className="font-bold text-slate-700">Assigned Marketing Partner</Label>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-14 bg-slate-50 border-slate-100 rounded-2xl">
-                          <SelectValue placeholder="Direct (No Partner)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="rounded-2xl">
-                        <SelectItem value="none">Direct Onboarding</SelectItem>
-                        {partners?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.commissionRate}%)</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )} />
+                {!isPartner && (
+                  <FormField control={form.control} name="partnerId" render={({ field }) => (
+                    <FormItem>
+                      <Label className="font-bold text-slate-700">Assigned Marketing Partner</Label>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-14 bg-slate-50 border-slate-100 rounded-2xl">
+                            <SelectValue placeholder="Direct (No Partner)" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="rounded-2xl">
+                          <SelectItem value="none">Direct Onboarding</SelectItem>
+                          {partners?.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.commissionRate}%)</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )} />
+                )}
               </CardContent>
             </Card>
 
@@ -384,12 +404,20 @@ export default function NewTenantPage() {
                     <FormField control={form.control} name="country" render={({ field }) => (
                       <FormItem>
                         <Label className="font-bold text-slate-700">Country</Label>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
-                          <FormControl><SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100"><SelectValue /></SelectTrigger></FormControl>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value} 
+                          value={field.value}
+                          disabled={isPartner}
+                        >
+                          <FormControl><SelectTrigger className={cn("h-12 rounded-xl bg-slate-50 border-slate-100", isPartner && "opacity-70")}><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent className="rounded-xl">
                             {WORLD_COUNTRIES.map(c => <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
+                        {isPartner && (
+                          <p className="text-[9px] font-bold text-muted-foreground mt-1 uppercase">Locked to your partner region</p>
+                        )}
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="baseCurrency" render={({ field }) => (
