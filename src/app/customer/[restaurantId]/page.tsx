@@ -1,7 +1,7 @@
 
 "use client";
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useMemo } from 'react';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useFirebase } from '@/firebase';
 import { doc, collection, addDoc, getDocs } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
@@ -56,6 +56,8 @@ type CartItem = {
   price: number;
   quantity: number;
 };
+
+const DEFAULT_SECTION_ORDER = ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
 
 export default function CustomerStorefront({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = use(params);
@@ -215,6 +217,18 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     }
   };
 
+  const sectionOrder = useMemo(() => {
+    const rawOrder = designSettings?.sectionOrder || DEFAULT_SECTION_ORDER;
+    const mergedOrder = [...rawOrder];
+    // Ensure essential sections like navbar are present if user saved a partial list
+    DEFAULT_SECTION_ORDER.forEach(key => {
+      if (!mergedOrder.includes(key)) {
+        mergedOrder.push(key);
+      }
+    });
+    return mergedOrder;
+  }, [designSettings?.sectionOrder]);
+
   if (loadingRes || loadingMenus || loadingItems) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10" /></div>;
   if (!restaurant) return <div className="min-h-screen flex items-center justify-center"><h1>Restaurant Not Found</h1></div>;
 
@@ -225,7 +239,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   // Dynamic Section Rendering Engine
   const renderSection = (key: string) => {
     const config = designSettings?.sections?.[key];
-    if (!config?.visible && key !== 'menuList' && key !== 'navbar') return null; 
+    
+    // Default visibility logic:
+    // If we have a config, respect its visible toggle.
+    // If no config (first time loading), default some sections to visible.
+    const isVisible = config ? config.visible : true;
+
+    // menuList is usually required, but we allow toggle for other sections.
+    if (!isVisible && key !== 'menuList') return null; 
 
     switch (key) {
       case 'navbar':
@@ -271,20 +292,21 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         );
 
       case 'welcomeCard':
+        const cardConfig = config || { showBadges: true, showRating: true, showLocation: true, showDeliveryInfo: true };
         return (
           <div key={key} className="max-w-4xl mx-auto px-6 -mt-16 relative z-20">
             <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
               <CardContent className="p-10 md:p-12 space-y-8">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                   <div className="space-y-2">
-                    {config.showBadges && (
+                    {cardConfig.showBadges && (
                       <Badge className={cn("px-4 py-1 rounded-full font-black text-[10px] uppercase tracking-widest", isOpen ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
                         {isOpen ? "Open Now" : "Closed"}
                       </Badge>
                     )}
                     <h2 className="text-3xl font-black text-slate-900">Experience Excellence</h2>
                   </div>
-                  {config.showRating && (
+                  {cardConfig.showRating && (
                     <div className="flex items-center gap-2 bg-slate-50 px-6 py-3 rounded-2xl border">
                       <Star className="h-5 w-5 text-amber-400 fill-current" />
                       <span className="font-black text-xl text-slate-900">4.9</span>
@@ -294,7 +316,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pt-8 border-t border-slate-100">
-                  {config.showLocation && (
+                  {cardConfig.showLocation && (
                     <div className="flex items-start gap-4">
                       <div className="bg-primary/10 p-3 rounded-xl text-primary" style={{ backgroundColor: theme.primary + '15', color: theme.primary }}><MapPin className="h-5 w-5" /></div>
                       <div>
@@ -303,7 +325,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                       </div>
                     </div>
                   )}
-                  {config.showDeliveryInfo && (
+                  {cardConfig.showDeliveryInfo && (
                     <>
                       <div className="flex items-start gap-4">
                         <div className="bg-blue-50 p-3 rounded-xl text-blue-600"><Truck className="h-5 w-5" /></div>
@@ -504,8 +526,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         return null;
     }
   };
-
-  const sectionOrder = designSettings?.sectionOrder || ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: theme.background, color: theme.text }}>
