@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -93,8 +92,8 @@ export default function NewTenantPage() {
       contactName: "",
       contactPhone: "",
       cuisine: [],
-      country: "United States",
-      baseCurrency: "USD",
+      country: "Australia",
+      baseCurrency: "AUD",
       city: "",
       state: "",
       postcode: "",
