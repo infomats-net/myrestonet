@@ -1,107 +1,171 @@
+"use client";
+
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { LayoutDashboard, Store, Users, ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
+import { 
+  UtensilsCrossed, 
+  MapPin, 
+  ExternalLink, 
+  ShoppingBag, 
+  Loader2,
+  Globe,
+  ArrowRight
+} from 'lucide-react';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 export default function Home() {
+  const firestore = useFirestore();
+
+  // Fetch all active restaurants for the directory
+  const restaurantsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'restaurants'), where('subscriptionStatus', '==', 'active'));
+  }, [firestore]);
+
+  const { data: restaurants, isLoading } = useCollection(restaurantsQuery);
+
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="px-4 lg:px-6 h-16 flex items-center border-b bg-white">
-        <Link className="flex items-center justify-center gap-2" href="/">
-          <div className="bg-primary rounded-lg p-1">
-            <ShoppingBag className="h-6 w-6 text-white" />
-          </div>
-          <span className="text-xl font-bold font-headline tracking-tight text-primary">MyRestoNet</span>
-        </Link>
-        <nav className="ml-auto flex gap-4 sm:gap-6">
-          <Link className="text-sm font-medium hover:underline underline-offset-4" href="/auth/login">
-            Login
+      <header className="px-4 lg:px-6 h-20 flex items-center border-b bg-white/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="container mx-auto flex items-center justify-between">
+          <Link className="flex items-center justify-center gap-2" href="/">
+            <div className="bg-primary rounded-xl p-2">
+              <ShoppingBag className="h-6 w-6 text-white" />
+            </div>
+            <span className="text-2xl font-black font-headline tracking-tighter text-primary">MyRestoNet</span>
           </Link>
-        </nav>
+          <nav className="flex gap-4 sm:gap-6">
+            <Button variant="ghost" asChild className="font-bold text-slate-600">
+              <Link href="/auth/login">Merchant Login</Link>
+            </Button>
+            <Button className="rounded-xl font-bold shadow-lg shadow-primary/20" asChild>
+              <Link href="/auth/signup">Join Platform</Link>
+            </Button>
+          </nav>
+        </div>
       </header>
 
       <main className="flex-1">
-        <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 bg-primary text-white">
-          <div className="container px-4 md:px-6 mx-auto">
-            <div className="flex flex-col items-center space-y-4 text-center">
-              <div className="space-y-2">
-                <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl font-headline">
-                  Global Restaurant Management, <span className="text-accent">Simplified.</span>
+        <section className="w-full py-20 md:py-32 bg-primary text-white overflow-hidden relative">
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+          </div>
+          <div className="container px-4 md:px-6 mx-auto relative z-10">
+            <div className="flex flex-col items-center space-y-8 text-center">
+              <div className="space-y-4">
+                <h1 className="text-5xl font-black tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl font-headline leading-tight">
+                  Taste the World <br/>
+                  <span className="text-accent italic">One Order at a Time.</span>
                 </h1>
-                <p className="mx-auto max-w-[700px] text-primary-foreground/90 md:text-xl font-body">
-                  Empower your culinary empire with real-time insights, multi-tenant security, and AI-driven growth tools.
+                <p className="mx-auto max-w-[800px] text-primary-foreground/80 md:text-2xl font-medium leading-relaxed">
+                  Discover top-rated local restaurants powered by the MyRestoNet global network. Seamless ordering, instant reservations.
                 </p>
-              </div>
-              <div className="space-x-4">
-                <Button size="lg" variant="secondary" asChild>
-                  <Link href="/auth/login">Access Your Portal</Link>
-                </Button>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="w-full py-12 md:py-24 lg:py-32 bg-background">
+        <section className="w-full py-20 bg-slate-50/50">
           <div className="container px-4 md:px-6 mx-auto">
-            <div className="grid gap-8 lg:grid-cols-3">
-              <Card className="flex flex-col h-full border-none shadow-lg">
-                <CardHeader>
-                  <div className="mb-4 p-3 bg-primary/10 w-fit rounded-xl">
-                    <ShieldCheck className="h-8 w-8 text-primary" />
-                  </div>
-                  <CardTitle className="font-headline text-2xl">Super Admin</CardTitle>
-                  <CardDescription>
-                    Manage the entire MyRestoNet platform. Subscriptions, global configs, and restaurant onboarding.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <Button className="w-full mt-auto" asChild>
-                    <Link href="/super-admin/dashboard">Go to Portal</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="flex flex-col h-full border-none shadow-lg">
-                <CardHeader>
-                  <div className="mb-4 p-3 bg-accent/10 w-fit rounded-xl">
-                    <LayoutDashboard className="h-8 w-8 text-accent" />
-                  </div>
-                  <CardTitle className="font-headline text-2xl">Restaurant Admin</CardTitle>
-                  <CardDescription>
-                    Control your kitchen and dining room. Manage menus, orders, local SEO, and AI analytics.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <Button variant="outline" className="w-full mt-auto" asChild>
-                    <Link href="/restaurant-admin/dashboard">Access Dashboard</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="flex flex-col h-full border-none shadow-lg">
-                <CardHeader>
-                  <div className="mb-4 p-3 bg-secondary w-fit rounded-xl">
-                    <Users className="h-8 w-8 text-primary" />
-                  </div>
-                  <CardTitle className="font-headline text-2xl">End Customer</CardTitle>
-                  <CardDescription>
-                    The ultra-fast ordering experience. Browse localized menus and place orders seamlessly.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <Button variant="ghost" className="w-full mt-auto" asChild>
-                    <Link href="/customer/demo">Try Ordering App</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+            <div className="flex flex-col md:flex-row justify-between items-end gap-6 mb-12">
+              <div>
+                <h2 className="text-4xl font-black text-slate-900 tracking-tight">Our Restaurant Partners</h2>
+                <p className="text-slate-500 font-medium mt-2">Explore elite culinary experiences in your neighborhood.</p>
+              </div>
+              <div className="bg-white p-2 rounded-2xl border shadow-sm flex items-center gap-2 px-4">
+                <Globe className="h-4 w-4 text-primary" />
+                <span className="text-xs font-black uppercase tracking-widest text-slate-400">Global Network Active</span>
+              </div>
             </div>
+
+            {isLoading ? (
+              <div className="py-24 flex flex-col items-center justify-center gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="font-bold text-slate-400 uppercase tracking-widest text-xs">Loading local flavors...</p>
+              </div>
+            ) : restaurants && restaurants.length > 0 ? (
+              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {restaurants.map((res) => (
+                  <Card key={res.id} className="group border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white hover:scale-[1.03] transition-all duration-500">
+                    <div className="relative h-48 bg-slate-100 overflow-hidden">
+                      <img 
+                        src={res.bannerUrl || `https://picsum.photos/seed/${res.id}/600/400`} 
+                        alt={res.name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      <div className="absolute bottom-6 left-6 flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-white p-1 shadow-lg">
+                          <img 
+                            src={res.logoUrl || `https://picsum.photos/seed/logo-${res.id}/100/100`} 
+                            className="w-full h-full object-contain"
+                            alt="Logo"
+                          />
+                        </div>
+                        <div className="text-white">
+                          <h3 className="font-black text-lg leading-none">{res.name}</h3>
+                          <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mt-1">{res.cuisine?.[0] || 'International'}</p>
+                        </div>
+                      </div>
+                    </div>
+                    <CardContent className="p-8 space-y-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-slate-500 font-bold text-sm">
+                          <MapPin className="h-4 w-4 text-primary" />
+                          <span>{res.city}, {res.country}</span>
+                        </div>
+                        <p className="text-slate-400 text-xs line-clamp-2 leading-relaxed">
+                          Experience the finest {res.cuisine?.join(', ').toLowerCase()} dishes crafted by master chefs.
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Button className="w-full rounded-2xl h-12 font-black shadow-lg shadow-primary/10" asChild>
+                          <Link href={`/customer/${res.id}`} target="_blank">
+                            Order Online <ArrowRight className="ml-2 h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button variant="ghost" className="w-full rounded-2xl h-12 font-bold text-slate-500" asChild>
+                          <Link href={`/customer/${res.id}/reserve`} target="_blank">
+                            Book a Table
+                          </Link>
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="py-32 text-center bg-white rounded-[3rem] border-2 border-dashed border-slate-200">
+                <UtensilsCrossed className="h-16 w-16 mx-auto text-slate-200 mb-6" />
+                <h3 className="text-2xl font-black text-slate-900">No Restaurants Found</h3>
+                <p className="text-slate-500 max-w-sm mx-auto mt-2 font-medium">
+                  We're currently expanding our network. Check back soon for new local favorites!
+                </p>
+                <Button variant="outline" className="mt-8 rounded-xl h-12 px-8 font-bold" asChild>
+                  <Link href="/auth/signup">Register Your Restaurant</Link>
+                </Button>
+              </div>
+            )}
           </div>
         </section>
       </main>
 
-      <footer className="border-t py-6 bg-white">
-        <div className="container px-4 md:px-6 mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">© 2024 MyRestoNet Global Inc. All rights reserved.</p>
+      <footer className="border-t py-12 bg-white">
+        <div className="container px-4 md:px-6 mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5 text-primary" />
+              <span className="font-black text-lg tracking-tight">MyRestoNet</span>
+            </div>
+            <p className="text-sm text-slate-400 font-medium">© 2024 MyRestoNet Global Inc. All rights reserved.</p>
+            <div className="flex gap-6">
+              <Link href="/auth/login" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">Merchant Portal</Link>
+              <Link href="/auth/signup" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">Partner Program</Link>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
