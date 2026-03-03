@@ -26,7 +26,8 @@ import {
   Search,
   UtensilsCrossed,
   MapPin,
-  AlertCircle
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
@@ -85,6 +86,7 @@ export default function NewTenantPage() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: "onChange", // Live check for passwords and required fields
     defaultValues: {
       restaurantName: "",
       customDomain: "",
@@ -105,6 +107,8 @@ export default function NewTenantPage() {
   });
 
   const adminEmail = form.watch('adminEmail');
+  const password = form.watch('password');
+  const confirmPassword = form.watch('confirmPassword');
 
   useEffect(() => {
     const checkEmail = async () => {
@@ -474,7 +478,14 @@ export default function NewTenantPage() {
                     )} />
                     <FormField control={form.control} name="confirmPassword" render={({ field }) => (
                       <FormItem>
-                        <Label className="font-bold text-slate-700">Confirm</Label>
+                        <div className="flex justify-between items-center mb-1">
+                          <Label className="font-bold text-slate-700">Confirm</Label>
+                          {confirmPassword && confirmPassword === password && (
+                            <span className="text-[10px] font-bold text-emerald-600 uppercase flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" /> Match
+                            </span>
+                          )}
+                        </div>
                         <FormControl><Input type="password" className="h-12 rounded-xl bg-slate-50 border-slate-100" {...field} /></FormControl>
                         <FormMessage />
                       </FormItem>
@@ -483,7 +494,7 @@ export default function NewTenantPage() {
                 </CardContent>
               </Card>
 
-              <Button type="submit" className="w-full h-20 text-xl font-black rounded-[1.5rem] shadow-2xl" disabled={loading || emailInUse || checkingEmail}>
+              <Button type="submit" className="w-full h-20 text-xl font-black rounded-[1.5rem] shadow-2xl" disabled={loading || emailInUse || checkingEmail || !form.formState.isValid}>
                 {loading ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : "Initialize Tenant Instance"}
               </Button>
             </div>
