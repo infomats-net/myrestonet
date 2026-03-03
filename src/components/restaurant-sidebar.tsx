@@ -15,7 +15,8 @@ import {
   Palette,
   Camera,
   LayoutGrid,
-  CalendarDays
+  CalendarDays,
+  CreditCard
 } from "lucide-react"
 import {
   Sidebar,
@@ -151,14 +152,6 @@ function SidebarLinks() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Tables" isActive={isTabActive('tables')}>
-                  <Link href={getHref('tables')}>
-                    <LayoutGrid />
-                    <span>Floor Plan</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Menu" isActive={isTabActive('menu')}>
                   <Link href={getHref('menu')}>
                     <Utensils />
@@ -171,38 +164,22 @@ function SidebarLinks() {
         </SidebarGroup>
         
         <SidebarGroup>
-          <SidebarGroupLabel>Brand & Customization</SidebarGroupLabel>
+          <SidebarGroupLabel>Business</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Billing" isActive={isTabActive('billing')}>
+                  <Link href={getHref('billing')}>
+                    <CreditCard className="text-primary" />
+                    <span>Billing & Plan</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Design" isActive={isTabActive('design')}>
                   <Link href={getHref('design')}>
                     <Palette className="text-accent" />
-                    <span>Design Management</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Gallery" isActive={isTabActive('gallery')}>
-                  <Link href={getHref('gallery')}>
-                    <Camera className="text-accent" />
-                    <span>Photo Gallery</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="SEO" isActive={isTabActive('seo')}>
-                  <Link href={getHref('seo')}>
-                    <Globe />
-                    <span>Localized SEO</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="AI Insights" isActive={isTabActive('analytics')}>
-                  <Link href={getHref('analytics')}>
-                    <Sparkles className="text-accent" />
-                    <span>AI Analytics</span>
+                    <span>Store Designer</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -218,7 +195,7 @@ function SidebarLinks() {
                 <SidebarMenuButton asChild tooltip="View Website" className="text-primary hover:bg-primary/5">
                   <Link href={effectiveRestaurantId ? `/customer/${effectiveRestaurantId}` : "#"} target="_blank">
                     <ExternalLink />
-                    <span>Show My Website</span>
+                    <span>Public Storefront</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

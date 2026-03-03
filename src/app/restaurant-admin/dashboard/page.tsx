@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -32,7 +33,10 @@ import {
   Clock3,
   ShoppingCart,
   Camera,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  Zap,
+  Star,
+  Check
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
@@ -48,6 +52,7 @@ import { OperatingHoursEditor } from '@/components/operating-hours-editor';
 import { MenuCatalogEditor } from '@/components/menu-catalog-editor';
 import { GalleryManager } from '@/components/gallery-manager';
 import { OrdersManager } from '@/components/orders-manager';
+import { RestaurantBilling } from '@/components/restaurant-billing';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -182,18 +187,6 @@ function DashboardContent() {
     }
   };
 
-  const handleDeleteTable = async (table: any) => {
-    if (!firestore || !effectiveRestaurantId) return;
-    try {
-      await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId), {
-        tables: arrayRemove(table)
-      });
-      toast({ title: "Table Removed" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error" });
-    }
-  };
-
   const updateReservationStatus = async (resId: string, status: string) => {
     if (!firestore || !effectiveRestaurantId) return;
     try {
@@ -205,7 +198,7 @@ function DashboardContent() {
   };
 
   if (authLoading) return <LoadingScreen message="Checking authentication..." />;
-  if (!authUser) return null; // Redirection in progress via useEffect
+  if (!authUser) return null; 
   
   if (loadingProfile) return <LoadingScreen message="Loading user profile..." />;
   
@@ -239,6 +232,7 @@ function DashboardContent() {
           <TabsTrigger value="overview" className={tabTriggerStyle}>Dashboard</TabsTrigger>
           <TabsTrigger value="orders" className={tabTriggerStyle}>Orders</TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
+          <TabsTrigger value="billing" className={tabTriggerStyle}>Billing</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -252,11 +246,11 @@ function DashboardContent() {
               <CardContent><div className="text-4xl font-black text-blue-600">{reservations?.filter(r => r.status === 'confirmed').length || 0}</div></CardContent>
             </Card>
             <Card className="rounded-[2rem] border-none shadow-md bg-white">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Waitlist Size</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-amber-500">{reservations?.filter(r => r.waitlist).length || 0}</div></CardContent>
+              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan Status</CardTitle></CardHeader>
+              <CardContent><div className="text-4xl font-black text-amber-500 capitalize">{restaurant?.subscriptionStatus || 'Active'}</div></CardContent>
             </Card>
             <Card className="rounded-[2rem] border-none shadow-md bg-white">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Floor Capacity</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capacity</CardTitle></CardHeader>
               <CardContent><div className="text-4xl font-black text-slate-900">{restaurant?.tables?.length || 0}</div></CardContent>
             </Card>
           </div>
@@ -292,7 +286,6 @@ function DashboardContent() {
                       <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</th>
                       <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Date & Time</th>
                       <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Party</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Table(s)</th>
                       <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
                       <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
                     </tr>
@@ -319,19 +312,6 @@ function DashboardContent() {
                         </td>
                         <td className="p-6 text-sm font-black text-slate-900">{res.partySize} Guests</td>
                         <td className="p-6">
-                          {res.waitlist ? (
-                            <Badge variant="outline" className="bg-amber-100 text-amber-700 border-amber-200">WAITLIST</Badge>
-                          ) : (
-                            <div className="flex flex-wrap gap-1">
-                              {res.tableIds?.map((tid: string) => (
-                                <Badge key={tid} variant="secondary" className="bg-slate-100 text-slate-600 font-bold">
-                                  {restaurant?.tables?.find((t: any) => t.id === tid)?.name || tid}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </td>
-                        <td className="p-6">
                           <Badge className={cn(
                             res.status === 'confirmed' ? 'bg-emerald-500' : 
                             res.status === 'pending' ? 'bg-amber-500' : 'bg-slate-400'
@@ -349,14 +329,15 @@ function DashboardContent() {
                         </td>
                       </tr>
                     ))}
-                    {(!reservations || reservations.length === 0) && (
-                      <tr><td colSpan={6} className="p-20 text-center text-muted-foreground italic">No reservations found.</td></tr>
-                    )}
                   </tbody>
                 </table>
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="billing">
+          <RestaurantBilling restaurantId={effectiveRestaurantId!} />
         </TabsContent>
 
         <TabsContent value="menu">
@@ -463,40 +444,10 @@ function DashboardContent() {
               <Label>Party Size</Label>
               <Input type="number" value={resForm.partySize} onChange={e => setResForm({...resForm, partySize: e.target.value})} className="rounded-xl h-12" />
             </div>
-
-            <div className="space-y-2">
-              <Label>Assign Table(s)</Label>
-              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-slate-50 rounded-2xl border">
-                {restaurant?.tables?.filter((t: any) => t.isActive).map((table: any) => (
-                  <button
-                    key={table.id}
-                    onClick={() => {
-                      const selected = resForm.tableIds.includes(table.id);
-                      const next = selected 
-                        ? resForm.tableIds.filter(id => id !== table.id)
-                        : [...resForm.tableIds, table.id];
-                      setResForm({...resForm, tableIds: next});
-                    }}
-                    className={cn(
-                      "flex items-center justify-between p-3 rounded-xl border text-left transition-all",
-                      resForm.tableIds.includes(table.id) 
-                        ? "bg-primary/10 border-primary text-primary" 
-                        : "bg-white hover:bg-slate-50"
-                    )}
-                  >
-                    <div>
-                      <p className="text-xs font-black">{table.name}</p>
-                      <p className="text-[10px] opacity-60">Seats {table.size}</p>
-                    </div>
-                    {resForm.tableIds.includes(table.id) && <CheckCircle2 className="h-4 w-4" />}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
           <DialogFooter>
             <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleAddReservation} disabled={isSaving || !resForm.name || !resForm.date}>
-              {isSaving ? <Loader2 className="animate-spin" /> : "Confirm Reservation"}
+              {isSubmitting ? <Loader2 className="animate-spin" /> : "Confirm Reservation"}
             </Button>
           </DialogFooter>
         </DialogContent>
