@@ -29,7 +29,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
-import { useFirebase, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
@@ -38,6 +38,8 @@ import { useToast } from '@/hooks/use-toast';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
 import { WORLD_CUISINES } from '@/lib/cuisines-data';
 import { cn } from '@/lib/utils';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 const formSchema = z.object({
   restaurantName: z.string().min(2, "Restaurant name is required"),
@@ -68,6 +70,13 @@ export default function NewTenantPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [emailInUse, setEmailInUse] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
+
+  // Fetch the current user profile to determine role and auto-assign partnerId if needed
+  const userProfileRef = useMemoFirebase(() => {
+    if (!firestore || !currentUser?.uid) return null;
+    return doc(firestore, 'users', currentUser.uid);
+  }, [firestore, currentUser?.uid]);
+  const { data: profile } = useDoc(userProfileRef);
 
   const partnersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -136,15 +145,23 @@ export default function NewTenantPage() {
       const restaurantRef = doc(collection(firestore, 'restaurants'));
       const restaurantId = restaurantRef.id;
 
-      await setDoc(restaurantRef, {
+      // Handle partner attribution logic
+      let finalPartnerId = null;
+      if (values.partnerId && values.partnerId !== 'none') {
+        finalPartnerId = values.partnerId;
+      } else if (profile?.role === 'marketing_partner') {
+        finalPartnerId = currentUser?.uid || null;
+      }
+
+      const restaurantData = {
         id: restaurantId,
         name: values.restaurantName,
         customDomain: values.customDomain || null,
         contactName: values.contactName,
         contactPhone: values.contactPhone,
         adminUserId: adminUid,
-        adminEmail: values.adminEmail.toLowerCase(), // Store admin email as the primary contact
-        partnerId: values.partnerId || (currentUser?.role === 'marketing_partner' ? currentUser.uid : null),
+        adminEmail: values.adminEmail.toLowerCase(),
+        partnerId: finalPartnerId,
         cuisine: values.cuisine,
         city: values.city,
         state: values.state,
@@ -156,25 +173,44 @@ export default function NewTenantPage() {
         subscriptionStatus: "active",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
 
-      await setDoc(doc(firestore, 'users', adminUid), {
+      const userProfileData = {
         id: adminUid,
         email: values.adminEmail.toLowerCase(),
         role: 'restaurant_admin',
         restaurantId: restaurantId,
-        partnerId: values.partnerId || null,
+        partnerId: finalPartnerId,
         createdAt: serverTimestamp(),
+      };
+
+      // Initiate writes (Non-blocking as per guidelines)
+      setDoc(restaurantRef, restaurantData).catch(async (serverError) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: restaurantRef.path,
+          operation: 'create',
+          requestResourceData: restaurantData,
+        }));
+      });
+
+      const userDocRef = doc(firestore, 'users', adminUid);
+      setDoc(userDocRef, userProfileData).catch(async (serverError) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: userDocRef.path,
+          operation: 'create',
+          requestResourceData: userProfileData,
+        }));
       });
 
       await signOut(secondaryAuth);
       await deleteApp(secondaryApp);
 
       toast({ 
-        title: "Restaurant Initialized", 
-        description: "The admin account can now log in immediately." 
+        title: "Initializing Restaurant...", 
+        description: "Provisioning tenant instance and credentials." 
       });
       
+      // Navigate immediately - Firestore will sync in background
       router.push('/super-admin/tenants');
     } catch (error: any) {
       if (secondaryApp) {
@@ -365,6 +401,14 @@ export default function NewTenantPage() {
                         <FormControl><Input className="h-12 rounded-xl bg-slate-50 border-slate-100" {...field} /></FormControl>
                       </FormItem>
                     )} />
+                    <FormField control={form.control} name="state" render={({ field }) => (
+                      <FormItem>
+                        <Label className="font-bold text-slate-700">State/Province</Label>
+                        <FormControl><Input className="h-12 rounded-xl bg-slate-50 border-slate-100" {...field} /></FormControl>
+                      </FormItem>
+                    )} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-6">
                     <FormField control={form.control} name="postcode" render={({ field }) => (
                       <FormItem>
                         <Label className="font-bold text-slate-700">Postal Code</Label>

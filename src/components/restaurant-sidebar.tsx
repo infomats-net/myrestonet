@@ -1,3 +1,4 @@
+
 "use client"
 
 import { 
@@ -90,9 +91,9 @@ function SidebarLinks() {
   const impersonateId = searchParams.get('impersonate');
 
   const userProfileRef = useMemoFirebase(() => {
-    if (!db || !authUser?.uid || impersonateId) return null;
+    if (!db || !authUser?.uid) return null;
     return doc(db, 'users', authUser.uid);
-  }, [db, authUser?.uid, impersonateId]);
+  }, [db, authUser?.uid]);
 
   const { data: userProfile } = useDoc(userProfileRef);
   const effectiveRestaurantId = impersonateId || userProfile?.restaurantId;
