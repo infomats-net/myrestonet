@@ -16,7 +16,8 @@ import {
   Camera,
   LayoutGrid,
   CalendarDays,
-  CreditCard
+  CreditCard,
+  Banknote
 } from "lucide-react"
 import {
   Sidebar,
@@ -76,7 +77,7 @@ function SidebarBrand() {
           <ShoppingBag className="h-6 w-6 text-white" />
         </div>
       )}
-      <span className="font-black text-2xl text-primary truncate group-data-[collapsible=icon]:hidden tracking-tighter">
+      <span className="font-black text-xl text-primary truncate group-data-[collapsible=icon]:hidden tracking-tighter">
         {restaurant?.name || 'Merchant Panel'}
       </span>
     </Link>
@@ -124,7 +125,7 @@ function SidebarLinks() {
     <>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
+          <SidebarGroupLabel>Operations</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -151,11 +152,27 @@ function SidebarLinks() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Catalog & Media</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Menu" isActive={isTabActive('menu')}>
+                <SidebarMenuButton asChild tooltip="Menu Catalog" isActive={isTabActive('menu')}>
                   <Link href={getHref('menu')}>
                     <Utensils />
                     <span>Menu Catalog</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Photo Gallery" isActive={isTabActive('gallery')}>
+                  <Link href={getHref('gallery')}>
+                    <Camera />
+                    <span>Photo Gallery</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -164,14 +181,22 @@ function SidebarLinks() {
         </SidebarGroup>
         
         <SidebarGroup>
-          <SidebarGroupLabel>Business</SidebarGroupLabel>
+          <SidebarGroupLabel>Business & Finance</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Payments (Stripe)" isActive={isTabActive('payments')}>
+                  <Link href={getHref('payments')}>
+                    <Banknote className="text-emerald-600" />
+                    <span>Payouts & Stripe</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Billing" isActive={isTabActive('billing')}>
                   <Link href={getHref('billing')}>
                     <CreditCard className="text-primary" />
-                    <span>Billing & Plan</span>
+                    <span>Platform Billing</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -188,14 +213,14 @@ function SidebarLinks() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Storefront</SidebarGroupLabel>
+          <SidebarGroupLabel>Public Presence</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="View Website" className="text-primary hover:bg-primary/5">
                   <Link href={effectiveRestaurantId ? `/customer/${effectiveRestaurantId}` : "#"} target="_blank">
                     <ExternalLink />
-                    <span>Public Storefront</span>
+                    <span>Live Storefront</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

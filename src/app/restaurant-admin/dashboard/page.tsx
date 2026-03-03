@@ -185,16 +185,10 @@ function DashboardContent() {
   return (
     <div className="p-8 space-y-8 w-full animate-in fade-in duration-500">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full bg-black p-8 md:p-12 rounded-[3rem] shadow-2xl">
-        <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full flex gap-1 overflow-x-auto no-scrollbar">
+        <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full max-w-2xl mx-auto flex gap-1 overflow-x-auto no-scrollbar">
           <TabsTrigger value="overview" className={tabTriggerStyle}><LayoutDashboard className="h-4 w-4" /> <span className="hidden lg:inline">Dashboard</span></TabsTrigger>
           <TabsTrigger value="orders" className={tabTriggerStyle}><ShoppingBag className="h-4 w-4" /> <span className="hidden lg:inline">Orders</span></TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}><CalendarDays className="h-4 w-4" /> <span className="hidden lg:inline">Reservations</span></TabsTrigger>
-          <TabsTrigger value="menu" className={tabTriggerStyle}><Utensils className="h-4 w-4" /> <span className="hidden lg:inline">Menu</span></TabsTrigger>
-          <TabsTrigger value="gallery" className={tabTriggerStyle}><Camera className="h-4 w-4" /> <span className="hidden lg:inline">Gallery</span></TabsTrigger>
-          <TabsTrigger value="design" className={tabTriggerStyle}><Palette className="h-4 w-4" /> <span className="hidden lg:inline">Design</span></TabsTrigger>
-          <TabsTrigger value="payments" className={tabTriggerStyle}><DollarSign className="h-4 w-4" /> <span className="hidden lg:inline">Payments</span></TabsTrigger>
-          <TabsTrigger value="billing" className={tabTriggerStyle}><CreditCard className="h-4 w-4" /> <span className="hidden lg:inline">Billing</span></TabsTrigger>
-          <TabsTrigger value="settings" className={tabTriggerStyle}><SettingsIcon className="h-4 w-4" /> <span className="hidden lg:inline">Settings</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
@@ -358,6 +352,7 @@ function DashboardContent() {
           </Card>
         </TabsContent>
 
+        {/* These Tabs remain registered so sidebar navigation works, but triggers are moved to sidebar */}
         <TabsContent value="menu">
           <MenuCatalogEditor restaurantId={effectiveRestaurantId!} />
         </TabsContent>
