@@ -31,6 +31,13 @@ import {
   DialogDescription
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, setDoc, serverTimestamp, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +45,7 @@ import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { cn } from '@/lib/utils';
+import { WORLD_COUNTRIES } from '@/lib/countries-data';
 
 export default function PartnersPage() {
   const firestore = useFirestore();
@@ -55,7 +63,7 @@ export default function PartnersPage() {
     email: '',
     password: '',
     commissionRate: '10',
-    country: 'United Kingdom'
+    country: 'Australia'
   });
 
   const [editForm, setEditForm] = useState({
@@ -130,7 +138,7 @@ export default function PartnersPage() {
 
       toast({ title: "Partner Created", description: "Reseller can now log in to their dashboard." });
       setIsNewDialogOpen(false);
-      setForm({ name: '', email: '', password: '', commissionRate: '10', country: 'United Kingdom' });
+      setForm({ name: '', email: '', password: '', commissionRate: '10', country: 'Australia' });
     } catch (e: any) {
       if (secondaryApp) await deleteApp(secondaryApp);
       toast({ variant: "destructive", title: "Error", description: e.message });
@@ -237,7 +245,16 @@ export default function PartnersPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Region</Label>
-                  <Input value={form.country} onChange={e => setForm({...form, country: e.target.value})} />
+                  <Select value={form.country} onValueChange={v => setForm({...form, country: v})}>
+                    <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100">
+                      <SelectValue placeholder="Select Country" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {WORLD_COUNTRIES.map(c => (
+                        <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
@@ -347,10 +364,16 @@ export default function PartnersPage() {
               </div>
               <div className="space-y-2">
                 <Label>Region</Label>
-                <Input 
-                  value={editForm.country} 
-                  onChange={e => setEditForm({...editForm, country: e.target.value})} 
-                />
+                <Select value={editForm.country} onValueChange={v => setEditForm({...editForm, country: v})}>
+                  <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100">
+                    <SelectValue placeholder="Select Country" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {WORLD_COUNTRIES.map(c => (
+                      <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -360,7 +383,7 @@ export default function PartnersPage() {
               onClick={handleUpdatePartner} 
               disabled={loading || !editForm.name}
             >
-              {loading ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />}
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2" />}
               Save Changes
             </Button>
           </DialogFooter>
