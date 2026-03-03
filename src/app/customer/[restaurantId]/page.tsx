@@ -225,7 +225,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   // Dynamic Section Rendering Engine
   const renderSection = (key: string) => {
     const config = designSettings?.sections?.[key];
-    if (!config?.visible && key !== 'menuList') return null; // menuList is mandatory for storefront utility
+    if (!config?.visible && key !== 'menuList' && key !== 'navbar') return null; 
 
     switch (key) {
       case 'navbar':
@@ -469,13 +469,17 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         );
 
       case 'map':
+        const addressQuery = `${restaurant.address}, ${restaurant.city}, ${restaurant.country}`;
         return (
           <section key={key} className="h-96 w-full bg-slate-100 relative overflow-hidden">
-            <div className="absolute inset-0 flex items-center justify-center flex-col gap-4 text-slate-400">
-              <MapIcon className="h-12 w-12" />
-              <p className="font-black uppercase tracking-widest text-xs">Interactive Map Unavailable</p>
-              <p className="text-[10px]">{restaurant.address}, {restaurant.city}</p>
-            </div>
+            <iframe
+              width="100%"
+              height="100%"
+              style={{ border: 0 }}
+              loading="lazy"
+              allowFullScreen
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(addressQuery)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+            />
           </section>
         );
 
@@ -501,7 +505,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     }
   };
 
-  const sectionOrder = designSettings?.sectionOrder || ['navbar', 'hero', 'welcomeCard', 'menuList', 'gallery', 'contact', 'bookingCTA'];
+  const sectionOrder = designSettings?.sectionOrder || ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
 
   return (
     <div className="min-h-screen pb-24" style={{ backgroundColor: theme.background, color: theme.text }}>
