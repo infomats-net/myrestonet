@@ -15,7 +15,8 @@ import {
   X,
   Calendar,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Save
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { 
@@ -36,7 +37,7 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, serverTimestamp, query, where, updateDoc, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, where, updateDoc, getDocs, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
@@ -44,6 +45,9 @@ import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { generateEmailContent } from '@/ai/flows/generate-email-content';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function SupportManagementPage() {
   const firestore = useFirestore();
@@ -123,10 +127,29 @@ export default function SupportManagementPage() {
         createdAt: serverTimestamp()
       });
 
+      // AI Welcome Email
+      const emailContent = await generateEmailContent({
+        type: 'welcome_support',
+        recipientName: "New Support Specialist",
+        details: `Login: ${form.email}`
+      });
+
+      addDoc(collection(firestore, 'mail'), {
+        to: [form.email],
+        message: emailContent,
+        createdAt: new Date().toISOString()
+      }).catch(async (e) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'mail',
+          operation: 'create',
+          requestResourceData: { to: [form.email] }
+        }));
+      });
+
       await signOut(secondaryAuth);
       await deleteApp(secondaryApp);
 
-      toast({ title: "Staff Account Created", description: "The support user can now log in." });
+      toast({ title: "Staff Account Created", description: "Internal welcome pass sent." });
       setIsNewDialogOpen(false);
       setForm({ email: '', password: '', role: 'support' });
     } catch (e: any) {
@@ -160,18 +183,6 @@ export default function SupportManagementPage() {
     }
   };
 
-  const removeAssignment = async (staffId: string, restaurantId: string) => {
-    if (!firestore) return;
-    try {
-      const staff = supportUsers?.find(u => u.id === staffId);
-      const updated = (staff.assignedRestaurants || []).filter((a: any) => a.restaurantId !== restaurantId);
-      await updateDoc(doc(firestore, 'users', staffId), { assignedRestaurants: updated });
-      toast({ title: "Access Revoked" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
-    }
-  };
-
   const filtered = supportUsers?.filter(u => u.email.toLowerCase().includes(search.toLowerCase())) || [];
 
   return (
@@ -191,7 +202,7 @@ export default function SupportManagementPage() {
           <DialogContent className="rounded-[2.5rem] p-10">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black">New Support User</DialogTitle>
-              <DialogDescription>Create a managed internal account for platform assistance.</DialogDescription>
+              <DialogDescription>Create a managed internal account and trigger welcome pass.</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-6">
               <div className="space-y-2">
@@ -252,7 +263,6 @@ export default function SupportManagementPage() {
               <tr>
                 <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Account</th>
                 <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Role</th>
-                <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Active Assignments</th>
                 <th className="p-6 font-black text-[10px] uppercase tracking-widest text-slate-400">Actions</th>
               </tr>
             </thead>
@@ -273,36 +283,17 @@ export default function SupportManagementPage() {
                     </Badge>
                   </td>
                   <td className="p-6">
-                    <div className="flex flex-wrap gap-2">
-                      {u.assignedRestaurants?.map((a: any) => (
-                        <Badge key={a.restaurantId} variant="outline" className="pr-1 gap-1">
-                          {restaurants?.find(r => r.id === a.restaurantId)?.name || 'Unknown'}
-                          <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => removeAssignment(u.id, a.restaurantId)} />
-                        </Badge>
-                      ))}
-                      {(!u.assignedRestaurants || u.assignedRestaurants.length === 0) && (
-                        <span className="text-xs text-muted-foreground italic">None</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="icon" title="Manage Assignments" onClick={() => { setSelectedStaff(u); setIsAssignDialogOpen(true); }}>
-                        <Settings2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => { setSelectedStaff(u); setIsAssignDialogOpen(true); }}>
+                      <Settings2 className="h-4 w-4" />
+                    </Button>
                   </td>
                 </tr>
               ))}
-              {isLoading && (
-                <tr><td colSpan={4} className="p-20 text-center"><Loader2 className="animate-spin mx-auto h-10 w-10 text-primary" /></td></tr>
-              )}
             </tbody>
           </table>
         </div>
       </Card>
 
-      {/* Assignment Dialog */}
       <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
         <DialogContent className="rounded-[2.5rem] max-w-md">
           <DialogHeader>
@@ -325,8 +316,7 @@ export default function SupportManagementPage() {
               <div className="grid grid-cols-2 gap-4">
                 {[
                   { id: 'read', label: 'Read Only' },
-                  { id: 'update_settings', label: 'Write Access' },
-                  { id: 'guide', label: 'Onboarding Guide' }
+                  { id: 'update_settings', label: 'Write Access' }
                 ].map(p => (
                   <div key={p.id} className="flex items-center space-x-2">
                     <Checkbox 
@@ -344,15 +334,10 @@ export default function SupportManagementPage() {
                 ))}
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label>Expiry Date (Optional)</Label>
-              <Input type="date" value={assignmentForm.expiryDate} onChange={e => setAssignmentForm({...assignmentForm, expiryDate: e.target.value})} className="h-12 rounded-xl bg-slate-50" />
-            </div>
           </div>
           <DialogFooter>
             <Button className="w-full h-14 rounded-2xl font-black" onClick={handleAssign} disabled={loading}>
-              {loading ? <Loader2 className="animate-spin" /> : <ShieldCheck className="mr-2" />}
+              {loading ? <Loader2 className="animate-spin" /> : <Save className="mr-2" />}
               Grant Access
             </Button>
           </DialogFooter>

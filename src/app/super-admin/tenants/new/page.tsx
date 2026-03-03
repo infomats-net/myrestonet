@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -33,13 +34,14 @@ import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase'
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { WORLD_COUNTRIES, WORLD_CURRENCIES } from '@/lib/countries-data';
 import { WORLD_CUISINES } from '@/lib/cuisines-data';
 import { cn } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { generateEmailContent } from '@/ai/flows/generate-email-content';
 
 const formSchema = z.object({
   restaurantName: z.string().min(2, "Restaurant name is required"),
@@ -77,7 +79,6 @@ export default function NewTenantPage() {
   }, [firestore, currentUser?.uid]);
   const { data: profile } = useDoc(userProfileRef);
 
-  // Fetch partner details if the user is a Marketing Partner to enforce region lock
   const partnerRef = useMemoFirebase(() => {
     if (!firestore || profile?.role !== 'marketing_partner' || !profile?.partnerId) return null;
     return doc(firestore, 'partners', profile.partnerId);
@@ -117,14 +118,12 @@ export default function NewTenantPage() {
   const confirmPassword = form.watch('confirmPassword');
   const selectedCountry = form.watch('country');
 
-  // Enforce Marketing Partner's region if applicable
   useEffect(() => {
     if (profile?.role === 'marketing_partner' && partnerData?.country) {
       form.setValue('country', partnerData.country, { shouldValidate: true });
     }
   }, [profile, partnerData, form]);
 
-  // Auto-select currency when country changes
   useEffect(() => {
     if (selectedCountry) {
       const countryData = WORLD_COUNTRIES.find(c => c.name === selectedCountry);
@@ -210,13 +209,35 @@ export default function NewTenantPage() {
         createdAt: serverTimestamp(),
       };
 
-      setDoc(restaurantRef, restaurantData).catch(async (serverError) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: restaurantRef.path,
-          operation: 'create',
-          requestResourceData: restaurantData,
-        }));
-      });
+      setDoc(restaurantRef, restaurantData)
+        .then(async () => {
+          // Trigger Welcome Email
+          const content = await generateEmailContent({
+            type: 'welcome_admin',
+            recipientName: values.contactName,
+            restaurantName: values.restaurantName,
+            details: `Portal URL: https://myrestonet.app/auth/login, Email: ${values.adminEmail}`
+          });
+
+          addDoc(collection(firestore, 'mail'), {
+            to: [values.adminEmail],
+            message: content,
+            createdAt: new Date().toISOString()
+          }).catch(async (err) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: 'mail',
+              operation: 'create',
+              requestResourceData: { to: [values.adminEmail] }
+            }));
+          });
+        })
+        .catch(async (serverError) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: restaurantRef.path,
+            operation: 'create',
+            requestResourceData: restaurantData,
+          }));
+        });
 
       const userDocRef = doc(firestore, 'users', adminUid);
       setDoc(userDocRef, userProfileData).catch(async (serverError) => {
@@ -232,7 +253,7 @@ export default function NewTenantPage() {
 
       toast({ 
         title: "Initializing Restaurant...", 
-        description: "Provisioning tenant instance and credentials." 
+        description: "Provisioning instance and sending welcome pass." 
       });
       
       router.push('/super-admin/tenants');
@@ -313,7 +334,7 @@ export default function NewTenantPage() {
                       <Label className="font-bold text-slate-700">Phone</Label>
                       <FormControl>
                         <div className="relative">
-                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                           Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                           <Input placeholder="+1..." className="h-14 bg-slate-50 border-slate-100 rounded-2xl pl-12" {...field} />
                         </div>
                       </FormControl>
@@ -415,9 +436,6 @@ export default function NewTenantPage() {
                             {WORLD_COUNTRIES.map(c => <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
-                        {isPartner && (
-                          <p className="text-[9px] font-bold text-muted-foreground mt-1 uppercase">Locked to your partner region</p>
-                        )}
                       </FormItem>
                     )} />
                     <FormField control={form.control} name="baseCurrency" render={({ field }) => (

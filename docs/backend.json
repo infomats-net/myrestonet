@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -13,7 +14,7 @@
         "assignedRestaurants": {
           "type": "array",
           "items": {
-            "object",
+            "type": "object",
             "properties": {
               "restaurantId": { "type": "string" },
               "permissions": { "type": "array", "items": { "type": "string", "enum": ["read", "update_settings", "guide"] } },
@@ -138,6 +139,24 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "Mail": {
+      "title": "Mail",
+      "description": "Firestore-triggered email document for transactional notifications.",
+      "type": "object",
+      "properties": {
+        "to": { "type": "array", "items": { "type": "string" } },
+        "message": {
+          "type": "object",
+          "properties": {
+            "subject": { "type": "string" },
+            "text": { "type": "string" },
+            "html": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["to", "message"]
     }
   },
   "auth": {
@@ -151,6 +170,7 @@
     "/restaurants/{restaurantId}/menus/{menuId}/items/{itemId}": { "schema": { "$ref": "#/backend/entities/MenuItem" }, "description": "Menu Items." },
     "/restaurants/{restaurantId}/reservations/{resId}": { "schema": { "$ref": "#/backend/entities/Reservation" }, "description": "Reservations." },
     "/restaurants/{restaurantId}/gallery/{imageId}": { "schema": { "$ref": "#/backend/entities/GalleryImage" }, "description": "Photo Gallery Images." },
-    "/restaurants/{restaurantId}/orders/{orderId}": { "schema": { "$ref": "#/backend/entities/Order" }, "description": "Restaurant Orders." }
+    "/restaurants/{restaurantId}/orders/{orderId}": { "schema": { "$ref": "#/backend/entities/Order" }, "description": "Restaurant Orders." },
+    "/mail/{mailId}": { "schema": { "$ref": "#/backend/entities/Mail" }, "description": "Outbound Email Queue." }
   }
 }

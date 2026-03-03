@@ -39,13 +39,16 @@ import {
   SelectValue 
 } from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, setDoc, serverTimestamp, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, serverTimestamp, updateDoc, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { initializeApp, deleteApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { cn } from '@/lib/utils';
 import { WORLD_COUNTRIES } from '@/lib/countries-data';
+import { generateEmailContent } from '@/ai/flows/generate-email-content';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function PartnersPage() {
   const firestore = useFirestore();
@@ -133,10 +136,29 @@ export default function PartnersPage() {
         createdAt: serverTimestamp()
       });
 
+      // AI Welcome Email
+      const emailContent = await generateEmailContent({
+        type: 'welcome_partner',
+        recipientName: form.name,
+        details: `Login Email: ${form.email}`
+      });
+
+      addDoc(collection(firestore, 'mail'), {
+        to: [form.email],
+        message: emailContent,
+        createdAt: new Date().toISOString()
+      }).catch(async (e) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: 'mail',
+          operation: 'create',
+          requestResourceData: { to: [form.email] }
+        }));
+      });
+
       await signOut(secondaryAuth);
       await deleteApp(secondaryApp);
 
-      toast({ title: "Partner Created", description: "Reseller can now log in to their dashboard." });
+      toast({ title: "Partner Created", description: "Welcome pass sent to their email." });
       setIsNewDialogOpen(false);
       setForm({ name: '', email: '', password: '', commissionRate: '10', country: 'Australia' });
     } catch (e: any) {
@@ -208,7 +230,7 @@ export default function PartnersPage() {
           <DialogContent className="rounded-[2.5rem] p-10">
             <DialogHeader>
               <DialogTitle className="text-2xl font-black">New Marketing Partner</DialogTitle>
-              <DialogDescription>Create a secure portal for a new agency or reseller.</DialogDescription>
+              <DialogDescription>Provision a new agency portal and send welcome pass.</DialogDescription>
             </DialogHeader>
             <div className="space-y-6 py-6">
               <div className="space-y-2">
@@ -273,12 +295,8 @@ export default function PartnersPage() {
           <CardContent><div className="text-4xl font-black">{partners?.length || 0}</div></CardContent>
         </Card>
         <Card className="rounded-[2rem] border-none shadow-lg">
-          <CardHeader className="pb-2"><CardTitle className="text-[10px] uppercase font-black tracking-widest text-slate-400">Total Revenue Sharing</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-[10px] uppercase font-black tracking-widest text-slate-400">Total Sharing</CardTitle></CardHeader>
           <CardContent><div className="text-4xl font-black text-primary">$12,450</div></CardContent>
-        </Card>
-        <Card className="rounded-[2rem] border-none shadow-lg bg-primary text-white">
-          <CardHeader className="pb-2"><CardTitle className="text-[10px] uppercase font-black tracking-widest opacity-70">Top Performer</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">Horizon Growth</div></CardContent>
         </Card>
       </div>
 
@@ -329,15 +347,11 @@ export default function PartnersPage() {
                   </td>
                 </tr>
               ))}
-              {isLoading && (
-                <tr><td colSpan={5} className="p-20 text-center"><Loader2 className="animate-spin mx-auto h-10 w-10 text-primary" /></td></tr>
-              )}
             </tbody>
           </table>
         </div>
       </Card>
 
-      {/* Edit Partner Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="rounded-[2.5rem] p-10">
           <DialogHeader>

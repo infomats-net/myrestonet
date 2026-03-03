@@ -25,6 +25,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format, addHours, startOfHour, setHours, setMinutes } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { generateEmailContent } from '@/ai/flows/generate-email-content';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function CustomerReservationPage({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = use(params);
@@ -60,12 +63,10 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
       const [h, m] = time.split(':');
       reservationDateTime.setHours(parseInt(h), parseInt(m), 0, 0);
 
-      // Simple AI Allocation Simulation:
-      // 1. Get all tables
+      // AI Allocation Simulation
       const tables = restaurant?.tables || [];
       const activeTables = tables.filter((t: any) => t.isActive);
       
-      // 2. Check current reservations for that slot (simplified)
       const resQuery = query(
         collection(firestore, 'restaurants', restaurantId, 'reservations'),
         where('dateTime', '==', reservationDateTime.toISOString()),
@@ -76,11 +77,9 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
 
       const availableTables = activeTables.filter((t: any) => !bookedTableIds.includes(t.id));
       
-      // Greedy Allocation
       let assignedTableIds: string[] = [];
       const sizeNeeded = parseInt(partySize);
       
-      // Try to find a single table that fits
       const perfectFit = availableTables
         .filter((t: any) => t.size >= sizeNeeded)
         .sort((a: any, b: any) => a.size - b.size)[0];
@@ -88,7 +87,6 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
       if (perfectFit) {
         assignedTableIds = [perfectFit.id];
       } else {
-        // Waitlist logic if no table fits
         setWaitlist(true);
       }
 
@@ -105,9 +103,39 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
         updatedAt: new Date().toISOString()
       };
 
-      await addDoc(collection(firestore, 'restaurants', restaurantId, 'reservations'), reservationData);
+      const resRef = collection(firestore, 'restaurants', restaurantId, 'reservations');
+      addDoc(resRef, reservationData)
+        .then(async () => {
+          // Trigger AI Email Generation
+          const emailContent = await generateEmailContent({
+            type: 'reservation_confirmed',
+            recipientName: name,
+            restaurantName: restaurant?.name,
+            details: `Time: ${format(reservationDateTime, 'PPP p')}, Party: ${sizeNeeded} guests. ${assignedTableIds.length > 0 ? 'Table confirmed.' : 'Added to priority waitlist.'}`
+          });
+
+          addDoc(collection(firestore, 'mail'), {
+            to: [email],
+            message: emailContent,
+            createdAt: new Date().toISOString()
+          }).catch(async (err) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: 'mail',
+              operation: 'create',
+              requestResourceData: { to: [email] }
+            }));
+          });
+        })
+        .catch(async (e) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: resRef.path,
+            operation: 'create',
+            requestResourceData: reservationData
+          }));
+        });
+
       setBookingSuccess(true);
-      toast({ title: waitlist ? "Joined Waitlist" : "Table Reserved!", description: "Check your email for details." });
+      toast({ title: waitlist ? "Joined Waitlist" : "Table Reserved!", description: "AI confirmation email sent." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: "Failed to book table." });
     } finally {
@@ -127,9 +155,7 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
           <div className="space-y-2">
             <h1 className="text-3xl font-black text-slate-900">{waitlist ? "Waitlist Confirmed" : "Booking Confirmed!"}</h1>
             <p className="text-slate-500 font-medium">
-              {waitlist 
-                ? "We'll notify you as soon as a table becomes available." 
-                : `We've saved a spot for ${partySize} at ${restaurant?.name}.`}
+              Check your inbox for your AI-generated reservation pass.
             </p>
           </div>
           <div className="bg-slate-50 p-6 rounded-3xl border text-left space-y-3">
@@ -168,7 +194,7 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 p-10 border-b">
             <CardTitle className="text-xl font-black">Booking Details</CardTitle>
-            <CardDescription>Select your preferred time and party size.</CardDescription>
+            <CardDescription>Instant confirmation via AI-driven table management.</CardDescription>
           </CardHeader>
           <CardContent className="p-10 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -236,7 +262,7 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
               <div className="bg-blue-50 p-4 rounded-2xl flex items-start gap-3 border border-blue-100">
                 <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  Our system uses <strong>AI Table Allocation</strong> to find the best spot for your group. If we're fully booked, you'll be added to our priority waitlist.
+                  Confirmation and sensory dining pass will be generated by <strong>AI Communications</strong> and sent to your email.
                 </p>
               </div>
 

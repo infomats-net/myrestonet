@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -46,16 +47,21 @@ service cloud.firestore {
       return false;
     }
 
+    // Platform-wide access for Super Admin
+    match /{allPaths=**} {
+      allow read, write: if isSuperAdmin();
+    }
+
     match /partners/{partnerId} {
-      allow read: if isSuperAdmin() || belongsToPartner(partnerId);
-      allow write: if isSuperAdmin();
+      allow read: if belongsToPartner(partnerId);
+      allow write: if false; // SuperAdmin handled by wildcard
     }
 
     match /restaurants/{restaurantId} {
       allow get: if true;
       allow read: if hasPermission(restaurantId, "read");
       allow update: if hasPermission(restaurantId, "update_settings");
-      allow create: if isSuperAdmin() || isPartner();
+      allow create: if isPartner();
 
       match /menus/{menuId} {
         allow read: if true;
@@ -66,7 +72,7 @@ service cloud.firestore {
 
       match /reservations/{reservationId} {
         allow read: if hasPermission(restaurantId, "read");
-        allow write: if hasPermission(restaurantId, "update_settings") || isSuperAdmin();
+        allow write: if hasPermission(restaurantId, "update_settings");
         allow create: if true; 
       }
 
@@ -93,11 +99,15 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow list: if isSuperAdmin();
-      allow read: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
-      allow update: if isSuperAdmin() || (request.auth.uid == userId && request.resource.data.role == resource.data.role);
-      allow create: if isSuperAdmin() || isPartner();
-      allow delete: if isSuperAdmin();
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow list: if isPartner(); // Allow partners to check emails for unique check
+      allow update: if request.auth != null && request.auth.uid == userId && request.resource.data.role == resource.data.role;
+      allow create: if isPartner();
+    }
+
+    match /mail/{mailId} {
+      allow create: if request.auth != null;
+      allow read: if false; // SuperAdmin handled by wildcard
     }
   }
 }

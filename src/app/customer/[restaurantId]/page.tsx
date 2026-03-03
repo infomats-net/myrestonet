@@ -43,6 +43,9 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { checkIsRestaurantOpen } from '@/lib/operating-hours';
+import { generateEmailContent } from '@/ai/flows/generate-email-content';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type CartItem = {
   id: string;
@@ -121,7 +124,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     fetchAllItems();
   }, [firestore, restaurantId, menus]);
 
-  // Handle defaults based on settings
   useEffect(() => {
     if (restaurant?.paymentSettings) {
       const settings = restaurant.paymentSettings;
@@ -164,7 +166,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     if (!auth || !firestore || !restaurantId) return;
     setIsProcessing(true);
     try {
-      // Sign in anonymously on-demand during checkout if not already authenticated
       let user = auth.currentUser;
       if (!user) {
         const userCredential = await signInAnonymously(auth);
@@ -173,8 +174,8 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       const orderData = {
         customerId: user.uid,
-        customerName: "Anonymous Guest", // Or capture from form
-        customerEmail: "guest@example.com",
+        customerName: "Guest Diner",
+        customerEmail: "guest@example.com", // In a real app, capture this from a form
         items: cart,
         subtotal,
         deliveryCharges: deliveryCharge,
@@ -184,11 +185,42 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         orderStatus: 'new',
         createdAt: new Date().toISOString()
       };
-      await addDoc(collection(firestore, 'restaurants', restaurantId, 'orders'), orderData);
+
+      const ordersRef = collection(firestore, 'restaurants', restaurantId, 'orders');
+      addDoc(ordersRef, orderData)
+        .then(async (docRef) => {
+          // AI Email Confirmation
+          const content = await generateEmailContent({
+            type: 'order_confirmed',
+            recipientName: "Valued Guest",
+            restaurantName: restaurant?.name,
+            details: `Order Total: $${total.toFixed(2)}, Items: ${cart.length}.`
+          });
+
+          addDoc(collection(firestore, 'mail'), {
+            to: ["guest@example.com"],
+            message: content,
+            createdAt: new Date().toISOString()
+          }).catch(async (err) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: 'mail',
+              operation: 'create',
+              requestResourceData: { to: ["guest@example.com"] }
+            }));
+          });
+        })
+        .catch(async (serverError) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: ordersRef.path,
+            operation: 'create',
+            requestResourceData: orderData
+          }));
+        });
+
       setCart([]);
       setOrderComplete(true);
       setIsCheckoutOpen(false);
-      toast({ title: "Order Success!", description: "Your meal is being prepared." });
+      toast({ title: "Order Success!", description: "Receipt and confirmation sent to email." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: "Failed to place order." });
     } finally {
@@ -213,28 +245,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const theme = designSettings?.theme || { primary: '#22c55e', background: '#ffffff', text: '#0f172a' };
   const typography = designSettings?.typography || { fontFamily: 'Inter', headingFont: 'Inter', baseSize: '16px' };
   
-  const sections = {
-    navbar: designSettings?.sections?.navbar ?? { visible: true },
-    hero: designSettings?.sections?.hero ?? { visible: true },
-    welcomeCard: designSettings?.sections?.welcomeCard ?? { 
-      visible: true,
-      showBadges: true,
-      showRating: true,
-      showDeliveryInfo: true,
-      showLocation: true,
-      showRanking: true
-    },
-    about: designSettings?.sections?.about ?? { visible: true },
-    menuList: designSettings?.sections?.menuList ?? { visible: true },
-    gallery: designSettings?.sections?.gallery ?? { visible: true },
-    testimonials: designSettings?.sections?.testimonials ?? { visible: true },
-    contact: designSettings?.sections?.contact ?? { visible: true },
-    map: designSettings?.sections?.map ?? { visible: true },
-    bookingCTA: designSettings?.sections?.bookingCTA ?? { visible: true }
-  };
-
-  const sectionOrder = designSettings?.sectionOrder || ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
-
   const globalStyle = { 
     backgroundColor: theme.background, 
     color: theme.text,
@@ -242,9 +252,22 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     fontSize: typography.baseSize
   };
 
-  const headingStyle = {
-    fontFamily: typography.headingFont
+  const headingStyle = { fontFamily: typography.headingFont };
+
+  const sections = designSettings?.sections || {
+    navbar: { visible: true },
+    hero: { visible: true },
+    welcomeCard: { visible: true, showBadges: true, showRating: true, showDeliveryInfo: true, showLocation: true },
+    about: { visible: true },
+    menuList: { visible: true },
+    gallery: { visible: true },
+    testimonials: { visible: true },
+    contact: { visible: true },
+    map: { visible: true },
+    bookingCTA: { visible: true }
   };
+
+  const sectionOrder = designSettings?.sectionOrder || ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
 
   const SECTION_COMPONENTS: Record<string, ReactNode> = {
     hero: (
@@ -275,12 +298,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       </section>
     ),
     welcomeCard: (
-      <section key="welcomeCard" className={cn("relative z-30", sections.hero.visible && "-mt-32 px-6")}>
+      <section key="welcomeCard" className={cn("relative z-30", sections.hero?.visible && "-mt-32 px-6")}>
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white max-w-6xl mx-auto">
           <CardContent className="p-8 md:p-12 flex flex-col md:flex-row items-center gap-12 text-slate-900">
             <div className="flex-1 space-y-6">
               <div className="flex items-center gap-3">
-                {sections.welcomeCard.showBadges && (
+                {sections.welcomeCard?.showBadges && (
                   <Badge className={cn(
                     "border-none font-black text-2xl px-6 py-2 rounded-2xl",
                     isOpen ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-destructive/10 text-destructive hover:bg-destructive/10"
@@ -288,7 +311,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                     {isOpen ? "OPEN NOW" : "CLOSED NOW"}
                   </Badge>
                 )}
-                {sections.welcomeCard.showRating && (
+                {sections.welcomeCard?.showRating && (
                   <div className="flex items-center gap-1 text-amber-500">
                     <Star className="h-4 w-4 fill-current" />
                     <span className="font-black">4.9</span>
@@ -297,12 +320,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 )}
               </div>
               <h2 className="text-3xl font-black" style={headingStyle}>Welcome to {restaurant.name}</h2>
-              {sections.welcomeCard.showLocation && (
+              {sections.welcomeCard?.showLocation && (
                 <p className="text-slate-500 leading-relaxed font-medium">
                   {restaurant.city}, {restaurant.country}. Experience high-end dining with isolation and security at the core of our service.
                 </p>
               )}
-              {sections.welcomeCard.showDeliveryInfo && (
+              {sections.welcomeCard?.showDeliveryInfo && (
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border">
                     <Clock className="h-5 w-5 text-primary" style={{ color: theme.primary }} />
@@ -340,7 +363,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         <div className="space-y-6">
           <h2 className="text-4xl font-black tracking-tight" style={headingStyle}>About Our Culinary Vision</h2>
           <p className="text-lg leading-relaxed opacity-70">
-            At {restaurant.name}, we believe that dining is an art form. Every Menu Item we serve is a testament to our commitment to excellence, crafted with the freshest local ingredients and a touch of global inspiration.
+            At {restaurant.name}, we believe that dining is an art form. Every dish we serve is a testament to our commitment to excellence.
           </p>
           <div className="space-y-4">
             <div className="flex items-start gap-4">
@@ -350,19 +373,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               <div>
                 <p className="font-bold">Premium Location</p>
                 <p className="text-sm opacity-60">{restaurant.address}, {restaurant.city}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0" style={{ color: theme.primary }}>
-                <Info className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="font-bold">Cuisines</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {restaurant.cuisine?.map((c: string) => (
-                    <Badge key={c} variant="secondary" className="font-bold">{c}</Badge>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
@@ -382,7 +392,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       <section key="menuList" id="menu" className="max-w-6xl mx-auto px-6 py-12 space-y-12 scroll-mt-24">
         <div className="text-center space-y-4">
           <h2 className="text-5xl font-black tracking-tight" style={headingStyle}>Our Signature Menu</h2>
-          <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of Menu Items, designed to delight and satisfy.</p>
+          <p className="text-lg opacity-60 max-w-2xl mx-auto">Explore our curated selection of items, designed to delight and satisfy.</p>
         </div>
 
         {menus?.map(menu => (
@@ -445,40 +455,18 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <p className="opacity-60">A glimpse into our kitchen and dining ambiance.</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {galleryImages && galleryImages.length > 0 ? (
-            galleryImages.map((img, i) => (
-              <div key={img.id} className={cn(
-                "relative rounded-3xl overflow-hidden shadow-xl group",
-                i % 3 === 0 ? "md:col-span-2 md:row-span-2 h-96 md:h-auto" : "h-48 md:h-64"
-              )}>
-                <img 
-                  src={img.url} 
-                  alt={img.caption || "Gallery Image"} 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                />
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <span className="text-white text-xs font-bold px-4 text-center">{img.caption}</span>
-                </div>
-              </div>
-            ))
-          ) : (
-            [1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-              <div key={i} className={cn(
-                "relative rounded-3xl overflow-hidden shadow-xl group",
-                i % 3 === 0 ? "md:col-span-2 md:row-span-2 h-96 md:h-auto" : "h-48 md:h-64"
-              )}>
-                <img 
-                  src={`https://picsum.photos/seed/gallery-${i}/800/800`} 
-                  alt="Gallery" 
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
-                  data-ai-hint="restaurant food"
-                />
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <ImageIcon className="text-white h-8 w-8" />
-                </div>
-              </div>
-            ))
-          )}
+          {galleryImages?.map((img, i) => (
+            <div key={img.id} className={cn(
+              "relative rounded-3xl overflow-hidden shadow-xl group",
+              i % 3 === 0 ? "md:col-span-2 md:row-span-2 h-96 md:h-auto" : "h-48 md:h-64"
+            )}>
+              <img 
+                src={img.url} 
+                alt={img.caption || "Gallery Image"} 
+                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+              />
+            </div>
+          ))}
         </div>
       </section>
     ),
@@ -487,13 +475,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         <div className="text-center space-y-4 max-w-3xl mx-auto pt-8">
           <Quote className="h-12 w-12 text-primary mx-auto opacity-20" style={{ color: theme.primary }} />
           <h2 className="text-4xl font-black" style={headingStyle}>Guest Experiences</h2>
-          <p className="opacity-60 text-lg">Don't just take our word for it. Here is what our community has to say.</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8">
           {[
-            { name: "James Miller", role: "Food Critic", text: "The attention to detail in every Menu Item is simply unmatched. A true gem in the city." },
+            { name: "James Miller", role: "Food Critic", text: "The attention to detail in every dish is simply unmatched. A true gem in the city." },
             { name: "Sophia Chen", role: "Regular Guest", text: "My go-to spot for every special occasion. The atmosphere is always perfect." },
-            { name: "Robert Wilson", role: "Local Resident", text: "Fast delivery, incredible flavors, and always consistent. Highly recommend the pizza!" }
+            { name: "Robert Wilson", role: "Local Resident", text: "Fast delivery, incredible flavors, and always consistent." }
           ].map((item, i) => (
             <Card key={i} className="rounded-3xl border-none shadow-xl p-10 space-y-6 bg-white text-slate-900">
               <div className="flex gap-1 text-amber-400">
@@ -523,17 +510,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             allowFullScreen 
             src={`https://maps.google.com/maps?q=${encodeURIComponent(`${restaurant.address}, ${restaurant.city}, ${restaurant.country}`)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
           />
-          <div className="absolute bottom-8 left-8 z-20">
-            <Card className="bg-white/90 backdrop-blur-xl border-none shadow-2xl p-6 rounded-3xl max-w-xs animate-in slide-in-from-bottom-4 duration-700">
-              <h3 className="font-black text-slate-900 mb-1">Find Your Way</h3>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed mb-4">
-                We're located in the heart of {restaurant.city}. Click the map for direct navigation instructions.
-              </p>
-              <Button className="w-full rounded-xl font-bold h-10 gap-2" style={{ backgroundColor: theme.primary }}>
-                <MapIcon className="h-4 w-4" /> Open in Maps
-              </Button>
-            </Card>
-          </div>
         </Card>
       </section>
     ),
@@ -556,13 +532,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 <p className="font-bold">{restaurant.adminEmail}</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-6 bg-slate-50 rounded-3xl border border-slate-100">
-              <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center text-primary" style={{ color: theme.primary }}><MapPin className="h-5 w-5" /></div>
-              <div>
-                <p className="text-[10px] font-black uppercase text-slate-400">Visit Us</p>
-                <p className="font-bold">{restaurant.address}, {restaurant.city}</p>
-              </div>
-            </div>
           </div>
         </Card>
       </section>
@@ -574,36 +543,16 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <h2 className="text-4xl font-black" style={headingStyle}>Plan Your Visit</h2>
-              <p className="text-white/60 text-lg">We are ready to welcome you. For large parties or special events, please contact us directly or use our smart reservation system.</p>
-              <div className="space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-primary" style={{ color: theme.primary }}><Phone className="h-6 w-6" /></div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Call Us</p>
-                    <p className="text-xl font-bold">{restaurant.contactPhone}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center text-primary" style={{ color: theme.primary }}><MapPin className="h-6 w-6" /></div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Location</p>
-                    <p className="text-xl font-bold">{restaurant.address}</p>
-                  </div>
-                </div>
-              </div>
+              <p className="text-white/60 text-lg">We are ready to welcome you. Our AI-powered system ensures instant table confirmation.</p>
             </div>
             <Card className="rounded-[2.5rem] bg-white text-slate-900 border-none p-10 shadow-2xl space-y-8">
               <div className="text-center space-y-2">
                 <CalendarDays className="h-12 w-12 text-primary mx-auto" style={{ color: theme.primary }} />
                 <h3 className="text-2xl font-black" style={headingStyle}>Secure Your Spot</h3>
-                <p className="text-slate-500">Instant confirmation via our AI-powered table allocator.</p>
               </div>
               <Button size="lg" className="w-full h-16 rounded-2xl text-xl font-black shadow-xl" style={{ backgroundColor: theme.primary }} asChild disabled={!isOpen}>
                 <Link href={`/customer/${restaurantId}/reserve`}>Book Now</Link>
               </Button>
-              <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                {isOpen ? "No credit card required for booking" : "We are currently closed"}
-              </p>
             </Card>
           </div>
         </div>
@@ -613,41 +562,18 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   return (
     <div className="min-h-screen pb-24" style={globalStyle}>
-      {/* Navigation Bar */}
-      {sections.navbar.visible && (
+      {sections.navbar?.visible && (
         <nav className="sticky top-0 z-[100] w-full border-b backdrop-blur-md transition-all h-20 flex items-center bg-white/90">
           <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2 group">
-                {designSettings?.branding?.logoUrl ? (
-                  <img src={designSettings.branding.logoUrl} className="h-10 w-auto" alt="Logo" />
-                ) : (
-                  <>
-                    <div className="bg-primary rounded-lg p-1.5 transition-transform group-hover:scale-110" style={{ backgroundColor: theme.primary }}>
-                      <UtensilsCrossed className="h-5 w-5 text-white" />
-                    </div>
-                    <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
-                  </>
-                )}
+                <div className="bg-primary rounded-lg p-1.5 transition-transform group-hover:scale-110" style={{ backgroundColor: theme.primary }}>
+                  <UtensilsCrossed className="h-5 w-5 text-white" />
+                </div>
+                <span className="text-xl font-black tracking-tight" style={headingStyle}>{restaurant.name}</span>
               </Link>
-              <Badge className={cn(
-                "hidden sm:flex text-2xl px-2 py-0.5 border-none font-black uppercase tracking-widest rounded-full h-fit",
-                isOpen ? "bg-emerald-100 text-emerald-700" : "bg-destructive/10 text-destructive"
-              )}>
-                {isOpen ? "Open" : "Closed"}
-              </Badge>
             </div>
-
-            <div className="hidden md:flex items-center gap-8 text-[10px] font-black uppercase tracking-widest text-slate-400">
-              {sections.menuList.visible && <a href="#menu" className="hover:text-primary transition-colors">Menu</a>}
-              {sections.about.visible && <a href="#about" className="hover:text-primary transition-colors">About</a>}
-              {sections.contact.visible && <a href="#contact" className="hover:text-primary transition-colors">Contact</a>}
-            </div>
-
             <div className="flex items-center gap-4">
-               <Button className="hidden sm:flex rounded-xl font-black text-xs uppercase h-10 px-6 shadow-lg shadow-primary/20" style={{ backgroundColor: theme.primary }} asChild>
-                  <Link href={`/customer/${restaurantId}/reserve`}>Reserve Now</Link>
-               </Button>
                {cart.length > 0 && (
                  <button className="relative p-2 text-slate-600 hover:text-slate-900 transition-colors" onClick={() => setIsCheckoutOpen(true)}>
                    <ShoppingBag className="h-6 w-6" />
@@ -659,17 +585,15 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         </nav>
       )}
 
-      {/* Main Dynamic Content Sections */}
       <div className="space-y-24">
         {sectionOrder.map(sectionKey => {
-          if (sectionKey === 'navbar') return null; // Navbar handled separately for stickiness
+          if (sectionKey === 'navbar') return null;
           const sectionConfig = (sections as any)[sectionKey];
           if (!sectionConfig?.visible) return null;
           return SECTION_COMPONENTS[sectionKey];
         })}
       </div>
 
-      {/* Cart Navigation Bar */}
       {cart.length > 0 && !orderComplete && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t z-[100]">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
