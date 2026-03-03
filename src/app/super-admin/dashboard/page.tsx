@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,13 +10,12 @@ import {
   Store, 
   CreditCard, 
   TrendingUp, 
-  ArrowRight,
-  ArrowUpRight,
   Activity,
-  Globe, 
   ShieldCheck,
   DollarSign,
-  ChevronRight
+  ChevronRight,
+  Info,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 import { 
@@ -37,29 +36,8 @@ import {
   Tooltip
 } from 'recharts';
 import { cn } from '@/lib/utils';
-
-const REVENUE_DATA = [
-  { month: 'Jan', revenue: 45000, users: 1200 },
-  { month: 'Feb', revenue: 52000, users: 1500 },
-  { month: 'Mar', revenue: 48000, users: 1800 },
-  { month: 'Apr', revenue: 61000, users: 2200 },
-  { month: 'May', revenue: 75000, users: 2800 },
-  { month: 'Jun', revenue: 82000, users: 3500 },
-  { month: 'Jul', revenue: 95000, users: 4200 },
-];
-
-const TENANT_DISTRIBUTION = [
-  { name: 'Active', value: 85, color: 'hsl(var(--primary))' },
-  { name: 'Trial', value: 42, color: 'hsl(var(--accent))' },
-  { name: 'Suspended', value: 15, color: 'hsl(var(--destructive))' },
-];
-
-const TOP_RESTAURANTS = [
-  { name: 'Bella Napoli', revenue: '$12,450', growth: '+12%', color: 'bg-emerald-500' },
-  { name: 'Sakura Zen', revenue: '$9,800', growth: '+8%', color: 'bg-blue-500' },
-  { name: 'Le Petit Bistro', revenue: '$7,200', growth: '+5%', color: 'bg-amber-500' },
-  { name: 'Pasta Paradiso', revenue: '$6,500', growth: '+15%', color: 'bg-purple-500' },
-];
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, limit } from 'firebase/firestore';
 
 const revenueChartConfig = {
   revenue: {
@@ -84,6 +62,40 @@ const distributionChartConfig = {
 } satisfies ChartConfig;
 
 export default function SuperAdminDashboard() {
+  const firestore = useFirestore();
+
+  // Fetch real tenants for metrics
+  const restaurantsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'restaurants');
+  }, [firestore]);
+  const { data: restaurants, isLoading } = useCollection(restaurantsQuery);
+
+  // Dynamic calculations based on real data
+  const stats = useMemo(() => {
+    if (!restaurants) return { active: 0, trial: 0, suspended: 0, total: 0 };
+    return restaurants.reduce((acc, res) => {
+      acc.total++;
+      if (res.subscriptionStatus === 'active') acc.active++;
+      else if (res.subscriptionStatus === 'trial') acc.trial++;
+      else if (res.subscriptionStatus === 'suspended') acc.suspended++;
+      return acc;
+    }, { active: 0, trial: 0, suspended: 0, total: 0 });
+  }, [restaurants]);
+
+  const distributionData = [
+    { name: 'Active', value: stats.active, color: 'hsl(var(--primary))' },
+    { name: 'Trial', value: stats.trial, color: 'hsl(var(--accent))' },
+    { name: 'Suspended', value: stats.suspended, color: 'hsl(var(--destructive))' },
+  ];
+
+  // Placeholder for revenue chart (requires orders aggregation)
+  const emptyRevenueData = [
+    { month: 'N/A', revenue: 0 }
+  ];
+
+  if (isLoading) return <div className="p-20 flex justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
+
   return (
     <div className="p-8 space-y-8 bg-slate-50/30 min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -104,14 +116,12 @@ export default function SuperAdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="rounded-[2rem] border-none shadow-lg">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-[10px] uppercase font-black tracking-widest text-slate-400">ARR (Estimated)</CardTitle>
+            <CardTitle className="text-[10px] uppercase font-black tracking-widest text-slate-400">Monthly Revenue</CardTitle>
             <div className="bg-emerald-50 p-2 rounded-lg"><DollarSign className="h-4 w-4 text-emerald-600" /></div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black">$1.24M</div>
-            <p className="text-xs text-emerald-600 font-bold mt-1 flex items-center gap-1">
-              <TrendingUp className="h-3 w-3" /> +12.5% vs LW
-            </p>
+            <div className="text-3xl font-black">$0.00</div>
+            <p className="text-xs text-muted-foreground font-medium mt-1">Aggregation pending...</p>
           </CardContent>
         </Card>
         
@@ -121,8 +131,8 @@ export default function SuperAdminDashboard() {
             <div className="bg-primary/10 p-2 rounded-lg"><Store className="h-4 w-4 text-primary" /></div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black">142</div>
-            <p className="text-xs text-muted-foreground font-medium mt-1">4 pending onboarding</p>
+            <div className="text-3xl font-black">{stats.total}</div>
+            <p className="text-xs text-muted-foreground font-medium mt-1">{stats.active} Active subscriptions</p>
           </CardContent>
         </Card>
 
@@ -132,8 +142,8 @@ export default function SuperAdminDashboard() {
             <div className="bg-blue-50 p-2 rounded-lg"><Users className="h-4 w-4 text-blue-600" /></div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black">8,234</div>
-            <p className="text-xs text-blue-600 font-bold mt-1">Active past 24h</p>
+            <div className="text-3xl font-black">0</div>
+            <p className="text-xs text-muted-foreground font-medium mt-1">Real-time pulse starting...</p>
           </CardContent>
         </Card>
 
@@ -143,7 +153,7 @@ export default function SuperAdminDashboard() {
             <ShieldCheck className="h-4 w-4 opacity-70" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black">99.98%</div>
+            <div className="text-3xl font-black">100%</div>
             <p className="text-xs opacity-80 mt-1">All regions operational</p>
           </CardContent>
         </Card>
@@ -156,43 +166,12 @@ export default function SuperAdminDashboard() {
               <CardTitle className="text-xl font-black">Revenue Performance</CardTitle>
               <CardDescription>Platform-wide gross revenue across all tenants.</CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Badge variant="secondary" className="bg-slate-100 rounded-lg">Last 7 Months</Badge>
-            </div>
           </CardHeader>
           <CardContent className="p-8">
-            <ChartContainer config={revenueChartConfig} className="h-[350px] w-full">
-              <AreaChart data={REVENUE_DATA} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis 
-                  dataKey="month" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 12, fontWeight: 600, fill: '#94a3b8' }} 
-                  dy={10}
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 12, fontWeight: 600, fill: '#94a3b8' }} 
-                />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Area 
-                  type="monotone" 
-                  dataKey="revenue" 
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={4} 
-                  fillOpacity={1} 
-                  fill="url(#colorRevenue)" 
-                />
-              </AreaChart>
-            </ChartContainer>
+            <div className="h-[350px] w-full flex flex-col items-center justify-center bg-slate-50 rounded-3xl border-2 border-dashed">
+              <TrendingUp className="h-12 w-12 text-slate-200 mb-4" />
+              <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">No transaction data available yet</p>
+            </div>
           </CardContent>
         </Card>
 
@@ -202,41 +181,50 @@ export default function SuperAdminDashboard() {
             <CardDescription>Breakdown by subscription status.</CardDescription>
           </CardHeader>
           <CardContent className="p-8 flex flex-col items-center justify-center">
-            <div className="h-[250px] w-full relative">
-              <ChartContainer config={distributionChartConfig} className="h-full w-full">
-                <PieChart>
-                  <Pie
-                    data={TENANT_DISTRIBUTION}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={8}
-                    dataKey="value"
-                  >
-                    {TENANT_DISTRIBUTION.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<ChartTooltipContent />} />
-                </PieChart>
-              </ChartContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-3xl font-black text-slate-900">142</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
-              </div>
-            </div>
-            <div className="w-full space-y-3 mt-6">
-              {TENANT_DISTRIBUTION.map((item) => (
-                <div key={item.name} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm font-bold text-slate-700">{item.name}</span>
+            {stats.total > 0 ? (
+              <>
+                <div className="h-[250px] w-full relative">
+                  <ChartContainer config={distributionChartConfig} className="h-full w-full">
+                    <PieChart>
+                      <Pie
+                        data={distributionData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={8}
+                        dataKey="value"
+                      >
+                        {distributionData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={<ChartTooltipContent />} />
+                    </PieChart>
+                  </ChartContainer>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-3xl font-black text-slate-900">{stats.total}</span>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total</span>
                   </div>
-                  <span className="font-black text-slate-900">{item.value}</span>
                 </div>
-              ))}
-            </div>
+                <div className="w-full space-y-3 mt-6">
+                  {distributionData.map((item) => (
+                    <div key={item.name} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-sm font-bold text-slate-700">{item.name}</span>
+                      </div>
+                      <span className="font-black text-slate-900">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="py-20 text-center">
+                <Info className="h-12 w-12 mx-auto opacity-10 mb-4" />
+                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">No tenants onboarded</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -244,33 +232,33 @@ export default function SuperAdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden">
           <CardHeader className="p-8 border-b bg-white">
-            <CardTitle className="text-xl font-black">Top Performing Tenants</CardTitle>
-            <CardDescription>Restaurants with highest transaction volume.</CardDescription>
+            <CardTitle className="text-xl font-black">Latest Tenants</CardTitle>
+            <CardDescription>Recently onboarded restaurant instances.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y">
-              {TOP_RESTAURANTS.map((res, i) => (
-                <div key={i} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+              {restaurants?.slice(0, 5).map((res, i) => (
+                <div key={res.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors group">
                   <div className="flex items-center gap-4">
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg", res.color)}>
-                      {res.name[0]}
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-primary text-white font-black text-lg">
+                      {res.name?.[0] || 'R'}
                     </div>
                     <div>
                       <p className="font-bold text-slate-900">{res.name}</p>
-                      <p className="text-xs text-muted-foreground">Premium Plan</p>
+                      <p className="text-xs text-muted-foreground capitalize">{res.subscriptionStatus || 'Active'} Plan</p>
                     </div>
                   </div>
                   <div className="text-right flex items-center gap-6">
-                    <div>
-                      <p className="font-black text-slate-900">{res.revenue}</p>
-                      <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">{res.growth} MTD</p>
-                    </div>
-                    <Button variant="ghost" size="icon" className="rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ChevronRight className="h-5 w-5" />
+                    <Badge variant="outline" className="text-[10px] font-bold uppercase">{res.city}</Badge>
+                    <Button variant="ghost" size="icon" className="rounded-full opacity-0 group-hover:opacity-100 transition-opacity" asChild>
+                      <Link href={`/restaurant-admin/dashboard?impersonate=${res.id}`}><ChevronRight className="h-5 w-5" /></Link>
                     </Button>
                   </div>
                 </div>
               ))}
+              {(!restaurants || restaurants.length === 0) && (
+                <div className="p-20 text-center text-muted-foreground italic">No restaurants found.</div>
+              )}
             </div>
             <div className="p-6 border-t bg-slate-50/50 text-center">
               <Button variant="link" className="text-xs font-bold text-primary uppercase tracking-widest" asChild>
@@ -294,7 +282,7 @@ export default function SuperAdminDashboard() {
             </Button>
             <Button variant="outline" className="h-24 rounded-3xl flex flex-col gap-2 bg-white hover:bg-accent/5 hover:border-accent/20 transition-all group" asChild>
               <Link href="/super-admin/partners">
-                <Globe className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
+                <Briefcase className="h-6 w-6 text-accent group-hover:scale-110 transition-transform" />
                 <span className="font-bold">Partner Ecosystem</span>
               </Link>
             </Button>

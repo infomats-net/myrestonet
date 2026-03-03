@@ -10,14 +10,12 @@ import {
   Plus, 
   TrendingUp, 
   DollarSign, 
-  Users,
   ChevronRight,
   Loader2,
-  ExternalLink,
-  ShieldAlert
+  Info
 } from 'lucide-react';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -33,9 +31,9 @@ export default function PartnerDashboard() {
   }, [firestore, user?.uid]);
   const { data: restaurants, isLoading } = useCollection(restaurantsQuery);
 
-  const totalRevenue = 4500.50; // Simulated aggregation
-  const commissionRate = 12; // Simulated partner setting
-  const totalCommission = (totalRevenue * commissionRate) / 100;
+  const totalVolume = 0; // Aggregation from sub-tenants pending
+  const commissionRate = 0; // Fetched from partner profile pending
+  const totalCommission = 0;
 
   if (isLoading) return <div className="p-20 flex justify-center"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
 
@@ -64,7 +62,7 @@ export default function PartnerDashboard() {
             <CardTitle className="text-[10px] uppercase font-black tracking-widest text-slate-400">Total Volume</CardTitle>
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           </CardHeader>
-          <CardContent><div className="text-4xl font-black">${totalRevenue.toLocaleString()}</div></CardContent>
+          <CardContent><div className="text-4xl font-black">${totalVolume.toLocaleString()}</div></CardContent>
         </Card>
         <Card className="rounded-[2rem] border-none shadow-lg bg-primary text-white">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -85,12 +83,12 @@ export default function PartnerDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-xl overflow-hidden">
           <CardHeader className="bg-white border-b py-8 px-10">
-            <CardTitle className="text-2xl font-black">My Managed Restaurants</CardTitle>
-            <CardDescription>Real-time status of onboarded merchants.</CardDescription>
+            <CardTitle className="text-2xl font-black">Managed Restaurants</CardTitle>
+            <CardDescription>Real-time status of your onboarded merchants.</CardDescription>
           </CardHeader>
           <div className="divide-y bg-white">
             {restaurants?.map(res => (
-              <div key={res.id} className="p-8 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
+              <div key={res.id} className="p-8 flex items-center justify-between hover:bg-slate-50 transition-colors group">
                 <div className="flex items-center gap-6">
                   <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center text-xl font-black text-primary group-hover:scale-110 transition-transform">{res.name[0]}</div>
                   <div>
@@ -101,19 +99,16 @@ export default function PartnerDashboard() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Performance</p>
-                    <p className="font-black text-primary">$1,250</p>
-                  </div>
-                  <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.push(`/restaurant-admin/dashboard?impersonate=${res.id}`)}>
-                    <ChevronRight className="h-5 w-5" />
-                  </Button>
-                </div>
+                <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.push(`/restaurant-admin/dashboard?impersonate=${res.id}`)}>
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
               </div>
             ))}
             {(!restaurants || restaurants.length === 0) && (
-              <div className="py-20 text-center text-muted-foreground italic">No restaurants onboarded yet.</div>
+              <div className="py-20 text-center text-muted-foreground">
+                <Info className="h-12 w-12 mx-auto mb-4 opacity-10" />
+                <p className="font-bold text-[10px] uppercase tracking-widest">No restaurants onboarded yet</p>
+              </div>
             )}
           </div>
         </Card>
@@ -124,20 +119,10 @@ export default function PartnerDashboard() {
             <div className="space-y-4">
               <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
                 <span className="text-sm opacity-60 font-bold uppercase tracking-widest">Pending</span>
-                <span className="text-2xl font-black text-primary">$540.60</span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/10">
-                <span className="text-sm opacity-60 font-bold uppercase tracking-widest">Last Paid</span>
-                <span className="text-xl font-bold">$1,200.00</span>
+                <span className="text-2xl font-black text-primary">$0.00</span>
               </div>
             </div>
-            <Button className="w-full h-14 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-black">Request Settlement</Button>
-          </Card>
-          
-          <Card className="rounded-[2.5rem] border-none shadow-xl p-10 space-y-4">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Quick Support</h3>
-            <p className="text-sm leading-relaxed text-slate-600">Need help with merchant onboarding? Contact our partner success team.</p>
-            <Button variant="outline" className="w-full rounded-xl">Contact Success Manager</Button>
+            <Button className="w-full h-14 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-black" disabled>No Settlements Pending</Button>
           </Card>
         </div>
       </div>
