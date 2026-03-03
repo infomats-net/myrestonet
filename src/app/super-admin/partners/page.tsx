@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   ShieldAlert,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Save
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { 
@@ -43,9 +44,11 @@ export default function PartnersPage() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [isNewDialogOpen, setIsNewDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailInUse, setEmailInUse] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  const [editingPartner, setEditingPartner] = useState<any>(null);
 
   const [form, setForm] = useState({
     name: '',
@@ -53,6 +56,12 @@ export default function PartnersPage() {
     password: '',
     commissionRate: '10',
     country: 'United Kingdom'
+  });
+
+  const [editForm, setEditForm] = useState({
+    name: '',
+    commissionRate: '10',
+    country: ''
   });
 
   const partnersQuery = useMemoFirebase(() => {
@@ -130,6 +139,27 @@ export default function PartnersPage() {
     }
   };
 
+  const handleUpdatePartner = async () => {
+    if (!firestore || !editingPartner) return;
+    setLoading(true);
+    try {
+      const partnerRef = doc(firestore, 'partners', editingPartner.id);
+      await updateDoc(partnerRef, {
+        name: editForm.name,
+        country: editForm.country,
+        commissionRate: parseFloat(editForm.commissionRate),
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Partner Updated", description: "Changes have been saved." });
+      setIsEditDialogOpen(false);
+      setEditingPartner(null);
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleStatus = async (partner: any) => {
     if (!firestore) return;
     try {
@@ -139,6 +169,16 @@ export default function PartnersPage() {
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     }
+  };
+
+  const openEditDialog = (partner: any) => {
+    setEditingPartner(partner);
+    setEditForm({
+      name: partner.name,
+      commissionRate: partner.commissionRate.toString(),
+      country: partner.country
+    });
+    setIsEditDialogOpen(true);
   };
 
   const filtered = partners?.filter(p => p.name.toLowerCase().includes(search.toLowerCase())) || [];
@@ -267,7 +307,7 @@ export default function PartnersPage() {
                       <Button variant="ghost" size="icon" onClick={() => toggleStatus(p)}>
                         {p.status === 'active' ? <ShieldAlert className="h-4 w-4 text-destructive" /> : <ShieldCheck className="h-4 w-4 text-emerald-500" />}
                       </Button>
-                      <Button variant="ghost" size="icon"><Settings2 className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => openEditDialog(p)}><Settings2 className="h-4 w-4" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -279,6 +319,53 @@ export default function PartnersPage() {
           </table>
         </div>
       </Card>
+
+      {/* Edit Partner Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="rounded-[2.5rem] p-10">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">Edit Partner</DialogTitle>
+            <DialogDescription>Update agency details and commission settings.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-6">
+            <div className="space-y-2">
+              <Label>Agency Name</Label>
+              <Input 
+                value={editForm.name} 
+                onChange={e => setEditForm({...editForm, name: e.target.value})} 
+                placeholder="e.g. Global Marketing Inc." 
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Commission Rate (%)</Label>
+                <Input 
+                  type="number" 
+                  value={editForm.commissionRate} 
+                  onChange={e => setEditForm({...editForm, commissionRate: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Region</Label>
+                <Input 
+                  value={editForm.country} 
+                  onChange={e => setEditForm({...editForm, country: e.target.value})} 
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" 
+              onClick={handleUpdatePartner} 
+              disabled={loading || !editForm.name}
+            >
+              {loading ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
