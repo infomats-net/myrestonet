@@ -61,7 +61,11 @@ service cloud.firestore {
     match /countries/{id} { allow read: if true; }
     match /states { allow read: if true; }
     match /states/{id} { allow read: if true; }
-    match /cities { allow read: if true; }
+    match /cities { 
+      allow read: if true; 
+      // Allow authenticated users (Admins/Partners) to add missing cities
+      allow create: if request.auth != null;
+    }
     match /cities/{id} { allow read: if true; }
 
     match /partners/{partnerId} {
