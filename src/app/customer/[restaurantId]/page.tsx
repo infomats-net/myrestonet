@@ -36,7 +36,7 @@ import {
   SheetTrigger, 
   SheetFooter 
 } from '@/components/ui/sheet';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -315,8 +315,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-emerald-600 mb-6">
             <CheckCircle2 className="h-10 w-10" />
           </div>
-          <h2 className="text-3xl font-black">Order Received!</h2>
-          <p className="text-slate-500 mt-2 mb-8">We are preparing your meal. An AI-generated receipt has been sent to your email.</p>
+          <DialogTitle className="text-3xl font-black">Order Received!</DialogTitle>
+          <DialogDescription className="text-slate-500 mt-2 mb-8">
+            We are preparing your meal. An AI-generated receipt has been sent to your email.
+          </DialogDescription>
           <Button className="w-full h-14 rounded-2xl font-black" onClick={() => setOrderComplete(false)}>Perfect, Thanks!</Button>
         </DialogContent>
       </Dialog>
