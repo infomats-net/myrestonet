@@ -15,7 +15,8 @@ import {
   DollarSign,
   ChevronRight,
   Info,
-  Loader2
+  Loader2,
+  Briefcase
 } from 'lucide-react';
 import Link from 'next/link';
 import { 
