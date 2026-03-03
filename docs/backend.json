@@ -54,6 +54,7 @@
         "logoUrl": { "type": "string", "description": "URL to the restaurant logo image." },
         "bannerUrl": { "type": "string", "description": "URL to the restaurant hero banner image." },
         "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "trial"] },
+        "tierId": { "type": "string", "description": "Reference to the SubscriptionTier ID." },
         "tables": {
           "type": "array",
           "items": {
@@ -70,6 +71,23 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "SubscriptionTier": {
+      "title": "SubscriptionTier",
+      "description": "A pricing plan for the platform.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "string", "description": "e.g. '$49'" },
+        "period": { "type": "string", "description": "e.g. '/mo'" },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "popular": { "type": "boolean" },
+        "activeTenants": { "type": "number" },
+        "color": { "type": "string", "description": "CSS class string for UI styling." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "price"]
     },
     "Menu": {
       "title": "Menu",
@@ -200,6 +218,7 @@
     "/mail/{mailId}": { "schema": { "$ref": "#/backend/entities/Mail" }, "description": "Outbound Email Queue." },
     "/countries/{countryId}": { "schema": { "$ref": "#/backend/entities/Country" }, "description": "Global Countries." },
     "/states/{stateId}": { "schema": { "$ref": "#/backend/entities/State" }, "description": "Regional States/Provinces." },
-    "/cities/{cityId}": { "schema": { "$ref": "#/backend/entities/City" }, "description": "Regional Cities." }
+    "/cities/{cityId}": { "schema": { "$ref": "#/backend/entities/City" }, "description": "Regional Cities." },
+    "/tiers/{tierId}": { "schema": { "$ref": "#/backend/entities/SubscriptionTier" }, "description": "Global Subscription Tiers." }
   }
 }
