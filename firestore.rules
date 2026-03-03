@@ -8,7 +8,11 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return request.auth != null && getUser().role == "super_admin";
+      // Platform owners have absolute, unrestricted access to all data and functions.
+      return request.auth != null && (
+        getUser().role == "super_admin" || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin"
+      );
     }
 
     function isPartner() {
@@ -47,12 +51,12 @@ service cloud.firestore {
       return false;
     }
 
-    // Platform-wide access for Super Admin
+    // Platform-wide unrestricted access for Super Admin
     match /{allPaths=**} {
       allow read, write: if isSuperAdmin();
     }
 
-    // Public regional metadata
+    // Public regional metadata - allow both get and list
     match /countries { allow read: if true; }
     match /countries/{id} { allow read: if true; }
     match /states { allow read: if true; }

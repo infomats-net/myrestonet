@@ -40,6 +40,9 @@ export function LocationSelector({ countryCode, onLocationChange }: LocationSele
     const fetchStates = async () => {
       if (!firestore || !countryCode) {
         setStates([]);
+        setSelectedStateId('');
+        setSelectedCityId('');
+        setCities([]);
         return;
       }
 
@@ -52,11 +55,14 @@ export function LocationSelector({ countryCode, onLocationChange }: LocationSele
         if (statesCache[countryCode]) {
           setStates(statesCache[countryCode]);
         } else {
-          const q = query(collection(firestore, 'states'), where('countryId', '==', countryCode));
+          const statesRef = collection(firestore, 'states');
+          const q = query(statesRef, where('countryId', '==', countryCode));
           const snap = await getDocs(q);
           const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          
           // Sort in memory to avoid index requirements
-          data.sort((a: any, b: any) => a.name.localeCompare(b.name));
+          data.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+          
           statesCache[countryCode] = data;
           setStates(data);
         }
@@ -78,6 +84,7 @@ export function LocationSelector({ countryCode, onLocationChange }: LocationSele
     const fetchCities = async () => {
       if (!firestore || !selectedStateId) {
         setCities([]);
+        setSelectedCityId('');
         return;
       }
 
@@ -88,10 +95,13 @@ export function LocationSelector({ countryCode, onLocationChange }: LocationSele
         if (citiesCache[selectedStateId]) {
           setCities(citiesCache[selectedStateId]);
         } else {
-          const q = query(collection(firestore, 'cities'), where('stateId', '==', selectedStateId));
+          const citiesRef = collection(firestore, 'cities');
+          const q = query(citiesRef, where('stateId', '==', selectedStateId));
           const snap = await getDocs(q);
           const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          data.sort((a: any, b: any) => a.name.localeCompare(b.name));
+          
+          data.sort((a: any, b: any) => (a.name || '').localeCompare(b.name || ''));
+          
           citiesCache[selectedStateId] = data;
           setCities(data);
         }
@@ -111,6 +121,8 @@ export function LocationSelector({ countryCode, onLocationChange }: LocationSele
   const handleStateChange = (id: string) => {
     setSelectedStateId(id);
     const stateName = states.find(s => s.id === id)?.name || '';
+    setSelectedCityId('');
+    setCities([]);
     onLocationChange({ stateId: id, stateName, cityId: '', cityName: '' });
   };
 
@@ -139,9 +151,13 @@ export function LocationSelector({ countryCode, onLocationChange }: LocationSele
             <SelectValue placeholder={!countryCode ? "Select country first" : "Choose state..."} />
           </SelectTrigger>
           <SelectContent className="rounded-xl max-h-60">
-            {states.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-            {states.length === 0 && !loadingStates && countryCode && (
-              <p className="p-4 text-xs text-muted-foreground italic">No states found for this country.</p>
+            {states.map(s => (
+              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+            ))}
+            {!loadingStates && countryCode && states.length === 0 && (
+              <div className="p-4 text-xs text-muted-foreground italic text-center">
+                No states found for this country in database.
+              </div>
             )}
           </SelectContent>
         </Select>
@@ -163,9 +179,13 @@ export function LocationSelector({ countryCode, onLocationChange }: LocationSele
             <SelectValue placeholder={!selectedStateId ? "Select state first" : "Choose city..."} />
           </SelectTrigger>
           <SelectContent className="rounded-xl max-h-60">
-            {cities.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-            {cities.length === 0 && !loadingCities && selectedStateId && (
-              <p className="p-4 text-xs text-muted-foreground italic">No cities found for this state.</p>
+            {cities.map(c => (
+              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+            ))}
+            {!loadingCities && selectedStateId && cities.length === 0 && (
+              <div className="p-4 text-xs text-muted-foreground italic text-center">
+                No cities found for this state in database.
+              </div>
             )}
           </SelectContent>
         </Select>
