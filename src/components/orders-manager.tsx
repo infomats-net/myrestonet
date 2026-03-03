@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -10,7 +9,9 @@ import {
   Loader2,
   DollarSign,
   User,
-  Package
+  Package,
+  Phone,
+  Hash
 } from 'lucide-react';
 import { 
   useFirestore, 
@@ -24,6 +25,12 @@ import {
   query, 
   orderBy 
 } from 'firebase/firestore';
+import { 
+  Accordion, 
+  AccordionContent, 
+  AccordionItem, 
+  AccordionTrigger 
+} from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -89,15 +96,34 @@ export function OrdersManager({ restaurantId }: { restaurantId: string }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
+      <Accordion type="single" collapsible className="w-full space-y-4">
         {filteredOrders.map(order => (
-          <Card key={order.id} className="rounded-[2rem] border-none shadow-xl overflow-hidden bg-white group hover:shadow-2xl transition-all duration-500">
-            <CardContent className="p-0">
-              <div className="flex flex-col lg:flex-row">
-                <div className="lg:w-72 bg-slate-50 p-8 border-r space-y-6 shrink-0">
+          <AccordionItem 
+            key={order.id} 
+            value={order.id} 
+            className="border-none bg-white px-6 rounded-3xl overflow-hidden shadow-xl"
+          >
+            <AccordionTrigger className="hover:no-underline py-6">
+              <div className="flex flex-1 items-center justify-between text-left pr-6">
+                <div className="flex items-center gap-6">
+                  <div className="bg-slate-50 w-12 h-12 rounded-2xl flex items-center justify-center text-slate-400 shrink-0 border border-slate-100">
+                    <Hash className="h-5 w-5" />
+                  </div>
                   <div className="space-y-1">
-                    <Badge className={cn(
-                      "font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-full border-none",
+                    <p className="font-black text-lg text-slate-900 leading-tight">Order #{order.id.slice(-6).toUpperCase()}</p>
+                    <p className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-widest">
+                      <Phone className="h-3 w-3 text-primary" /> {order.customerPhone || 'No Phone'}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-8">
+                   <div className="text-right hidden sm:block">
+                     <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Total Amount</p>
+                     <p className="font-black text-slate-900">${order.totalAmount?.toFixed(2)}</p>
+                   </div>
+                   <Badge className={cn(
+                      "font-black text-[10px] uppercase tracking-widest px-4 py-1.5 rounded-full border-none shadow-sm",
                       order.status === 'pending' ? "bg-amber-100 text-amber-700" :
                       order.status === 'preparing' ? "bg-blue-100 text-blue-700" :
                       order.status === 'delivered' ? "bg-emerald-100 text-emerald-700" :
@@ -105,97 +131,107 @@ export function OrdersManager({ restaurantId }: { restaurantId: string }) {
                     )}>
                       {order.status}
                     </Badge>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Order ID</p>
-                    <p className="text-xs font-mono font-bold text-slate-900">#{order.id.slice(-6).toUpperCase()}</p>
-                  </div>
-
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pb-8 pt-4 border-t border-slate-50">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 px-2 mt-4">
+                {/* Column 1: Order Content */}
+                <div className="space-y-8">
                   <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Clock className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-bold text-slate-600">
-                        {order.createdAt ? format(new Date(order.createdAt), 'h:mm a, MMM d') : 'N/A'}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-3 text-slate-600">
-                      <DollarSign className="h-4 w-4 text-primary" />
-                      <span className="text-lg font-black text-slate-900">${order.totalAmount?.toFixed(2)}</span>
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                      <Package className="h-3.5 w-3.5" /> Order Summary
+                    </h3>
+                    <div className="space-y-2">
+                      {order.items?.map((item: any, i: number) => (
+                        <div key={i} className="flex justify-between items-center text-sm font-bold p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
+                          <div className="flex items-center gap-3">
+                            <span className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">{item.quantity}x</span>
+                            <span className="text-slate-700">{item.name}</span>
+                          </div>
+                          <span className="text-slate-900 font-black">${(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t space-y-3">
-                    <p className="text-[10px] font-black uppercase text-slate-400">Update Status</p>
-                    <div className="flex flex-wrap gap-2">
+                  <div className="pt-6 border-t space-y-4">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.1em]">Fulfillment Controls</p>
+                    <div className="flex flex-wrap gap-3">
                       {order.status === 'pending' && (
-                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 rounded-lg text-[9px] font-bold h-8" onClick={() => updateOrderStatus(order.id, 'preparing')}>
-                          Start Prep
+                        <Button className="bg-blue-600 hover:bg-blue-700 rounded-xl px-6 font-black text-xs h-11" onClick={() => updateOrderStatus(order.id, 'preparing')}>
+                          Start Preparation
                         </Button>
                       )}
                       {order.status === 'preparing' && (
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 rounded-lg text-[9px] font-bold h-8" onClick={() => updateOrderStatus(order.id, 'delivered')}>
-                          Delivered
+                        <Button className="bg-emerald-600 hover:bg-emerald-700 rounded-xl px-6 font-black text-xs h-11" onClick={() => updateOrderStatus(order.id, 'delivered')}>
+                          Mark as Delivered
                         </Button>
                       )}
                       {order.status !== 'cancelled' && order.status !== 'delivered' && (
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/5 text-[9px] font-bold h-8" onClick={() => updateOrderStatus(order.id, 'cancelled')}>
-                          Cancel
+                        <Button variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/5 rounded-xl font-black text-xs h-11" onClick={() => updateOrderStatus(order.id, 'cancelled')}>
+                          Cancel Order
                         </Button>
                       )}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex-1 p-8 space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                        <Package className="h-3 w-3" /> Ordered Items
-                      </h3>
-                      <div className="space-y-3">
-                        {order.items?.map((item: any, i: number) => (
-                          <div key={i} className="flex justify-between items-center text-sm font-bold p-3 bg-slate-50 rounded-xl">
-                            <div className="flex items-center gap-3">
-                              <span className="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center text-[10px] font-black">{item.quantity}x</span>
-                              <span className="text-slate-700">{item.name}</span>
-                            </div>
-                            <span className="text-slate-400">${(item.price * item.quantity).toFixed(2)}</span>
-                          </div>
-                        ))}
+                {/* Column 2: Delivery Details */}
+                <div className="space-y-8">
+                  <div className="space-y-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                      <User className="h-3.5 w-3.5" /> Customer & Logistics
+                    </h3>
+                    <div className="bg-slate-50 p-8 rounded-[2rem] space-y-6 border border-slate-100">
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Full Name</p>
+                          <p className="text-sm font-black text-slate-900">{order.customerName || 'Guest'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Email Address</p>
+                          <p className="text-sm font-bold text-slate-600 truncate">{order.customerEmail || 'N/A'}</p>
+                        </div>
                       </div>
-                    </div>
+                      
+                      <div className="space-y-1 pt-4 border-t border-slate-200/50">
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Delivery Address</p>
+                        <p className="text-sm font-bold text-slate-700 leading-relaxed">{order.deliveryAddress || 'N/A'}</p>
+                      </div>
 
-                    <div className="space-y-4">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                        <User className="h-3 w-3" /> Delivery Details
-                      </h3>
-                      <div className="bg-slate-50 p-6 rounded-2xl space-y-3">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-slate-400 font-medium">Customer ID</span>
-                          <span className="font-bold text-slate-900 truncate max-w-[120px]">{order.customerId}</span>
+                      <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-200/50">
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Payment Method</p>
+                          <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-300 rounded-lg bg-white">
+                            {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Stripe Online'}
+                          </Badge>
                         </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-slate-400 font-medium">Payment</span>
-                          <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200">{order.paymentMethod}</Badge>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-slate-400 font-medium">Charge</span>
-                          <span className="font-black text-primary">${order.deliveryCharge?.toFixed(2)}</span>
+                        <div className="space-y-1">
+                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Placed At</p>
+                          <div className="flex items-center gap-2 text-slate-600">
+                            <Clock className="h-3 w-3" />
+                            <span className="text-[11px] font-bold">
+                              {order.createdAt ? format(new Date(order.createdAt), 'MMM d, h:mm a') : 'N/A'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </AccordionContent>
+          </AccordionItem>
         ))}
 
         {filteredOrders.length === 0 && (
-          <div className="py-20 text-center border-2 border-dashed border-white/10 rounded-[3rem] bg-white/5">
-            <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-20 text-white" />
-            <p className="font-bold text-white uppercase text-[10px] tracking-[0.2em]">No orders in this category</p>
+          <div className="py-24 text-center border-2 border-dashed border-white/10 rounded-[3rem] bg-white/5 backdrop-blur-sm">
+            <ShoppingBag className="h-16 w-16 mx-auto mb-6 opacity-20 text-white" />
+            <p className="font-black text-white uppercase text-xs tracking-[0.3em]">No orders in this category</p>
           </div>
         )}
-      </div>
+      </Accordion>
     </div>
   );
 }
