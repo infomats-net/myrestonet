@@ -8,8 +8,6 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      // Platform owners have absolute, unrestricted access to all data and functions.
-      // Use exists() to avoid errors if the profile document hasn't been created yet.
       return request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin";
@@ -21,20 +19,10 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "marketing_partner";
     }
 
-    function isSupport() {
-      return request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        (getUser().role == "support" || getUser().role == "helper");
-    }
-
     function belongsToRestaurant(restaurantId) {
       return request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         getUser().restaurantId == restaurantId;
-    }
-
-    function belongsToPartner(partnerId) {
-      return isPartner() && getUser().partnerId == partnerId;
     }
 
     function hasPermission(restaurantId, action) {
@@ -48,42 +36,27 @@ service cloud.firestore {
       let restaurantData = get(/databases/$(database)/documents/restaurants/$(restaurantId)).data;
       if (isPartner() && restaurantData.partnerId == userData.partnerId) return true;
       
-      if (isSupport()) {
-        let assigned = userData.assignedRestaurants;
-        return assigned.exists(r, 
-          r.restaurantId == restaurantId && 
-          r.permissions.hasAny([action]) && 
-          (r.expiryDate == null || timestamp(r.expiryDate) > request.time)
-        );
-      }
       return false;
     }
 
-    // Platform-wide unrestricted access for Super Admin
     match /{allPaths=**} {
       allow read, write: if isSuperAdmin();
     }
 
-    // Public regional metadata - allow both get and list
     match /countries { allow read: if true; }
-    match /countries/{id} { allow read: if true; }
     match /states { allow read: if true; }
-    match /states/{id} { allow read: if true; }
     match /cities { 
       allow read: if true; 
-      // Allow authenticated users (Admins/Partners) to add missing cities
       allow create: if request.auth != null;
     }
-    match /cities/{id} { allow read: if true; }
 
-    // Subscription Tiers - Publicly readable for pricing pages
-    match /tiers/{tierId} {
+    match /tiers {
       allow read: if true;
       allow write: if isSuperAdmin();
     }
 
     match /partners/{partnerId} {
-      allow read: if belongsToPartner(partnerId) || isSuperAdmin();
+      allow read: if isSuperAdmin() || (isPartner() && request.auth.uid == partnerId);
       allow write: if isSuperAdmin(); 
     }
 
@@ -129,10 +102,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      // Users can always read their own profile. Admins/Partners can list for management.
       allow read: if request.auth != null && (request.auth.uid == userId || isSuperAdmin() || isPartner());
       allow list: if isPartner() || isSuperAdmin(); 
-      // Allow users to create their own profile document (needed for signup)
       allow create: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
       allow update: if request.auth != null && (
         (request.auth.uid == userId && request.resource.data.role == resource.data.role) || 

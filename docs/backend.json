@@ -51,10 +51,13 @@
         "city": { "type": "string" },
         "country": { "type": "string" },
         "customDomain": { "type": "string" },
-        "logoUrl": { "type": "string", "description": "URL to the restaurant logo image." },
-        "bannerUrl": { "type": "string", "description": "URL to the restaurant hero banner image." },
+        "logoUrl": { "type": "string" },
+        "bannerUrl": { "type": "string" },
         "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "trial"] },
-        "tierId": { "type": "string", "description": "Reference to the SubscriptionTier ID." },
+        "tierId": { "type": "string" },
+        "baseCurrency": { "type": "string", "default": "USD" },
+        "stripeAccountId": { "type": "string", "description": "Connected Stripe Connect account ID." },
+        "paymentsEnabled": { "type": "boolean", "default": false },
         "tables": {
           "type": "array",
           "items": {
@@ -79,65 +82,15 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "price": { "type": "string", "description": "e.g. '$49'" },
-        "period": { "type": "string", "description": "e.g. '/mo'" },
+        "price": { "type": "string" },
+        "period": { "type": "string" },
         "features": { "type": "array", "items": { "type": "string" } },
         "popular": { "type": "boolean" },
         "activeTenants": { "type": "number" },
-        "color": { "type": "string", "description": "CSS class string for UI styling." },
+        "color": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "name", "price"]
-    },
-    "Menu": {
-      "title": "Menu",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "isActive": { "type": "boolean" }
-      }
-    },
-    "MenuItem": {
-      "title": "MenuItem",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "description": { "type": "string" },
-        "price": { "type": "number" },
-        "category": { "type": "string" },
-        "imageUrl": { "type": "string" }
-      }
-    },
-    "Reservation": {
-      "title": "Reservation",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "customerId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "customerEmail": { "type": "string" },
-        "tableIds": { "type": "array", "items": { "type": "string" } },
-        "dateTime": { "type": "string", "format": "date-time" },
-        "partySize": { "type": "number" },
-        "status": { "type": "string", "enum": ["pending", "confirmed", "cancelled", "completed"] },
-        "specialRequests": { "type": "string" },
-        "waitlist": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "GalleryImage": {
-      "title": "GalleryImage",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "url": { "type": "string" },
-        "caption": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
     },
     "Order": {
       "title": "Order",
@@ -145,61 +98,14 @@
       "properties": {
         "id": { "type": "string" },
         "customerId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "customerEmail": { "type": "string" },
         "items": { "type": "array", "items": { "type": "object" } },
-        "subtotal": { "type": "number" },
-        "deliveryCharges": { "type": "number" },
         "totalAmount": { "type": "number" },
+        "currency": { "type": "string" },
         "paymentMethod": { "type": "string", "enum": ["cod", "stripe", "paypal"] },
-        "paymentStatus": { "type": "string", "enum": ["pending", "paid"] },
+        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "refunded"] },
+        "stripePaymentIntentId": { "type": "string" },
         "orderStatus": { "type": "string", "enum": ["new", "preparing", "delivered", "cancelled"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "Mail": {
-      "title": "Mail",
-      "description": "Firestore-triggered email document for transactional notifications.",
-      "type": "object",
-      "properties": {
-        "to": { "type": "array", "items": { "type": "string" } },
-        "message": {
-          "type": "object",
-          "properties": {
-            "subject": { "type": "string" },
-            "text": { "type": "string" },
-            "html": { "type": "string" }
-          }
-        },
         "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["to", "message"]
-    },
-    "Country": {
-      "title": "Country",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" }
-      }
-    },
-    "State": {
-      "title": "State",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "countryId": { "type": "string" }
-      }
-    },
-    "City": {
-      "title": "City",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "stateId": { "type": "string" }
       }
     }
   },
@@ -207,18 +113,10 @@
     "providers": ["password", "anonymous"]
   },
   "firestore": {
-    "/users/{userId}": { "schema": { "$ref": "#/backend/entities/UserProfile" }, "description": "Users." },
-    "/partners/{partnerId}": { "schema": { "$ref": "#/backend/entities/Partner" }, "description": "Partners." },
-    "/restaurants/{restaurantId}": { "schema": { "$ref": "#/backend/entities/Restaurant" }, "description": "Restaurants." },
-    "/restaurants/{restaurantId}/menus/{menuId}": { "schema": { "$ref": "#/backend/entities/Menu" }, "description": "Restaurant Menus." },
-    "/restaurants/{restaurantId}/menus/{menuId}/items/{itemId}": { "schema": { "$ref": "#/backend/entities/MenuItem" }, "description": "Menu Items." },
-    "/restaurants/{restaurantId}/reservations/{resId}": { "schema": { "$ref": "#/backend/entities/Reservation" }, "description": "Reservations." },
-    "/restaurants/{restaurantId}/gallery/{imageId}": { "schema": { "$ref": "#/backend/entities/GalleryImage" }, "description": "Photo Gallery Images." },
-    "/restaurants/{restaurantId}/orders/{orderId}": { "schema": { "$ref": "#/backend/entities/Order" }, "description": "Restaurant Orders." },
-    "/mail/{mailId}": { "schema": { "$ref": "#/backend/entities/Mail" }, "description": "Outbound Email Queue." },
-    "/countries/{countryId}": { "schema": { "$ref": "#/backend/entities/Country" }, "description": "Global Countries." },
-    "/states/{stateId}": { "schema": { "$ref": "#/backend/entities/State" }, "description": "Regional States/Provinces." },
-    "/cities/{cityId}": { "schema": { "$ref": "#/backend/entities/City" }, "description": "Regional Cities." },
-    "/tiers/{tierId}": { "schema": { "$ref": "#/backend/entities/SubscriptionTier" }, "description": "Global Subscription Tiers." }
+    "/users/{userId}": { "schema": { "$ref": "#/backend/entities/UserProfile" } },
+    "/partners/{partnerId}": { "schema": { "$ref": "#/backend/entities/Partner" } },
+    "/restaurants/{restaurantId}": { "schema": { "$ref": "#/backend/entities/Restaurant" } },
+    "/restaurants/{restaurantId}/orders/{orderId}": { "schema": { "$ref": "#/backend/entities/Order" } },
+    "/tiers/{tierId}": { "schema": { "$ref": "#/backend/entities/SubscriptionTier" } }
   }
 }

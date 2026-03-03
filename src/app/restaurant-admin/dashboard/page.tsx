@@ -7,36 +7,20 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { 
-  Utensils, 
-  Settings, 
-  Clock,
-  Save,
   Loader2,
   Plus,
-  Trash2,
-  Pencil,
   ShieldAlert,
-  ExternalLink,
   ShoppingBag,
   CreditCard,
-  Truck,
   DollarSign,
-  ChevronRight,
-  ListFilter,
-  Users,
-  LayoutGrid,
   CalendarDays,
   CheckCircle2,
   XCircle,
-  Clock3,
-  ShoppingCart,
-  Camera,
-  Calendar as CalendarIcon,
+  Clock,
+  Save,
   Zap,
-  Star,
-  Check
+  Globe
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
@@ -44,8 +28,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection, useAuth } from '@/firebase';
-import { doc, collection, addDoc, deleteDoc, updateDoc, arrayUnion, arrayRemove, query, orderBy } from 'firebase/firestore';
+import { useDoc, useFirestore, useUser, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, addDoc, updateDoc, arrayUnion, query, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { DesignSystemEditor } from '@/components/design-system-editor';
 import { OperatingHoursEditor } from '@/components/operating-hours-editor';
@@ -53,6 +37,7 @@ import { MenuCatalogEditor } from '@/components/menu-catalog-editor';
 import { GalleryManager } from '@/components/gallery-manager';
 import { OrdersManager } from '@/components/orders-manager';
 import { RestaurantBilling } from '@/components/restaurant-billing';
+import { PaymentsManager } from '@/components/payments-manager';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -76,18 +61,14 @@ function DashboardContent() {
   const { user: authUser, isUserLoading: authLoading } = useUser();
   const { toast } = useToast();
   
-  // 1. Resolve User Profile
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !authUser?.uid) return null;
     return doc(firestore, 'users', authUser.uid);
   }, [firestore, authUser?.uid]);
   
   const { data: userProfile, isLoading: loadingProfile } = useDoc(userProfileRef);
-  
-  // 2. Determine Restaurant ID Context
   const effectiveRestaurantId = impersonateId || userProfile?.restaurantId;
 
-  // 3. Fetch Restaurant Data
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return doc(firestore, 'restaurants', effectiveRestaurantId);
@@ -95,23 +76,18 @@ function DashboardContent() {
 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
 
-  // 4. Fetch Reservations
   const reservationsQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return query(collection(firestore, 'restaurants', effectiveRestaurantId, 'reservations'), orderBy('dateTime', 'desc'));
   }, [firestore, effectiveRestaurantId]);
   const { data: reservations } = useCollection(reservationsQuery);
 
-  // 5. Fetch Orders
   const ordersQuery = useMemoFirebase(() => {
     if (!firestore || !effectiveRestaurantId) return null;
     return query(collection(firestore, 'restaurants', effectiveRestaurantId, 'orders'), orderBy('createdAt', 'desc'));
   }, [firestore, effectiveRestaurantId]);
   const { data: orders } = useCollection(ordersQuery);
 
-  const [isTableDialogOpen, setIsTableDialogOpen] = useState(false);
-  const [tableForm, setTableForm] = useState({ name: '', size: '2', location: 'Indoor' });
-  
   const [isResDialogOpen, setIsResDialogOpen] = useState(false);
   const [resForm, setResForm] = useState({ 
     name: '', 
@@ -124,36 +100,11 @@ function DashboardContent() {
 
   const [isSaving, setIsSaving] = useState(false);
 
-  // Auth & Role Protection
   useEffect(() => {
     if (!authLoading && !authUser) {
       router.push('/auth/login');
     }
   }, [authLoading, authUser, router]);
-
-  const handleAddTable = async () => {
-    if (!firestore || !effectiveRestaurantId) return;
-    setIsSaving(true);
-    try {
-      const newTable = {
-        id: `table-${Date.now()}`,
-        name: tableForm.name,
-        size: parseInt(tableForm.size),
-        location: tableForm.location,
-        isActive: true
-      };
-      await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId), {
-        tables: arrayUnion(newTable)
-      });
-      setIsTableDialogOpen(false);
-      setTableForm({ name: '', size: '2', location: 'Indoor' });
-      toast({ title: "Table Added" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: e.message });
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const handleAddReservation = async () => {
     if (!firestore || !effectiveRestaurantId || !resForm.date) return;
@@ -179,7 +130,7 @@ function DashboardContent() {
       await addDoc(collection(firestore, 'restaurants', effectiveRestaurantId, 'reservations'), reservationData);
       setIsResDialogOpen(false);
       setResForm({ name: '', email: '', date: new Date(), time: '19:00', partySize: '2', tableIds: [] });
-      toast({ title: "Reservation Added", description: "Table has been booked successfully." });
+      toast({ title: "Reservation Added" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
@@ -199,7 +150,6 @@ function DashboardContent() {
 
   if (authLoading) return <LoadingScreen message="Checking authentication..." />;
   if (!authUser) return null; 
-  
   if (loadingProfile) return <LoadingScreen message="Loading user profile..." />;
   
   if (!effectiveRestaurantId && !loadingProfile) {
@@ -207,7 +157,7 @@ function DashboardContent() {
       <div className="p-20 text-center space-y-6 max-w-xl mx-auto">
         <ShieldAlert className="h-16 w-16 mx-auto text-amber-500 opacity-50" />
         <h1 className="text-2xl font-black">No Restaurant Context</h1>
-        <p className="text-slate-500">You are logged in as a platform administrator or partner. Please select a tenant from your specific dashboard to manage their instance.</p>
+        <p className="text-slate-500">Please select a tenant from your dashboard to manage their instance.</p>
         <Button asChild className="rounded-xl h-12 px-8">
           <Link href={userProfile?.role === 'marketing_partner' ? '/partner-admin/dashboard' : '/super-admin/dashboard'}>
             Go to Platform Dashboard
@@ -232,6 +182,7 @@ function DashboardContent() {
           <TabsTrigger value="overview" className={tabTriggerStyle}>Dashboard</TabsTrigger>
           <TabsTrigger value="orders" className={tabTriggerStyle}>Orders</TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}>Reservations</TabsTrigger>
+          <TabsTrigger value="payments" className={tabTriggerStyle}>Payments</TabsTrigger>
           <TabsTrigger value="billing" className={tabTriggerStyle}>Billing</TabsTrigger>
         </TabsList>
 
@@ -246,8 +197,12 @@ function DashboardContent() {
               <CardContent><div className="text-4xl font-black text-blue-600">{reservations?.filter(r => r.status === 'confirmed').length || 0}</div></CardContent>
             </Card>
             <Card className="rounded-[2rem] border-none shadow-md bg-white">
-              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Plan Status</CardTitle></CardHeader>
-              <CardContent><div className="text-4xl font-black text-amber-500 capitalize">{restaurant?.subscriptionStatus || 'Active'}</div></CardContent>
+              <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Payments Status</CardTitle></CardHeader>
+              <CardContent>
+                <Badge className={restaurant?.paymentsEnabled ? "bg-emerald-500" : "bg-slate-400"}>
+                  {restaurant?.paymentsEnabled ? "Stripe Active" : "Stripe Disconnected"}
+                </Badge>
+              </CardContent>
             </Card>
             <Card className="rounded-[2rem] border-none shadow-md bg-white">
               <CardHeader className="pb-2"><CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-400">Capacity</CardTitle></CardHeader>
@@ -336,6 +291,10 @@ function DashboardContent() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="payments">
+          <PaymentsManager restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+
         <TabsContent value="billing">
           <RestaurantBilling restaurantId={effectiveRestaurantId!} />
         </TabsContent>
@@ -353,45 +312,6 @@ function DashboardContent() {
           <OperatingHoursEditor restaurantId={effectiveRestaurantId!} />
         </TabsContent>
       </Tabs>
-
-      {/* Table Dialog */}
-      <Dialog open={isTableDialogOpen} onOpenChange={setIsTableDialogOpen}>
-        <DialogContent className="rounded-[2.5rem]">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black">Configure Table</DialogTitle>
-            <DialogDescription>Define a table for AI allocation and reservations.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 py-6">
-            <div className="space-y-2">
-              <Label>Table Name / Number</Label>
-              <Input value={tableForm.name} onChange={e => setTableForm({...tableForm, name: e.target.value})} placeholder="e.g. Table 1 or Terrace 4" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Max Size</Label>
-                <Input type="number" value={tableForm.size} onChange={e => setTableForm({...tableForm, size: e.target.value})} />
-              </div>
-              <div className="space-y-2">
-                <Label>Location</Label>
-                <Select value={tableForm.location} onValueChange={v => setTableForm({...tableForm, location: v})}>
-                  <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="Indoor">Indoor</SelectItem>
-                    <SelectItem value="Outdoor">Outdoor</SelectItem>
-                    <SelectItem value="Window">Window</SelectItem>
-                    <SelectItem value="Bar">Bar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button className="w-full h-14 rounded-2xl font-black" onClick={handleAddTable} disabled={isSaving || !tableForm.name}>
-              {isSaving ? <Loader2 className="animate-spin" /> : "Save Table"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Manual Reservation Dialog */}
       <Dialog open={isResDialogOpen} onOpenChange={setIsResDialogOpen}>
@@ -418,7 +338,7 @@ function DashboardContent() {
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full h-12 justify-start text-left font-bold rounded-xl bg-slate-50">
-                      <CalendarIcon className="mr-2 h-4 w-4 text-primary" />
+                      <CalendarDays className="mr-2 h-4 w-4 text-primary" />
                       {resForm.date ? format(resForm.date, "PPP") : <span>Pick a date</span>}
                     </Button>
                   </PopoverTrigger>
@@ -447,7 +367,7 @@ function DashboardContent() {
           </div>
           <DialogFooter>
             <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleAddReservation} disabled={isSaving || !resForm.name || !resForm.date}>
-              {isSubmitting ? <Loader2 className="animate-spin" /> : "Confirm Reservation"}
+              {isSaving ? <Loader2 className="animate-spin" /> : "Confirm Reservation"}
             </Button>
           </DialogFooter>
         </DialogContent>
