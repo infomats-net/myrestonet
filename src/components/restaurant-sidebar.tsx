@@ -68,15 +68,15 @@ function SidebarBrand() {
       {designSettings?.branding?.logoUrl ? (
         <img 
           src={designSettings.branding.logoUrl} 
-          className="h-8 w-8 rounded-lg object-contain shrink-0" 
+          className="h-10 w-10 rounded-lg object-contain shrink-0" 
           alt="Logo" 
         />
       ) : (
-        <div className="bg-accent rounded-lg p-1.5 shrink-0">
-          <ShoppingBag className="h-5 w-5 text-white" />
+        <div className="bg-accent rounded-lg p-2 shrink-0">
+          <ShoppingBag className="h-6 w-6 text-white" />
         </div>
       )}
-      <span className="font-bold text-sm text-primary truncate group-data-[collapsible=icon]:hidden">
+      <span className="font-black text-2xl text-primary truncate group-data-[collapsible=icon]:hidden tracking-tighter">
         {restaurant?.name || 'Merchant Panel'}
       </span>
     </Link>
@@ -232,7 +232,7 @@ function SidebarLinks() {
 export function RestaurantSidebar() {
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
+      <SidebarHeader className="h-20 flex items-center justify-center border-b px-4">
         <Suspense fallback={<div className="h-8 w-8 rounded-lg bg-muted animate-pulse" />}>
           <SidebarBrand />
         </Suspense>
