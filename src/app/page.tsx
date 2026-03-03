@@ -2,15 +2,14 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
   UtensilsCrossed, 
   MapPin, 
-  ExternalLink, 
-  ShoppingBag, 
   Loader2,
   Globe,
-  ArrowRight
+  ArrowRight,
+  ShoppingBag
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -39,9 +38,6 @@ export default function Home() {
           <nav className="flex gap-4 sm:gap-6">
             <Button variant="ghost" asChild className="font-bold text-slate-600">
               <Link href="/auth/login">Merchant Login</Link>
-            </Button>
-            <Button className="rounded-xl font-bold shadow-lg shadow-primary/20" asChild>
-              <Link href="/auth/signup">Join Platform</Link>
             </Button>
           </nav>
         </div>
@@ -144,9 +140,6 @@ export default function Home() {
                 <p className="text-slate-500 max-w-sm mx-auto mt-2 font-medium">
                   We're currently expanding our network. Check back soon for new local favorites!
                 </p>
-                <Button variant="outline" className="mt-8 rounded-xl h-12 px-8 font-bold" asChild>
-                  <Link href="/auth/signup">Register Your Restaurant</Link>
-                </Button>
               </div>
             )}
           </div>
@@ -163,7 +156,6 @@ export default function Home() {
             <p className="text-sm text-slate-400 font-medium">© 2024 MyRestoNet Global Inc. All rights reserved.</p>
             <div className="flex gap-6">
               <Link href="/auth/login" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">Merchant Portal</Link>
-              <Link href="/auth/signup" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">Partner Program</Link>
             </div>
           </div>
         </div>
