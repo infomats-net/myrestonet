@@ -52,8 +52,12 @@ service cloud.firestore {
       allow read, write: if isSuperAdmin();
     }
 
+    // Public regional metadata
+    match /countries { allow read: if true; }
     match /countries/{id} { allow read: if true; }
+    match /states { allow read: if true; }
     match /states/{id} { allow read: if true; }
+    match /cities { allow read: if true; }
     match /cities/{id} { allow read: if true; }
 
     match /partners/{partnerId} {
