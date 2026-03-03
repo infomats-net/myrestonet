@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -191,7 +190,7 @@ export function LocationSelector({ countryCode, onLocationChange }: LocationSele
                 className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"
                 onClick={() => setIsAddCityOpen(true)}
               >
-                <Plus className="h-3 w-3" /> Missing?
+                <Plus className="h-3 w-3" /> Add City
               </Button>
             )}
           </div>
