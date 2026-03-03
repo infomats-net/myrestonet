@@ -157,6 +157,32 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["to", "message"]
+    },
+    "Country": {
+      "title": "Country",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    },
+    "State": {
+      "title": "State",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "countryId": { "type": "string" }
+      }
+    },
+    "City": {
+      "title": "City",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "stateId": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -171,6 +197,9 @@
     "/restaurants/{restaurantId}/reservations/{resId}": { "schema": { "$ref": "#/backend/entities/Reservation" }, "description": "Reservations." },
     "/restaurants/{restaurantId}/gallery/{imageId}": { "schema": { "$ref": "#/backend/entities/GalleryImage" }, "description": "Photo Gallery Images." },
     "/restaurants/{restaurantId}/orders/{orderId}": { "schema": { "$ref": "#/backend/entities/Order" }, "description": "Restaurant Orders." },
-    "/mail/{mailId}": { "schema": { "$ref": "#/backend/entities/Mail" }, "description": "Outbound Email Queue." }
+    "/mail/{mailId}": { "schema": { "$ref": "#/backend/entities/Mail" }, "description": "Outbound Email Queue." },
+    "/countries/{countryId}": { "schema": { "$ref": "#/backend/entities/Country" }, "description": "Global Countries." },
+    "/states/{stateId}": { "schema": { "$ref": "#/backend/entities/State" }, "description": "Regional States/Provinces." },
+    "/cities/{cityId}": { "schema": { "$ref": "#/backend/entities/City" }, "description": "Regional Cities." }
   }
 }

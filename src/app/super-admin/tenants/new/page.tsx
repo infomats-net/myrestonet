@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -26,7 +27,8 @@ import {
   UtensilsCrossed,
   MapPin,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Globe
 } from 'lucide-react';
 import Link from 'next/link';
 import { useFirebase, useCollection, useMemoFirebase, useDoc } from '@/firebase';
@@ -41,6 +43,7 @@ import { cn } from '@/lib/utils';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { generateEmailContent } from '@/ai/flows/generate-email-content';
+import { LocationSelector } from '@/components/location-selector';
 
 const formSchema = z.object({
   restaurantName: z.string().min(2, "Restaurant name is required"),
@@ -62,6 +65,11 @@ const formSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
+
+const SUPPORTED_COUNTRY_NAMES = [
+  "Australia", "United Kingdom", "United States", "United Arab Emirates", 
+  "Saudi Arabia", "Pakistan", "New Zealand", "Malaysia", "Thailand", "Singapore"
+];
 
 export default function NewTenantPage() {
   const router = useRouter();
@@ -99,7 +107,7 @@ export default function NewTenantPage() {
       contactName: "",
       contactPhone: "",
       cuisine: [],
-      country: "Australia",
+      country: "AU", // ISO code for Australia
       baseCurrency: "AUD",
       city: "",
       state: "",
@@ -115,22 +123,29 @@ export default function NewTenantPage() {
   const adminEmail = form.watch('adminEmail');
   const password = form.watch('password');
   const confirmPassword = form.watch('confirmPassword');
-  const selectedCountry = form.watch('country');
+  const selectedCountryCode = form.watch('country');
+
+  const supportedCountries = WORLD_COUNTRIES.filter(c => 
+    SUPPORTED_COUNTRY_NAMES.includes(c.name)
+  );
 
   useEffect(() => {
     if (profile?.role === 'marketing_partner' && partnerData?.country) {
-      form.setValue('country', partnerData.country, { shouldValidate: true });
+      const country = WORLD_COUNTRIES.find(c => c.name === partnerData.country);
+      if (country) {
+        form.setValue('country', country.code, { shouldValidate: true });
+      }
     }
   }, [profile, partnerData, form]);
 
   useEffect(() => {
-    if (selectedCountry) {
-      const countryData = WORLD_COUNTRIES.find(c => c.name === selectedCountry);
+    if (selectedCountryCode) {
+      const countryData = WORLD_COUNTRIES.find(c => c.code === selectedCountryCode);
       if (countryData) {
         form.setValue('baseCurrency', countryData.currency, { shouldValidate: true });
       }
     }
-  }, [selectedCountry, form]);
+  }, [selectedCountryCode, form]);
 
   useEffect(() => {
     const checkEmail = async () => {
@@ -177,6 +192,8 @@ export default function NewTenantPage() {
         finalPartnerId = values.partnerId;
       }
 
+      const countryName = WORLD_COUNTRIES.find(c => c.code === values.country)?.name || values.country;
+
       const restaurantData = {
         id: restaurantId,
         name: values.restaurantName,
@@ -189,7 +206,7 @@ export default function NewTenantPage() {
         cuisine: values.cuisine,
         city: values.city,
         state: values.state,
-        country: values.country,
+        country: countryName,
         postcode: values.postcode,
         address: values.address,
         baseCurrency: values.baseCurrency,
@@ -210,7 +227,6 @@ export default function NewTenantPage() {
 
       setDoc(restaurantRef, restaurantData)
         .then(async () => {
-          // Trigger Welcome Email
           const content = await generateEmailContent({
             type: 'welcome_admin',
             recipientName: values.contactName,
@@ -423,7 +439,9 @@ export default function NewTenantPage() {
                   <div className="grid grid-cols-2 gap-6">
                     <FormField control={form.control} name="country" render={({ field }) => (
                       <FormItem>
-                        <Label className="font-bold text-slate-700">Country</Label>
+                        <Label className="font-bold text-slate-700 flex items-center gap-2">
+                          <Globe className="h-3 w-3 text-primary" /> Country
+                        </Label>
                         <Select 
                           onValueChange={field.onChange} 
                           defaultValue={field.value} 
@@ -432,7 +450,7 @@ export default function NewTenantPage() {
                         >
                           <FormControl><SelectTrigger className={cn("h-12 rounded-xl bg-slate-50 border-slate-100", isPartner && "opacity-70")}><SelectValue /></SelectTrigger></FormControl>
                           <SelectContent className="rounded-xl">
-                            {WORLD_COUNTRIES.map(c => <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>)}
+                            {supportedCountries.map(c => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}
                           </SelectContent>
                         </Select>
                       </FormItem>
@@ -449,20 +467,15 @@ export default function NewTenantPage() {
                       </FormItem>
                     )} />
                   </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <FormField control={form.control} name="city" render={({ field }) => (
-                      <FormItem>
-                        <Label className="font-bold text-slate-700">City</Label>
-                        <FormControl><Input className="h-12 rounded-xl bg-slate-50 border-slate-100" {...field} /></FormControl>
-                      </FormItem>
-                    )} />
-                    <FormField control={form.control} name="state" render={({ field }) => (
-                      <FormItem>
-                        <Label className="font-bold text-slate-700">State/Province</Label>
-                        <FormControl><Input className="h-12 rounded-xl bg-slate-50 border-slate-100" {...field} /></FormControl>
-                      </FormItem>
-                    )} />
-                  </div>
+
+                  <LocationSelector 
+                    countryCode={selectedCountryCode}
+                    onLocationChange={(loc) => {
+                      form.setValue('state', loc.stateName, { shouldValidate: !!loc.stateName });
+                      form.setValue('city', loc.cityName, { shouldValidate: !!loc.cityName });
+                    }}
+                  />
+
                   <div className="grid grid-cols-2 gap-6">
                     <FormField control={form.control} name="postcode" render={({ field }) => (
                       <FormItem>

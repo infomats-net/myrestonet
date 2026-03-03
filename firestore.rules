@@ -52,16 +52,20 @@ service cloud.firestore {
       allow read, write: if isSuperAdmin();
     }
 
+    match /countries/{id} { allow read: if true; }
+    match /states/{id} { allow read: if true; }
+    match /cities/{id} { allow read: if true; }
+
     match /partners/{partnerId} {
       allow read: if belongsToPartner(partnerId);
-      allow write: if false; // SuperAdmin handled by wildcard
+      allow write: if false; 
     }
 
     match /restaurants/{restaurantId} {
       allow get: if true;
       allow read: if hasPermission(restaurantId, "read");
       allow update: if hasPermission(restaurantId, "update_settings");
-      allow create: if isPartner();
+      allow create: if isPartner() || isSuperAdmin();
 
       match /menus/{menuId} {
         allow read: if true;
@@ -100,14 +104,14 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow list: if isPartner(); // Allow partners to check emails for unique check
+      allow list: if isPartner() || isSuperAdmin(); 
       allow update: if request.auth != null && request.auth.uid == userId && request.resource.data.role == resource.data.role;
-      allow create: if isPartner();
+      allow create: if isPartner() || isSuperAdmin();
     }
 
     match /mail/{mailId} {
       allow create: if request.auth != null;
-      allow read: if false; // SuperAdmin handled by wildcard
+      allow read: if isSuperAdmin();
     }
   }
 }
