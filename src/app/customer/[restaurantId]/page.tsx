@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
@@ -220,13 +219,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const sectionOrder = useMemo(() => {
     const rawOrder = designSettings?.sectionOrder || DEFAULT_SECTION_ORDER;
     const mergedOrder = [...rawOrder];
-    // Ensure essential sections like navbar are present if user saved a partial list
     DEFAULT_SECTION_ORDER.forEach(key => {
       if (!mergedOrder.includes(key)) {
         mergedOrder.push(key);
       }
     });
-    return mergedOrder;
+    // For visual consistency, ensure 'navbar' is always at index 0 if it is present
+    const cleanOrder = mergedOrder.filter(k => k !== 'navbar');
+    return ['navbar', ...cleanOrder];
   }, [designSettings?.sectionOrder]);
 
   if (loadingRes || loadingMenus || loadingItems) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10" /></div>;
@@ -239,19 +239,15 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   // Dynamic Section Rendering Engine
   const renderSection = (key: string) => {
     const config = designSettings?.sections?.[key];
-    
-    // Default visibility logic:
-    // If we have a config, respect its visible toggle.
-    // If no config (first time loading), default some sections to visible.
     const isVisible = config ? config.visible : true;
 
     // menuList is usually required, but we allow toggle for other sections.
-    if (!isVisible && key !== 'menuList') return null; 
+    if (!isVisible && key !== 'menuList' && key !== 'navbar') return null; 
 
     switch (key) {
       case 'navbar':
         return (
-          <nav key={key} className="sticky top-0 z-[100] w-full border-b backdrop-blur-md h-20 flex items-center bg-white/90">
+          <nav key={key} className="sticky top-0 z-[100] w-full border-b backdrop-blur-lg h-20 flex items-center bg-white/95" style={{ borderBottomColor: theme.primary + '20' }}>
             <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
               <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2">
                 {designSettings?.branding?.logoUrl ? (
@@ -259,10 +255,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 ) : (
                   <div className="bg-primary rounded-lg p-1.5" style={{ backgroundColor: theme.primary }}><UtensilsCrossed className="text-white" /></div>
                 )}
-                <span className="text-xl font-black text-slate-900">{restaurant.name}</span>
+                <span className="text-xl font-black" style={{ color: theme.text }}>{restaurant.name}</span>
               </Link>
               <button className="relative p-2" onClick={() => setIsCheckoutOpen(true)}>
-                <ShoppingBag className="h-6 w-6 text-slate-900" />
+                <ShoppingBag className="h-6 w-6" style={{ color: theme.text }} />
                 {cart.length > 0 && (
                   <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black" style={{ backgroundColor: theme.primary }}>{cart.length}</span>
                 )}
@@ -273,7 +269,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'hero':
         return (
-          <section key={key} className="relative h-[400px] flex items-center justify-center text-center px-6 overflow-hidden">
+          <section key={key} className="relative h-[500px] flex items-center justify-center text-center px-6 overflow-hidden">
             {designSettings?.branding?.bannerUrl ? (
               <img src={designSettings.branding.bannerUrl} className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
             ) : (
@@ -283,10 +279,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             <div className="relative z-10 space-y-6">
               <h1 className="text-5xl md:text-7xl font-black text-white tracking-tight">{restaurant.name}</h1>
               <p className="text-xl text-white/80 font-medium max-w-2xl mx-auto">{restaurant.cuisine?.join(' • ')}</p>
-              <Button className="rounded-full h-14 px-10 font-black text-lg" style={{ backgroundColor: theme.primary }} onClick={() => {
+              <Button className="rounded-full h-14 px-10 font-black text-lg shadow-2xl" style={{ backgroundColor: theme.primary }} onClick={() => {
                 const menuElement = document.getElementById('menu-list');
                 menuElement?.scrollIntoView({ behavior: 'smooth' });
-              }}>View Our Menu</Button>
+              }}>Explore Menu</Button>
             </div>
           </section>
         );
@@ -354,14 +350,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <section key={key} className="max-w-6xl mx-auto px-6 py-20 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <Badge variant="outline" className="px-4 py-1 rounded-full text-primary border-primary/20 font-black text-[10px] uppercase tracking-[0.2em]" style={{ color: theme.primary }}>Our Heritage</Badge>
-              <h2 className="text-5xl font-black tracking-tight">Crafting culinary stories since 2024.</h2>
+              <h2 className="text-5xl font-black tracking-tight" style={{ color: theme.text }}>Crafting culinary stories since 2024.</h2>
               <p className="text-lg text-slate-500 leading-relaxed font-medium italic">
                 "We believe that great food is more than just ingredients—it's a sensory journey. At {restaurant.name}, every dish is a masterpiece designed to delight and inspire."
               </p>
               <div className="flex items-center gap-4 pt-4">
                 <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center"><User className="text-slate-400" /></div>
                 <div>
-                  <p className="font-bold text-slate-900">Alex Rivers</p>
+                  <p className="font-bold" style={{ color: theme.text }}>Alex Rivers</p>
                   <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Executive Chef</p>
                 </div>
               </div>
@@ -382,13 +378,13 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         return (
           <div key={key} id="menu-list" className="max-w-6xl mx-auto px-6 py-20 space-y-16">
             <div className="text-center space-y-4">
-              <h2 className="text-5xl font-black">Our Curated Catalog</h2>
+              <h2 className="text-5xl font-black" style={{ color: theme.text }}>Our Curated Catalog</h2>
               <p className="text-slate-400 font-medium">Explore the signature flavors of {restaurant.name}</p>
             </div>
             {menus?.map(menu => (
               <div key={menu.id} className="space-y-10">
                 <div className="flex items-center gap-6">
-                  <h3 className="text-3xl font-black whitespace-nowrap">{menu.name}</h3>
+                  <h3 className="text-3xl font-black whitespace-nowrap" style={{ color: theme.text }}>{menu.name}</h3>
                   <div className="h-px bg-slate-100 flex-1" />
                 </div>
                 <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
@@ -422,7 +418,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <section key={key} className="py-20 bg-slate-50/50">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
               <div className="text-center">
-                <h2 className="text-4xl font-black">Visual Atmosphere</h2>
+                <h2 className="text-4xl font-black" style={{ color: theme.text }}>Visual Atmosphere</h2>
                 <p className="text-slate-400 font-medium mt-2">A glimpse into our dining experience.</p>
               </div>
               <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
@@ -446,12 +442,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <section key={key} className="py-20 text-center">
             <div className="max-w-4xl mx-auto px-6 space-y-8">
               <Quote className="h-12 w-12 mx-auto text-primary opacity-20" style={{ color: theme.primary }} />
-              <h2 className="text-4xl font-black">What our guests say.</h2>
+              <h2 className="text-4xl font-black" style={{ color: theme.text }}>What our guests say.</h2>
               <div className="bg-white p-12 rounded-[3rem] shadow-xl border border-slate-50 italic text-xl text-slate-600 leading-relaxed">
                 "The atmosphere at {restaurant.name} is unparalleled. Every detail, from the ambient lighting to the exquisite presentation of the food, creates a dining experience that stays with you long after the meal is over."
               </div>
               <div className="flex flex-col items-center">
-                <p className="font-black text-slate-900 text-lg">Sophia Loren</p>
+                <p className="font-black text-lg" style={{ color: theme.text }}>Sophia Loren</p>
                 <div className="flex gap-1 mt-2 text-amber-400">
                   {[1,2,3,4,5].map(s => <Star key={s} className="h-4 w-4 fill-current" />)}
                 </div>
@@ -462,7 +458,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'contact':
         return (
-          <section key={key} className="py-20 border-t">
+          <section key={key} className="py-20 border-t" style={{ borderTopColor: theme.primary + '10' }}>
             <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
               <div className="space-y-4">
                 <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary" style={{ color: theme.primary }}>Reach Out</h3>
@@ -528,7 +524,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   };
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: theme.background, color: theme.text }}>
+    <div className="min-h-screen pb-24" style={{ backgroundColor: theme.background }}>
       {sectionOrder.map(renderSection)}
 
       {/* Cart Navigation (Floating) */}
