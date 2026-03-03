@@ -104,7 +104,7 @@
         "paymentMethod": { "type": "string", "enum": ["cod", "stripe", "paypal"] },
         "paymentStatus": { "type": "string", "enum": ["pending", "paid", "refunded"] },
         "stripePaymentIntentId": { "type": "string" },
-        "orderStatus": { "type": "string", "enum": ["new", "preparing", "delivered", "cancelled"] },
+        "status": { "type": "string", "enum": ["pending", "preparing", "delivered", "cancelled"] },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     }

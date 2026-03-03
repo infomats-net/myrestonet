@@ -44,6 +44,8 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { checkIsRestaurantOpen } from '@/lib/operating-hours';
 import { generateEmailContent } from '@/ai/flows/generate-email-content';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 type CartItem = {
   id: string;
@@ -125,6 +127,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const handleCheckout = async () => {
     if (!auth || !firestore || !restaurantId) return;
     setIsProcessing(true);
+    
     try {
       let user = auth.currentUser;
       if (!user) {
@@ -143,28 +146,47 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         createdAt: new Date().toISOString()
       };
 
-      await addDoc(collection(firestore, 'restaurants', restaurantId, 'orders'), orderData);
+      const ordersRef = collection(firestore, 'restaurants', restaurantId, 'orders');
       
-      const emailContent = await generateEmailContent({
-        type: 'order_confirmed',
-        recipientName: "Valued Customer",
-        restaurantName: restaurant?.name,
-        details: `Total: ${total} ${restaurant?.baseCurrency}. Items: ${cart.length}`
-      });
+      // Perform write and handle result via .then() to avoid blocking if Genkit/Email fails
+      addDoc(ordersRef, orderData)
+        .then(async () => {
+          // Success State
+          setCart([]);
+          setOrderComplete(true);
+          setIsCheckoutOpen(false);
+          toast({ title: "Order Placed!" });
 
-      await addDoc(collection(firestore, 'mail'), {
-        to: [user.email || 'customer@example.com'],
-        message: emailContent,
-        createdAt: new Date().toISOString()
-      });
+          // Background task: AI Email Notification
+          generateEmailContent({
+            type: 'order_confirmed',
+            recipientName: "Valued Customer",
+            restaurantName: restaurant?.name,
+            details: `Total: ${total} ${restaurant?.baseCurrency}. Items: ${cart.length}`
+          }).then(emailContent => {
+            addDoc(collection(firestore, 'mail'), {
+              to: [auth.currentUser?.email || 'customer@example.com'],
+              message: emailContent,
+              createdAt: new Date().toISOString()
+            });
+          }).catch(err => {
+            console.warn("AI Email failed, but order was saved.", err);
+          });
+        })
+        .catch(async (serverError) => {
+          const permissionError = new FirestorePermissionError({
+            path: ordersRef.path,
+            operation: 'create',
+            requestResourceData: orderData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        })
+        .finally(() => {
+          setIsProcessing(false);
+        });
 
-      setCart([]);
-      setOrderComplete(true);
-      setIsCheckoutOpen(false);
-      toast({ title: "Order Placed!" });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to place order." });
-    } finally {
+      toast({ variant: "destructive", title: "Checkout Error", description: "Could not initialize order session." });
       setIsProcessing(false);
     }
   };
