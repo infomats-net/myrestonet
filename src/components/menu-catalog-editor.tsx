@@ -37,6 +37,7 @@ import { generateItemDescription } from '@/ai/flows/generate-item-description';
 import { selectPlaceholder } from '@/ai/flows/select-placeholder';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ImageUploader } from '@/components/image-uploader';
+import { MenuScanner } from '@/components/menu-scanner';
 import { cn } from '@/lib/utils';
 
 export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
@@ -246,6 +247,11 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
               <ChevronLeft className="mr-2" /> Back to Menus
             </Button>
             <div className="flex gap-2 w-full md:w-auto">
+              <MenuScanner 
+                restaurantId={restaurantId} 
+                menuId={selectedMenuId} 
+                onSuccess={() => {}} 
+              />
               <Button onClick={() => setIsItemDialogOpen(true)} className="flex-1 md:flex-none rounded-2xl h-12 px-6 shadow-xl font-black">
                 <Plus className="mr-2 h-4 w-4" /> Add Menu Item
               </Button>
