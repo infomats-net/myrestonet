@@ -660,7 +660,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   switch(sectionKey) {
                     case 'siteBanner':
                       return (
-                        <div key="siteBanner" className="w-full h-24 overflow-hidden bg-slate-100">
+                        <div key="siteBanner" className="w-full h-36 overflow-hidden bg-slate-100">
                           {settings.branding.siteBannerUrl ? (
                             <img src={settings.branding.siteBannerUrl} className="w-full h-full object-cover" alt="Banner" />
                           ) : (

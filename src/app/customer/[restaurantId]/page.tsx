@@ -312,7 +312,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'siteBanner':
         return (
-          <section key={key} id="site-banner" className="w-full h-48 md:h-80 overflow-hidden bg-slate-50 border-b relative">
+          <section key={key} id="site-banner" className="w-full h-72 md:h-[480px] overflow-hidden bg-slate-50 border-b relative">
             {designSettings?.branding?.siteBannerUrl ? (
               <img src={designSettings.branding.siteBannerUrl} className="w-full h-full object-cover" alt="Site Banner" />
             ) : (
