@@ -5,7 +5,7 @@ import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { useFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Upload, Loader2, CheckCircle2, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -26,6 +26,7 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
 
   /**
    * Converts a file to WebP format using HTML5 Canvas.
+   * This keeps the app fast and storage efficient.
    */
   const convertToWebP = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
@@ -48,7 +49,7 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
               else reject(new Error('Image conversion failed.'));
             },
             'image/webp',
-            0.8 // Quality factor (0.8 is a great balance between size and quality)
+            0.8 // High quality factor with significant compression benefits
           );
         };
         img.onerror = () => reject(new Error('Failed to load image for processing.'));
@@ -72,10 +73,10 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
     setProgress(0);
     
     try {
-      // 1. Process image to WebP
+      // 1. Process image to WebP for optimization
       const webpBlob = await convertToWebP(file);
       
-      // 2. Prepare path (ensure it ends with .webp)
+      // 2. Prepare path (ensure it ends with .webp extension)
       const cleanPath = path.replace(/\.[^/.]+$/, ""); // Strip existing extension if present
       const finalPath = `${cleanPath}.webp`;
       
@@ -99,7 +100,7 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
           setUploading(false);
           setProgress(0);
           onUploadSuccess(downloadURL);
-          toast({ title: 'Success', description: 'Image optimized and uploaded successfully.' });
+          toast({ title: 'Visual Updated', description: 'Image optimized to WebP and uploaded successfully.' });
         }
       );
     } catch (err: any) {
