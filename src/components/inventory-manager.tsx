@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -71,7 +71,12 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
     menuId: ''
   });
 
-  // Fetch all menus to populate menu selector and fetch items
+  // Stabilize the upload path to prevent issues during item creation/editing
+  const uploadPath = useMemo(() => {
+    const id = editingItemId || `new-item-${Date.now()}`;
+    return `restaurants/${restaurantId}/inventory/${id}`;
+  }, [restaurantId, editingItemId]);
+
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'menus');
@@ -159,7 +164,7 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
       
       setIsItemDialogOpen(false);
       resetForm();
-      fetchAllItems(); // Refresh full list
+      fetchAllItems();
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
@@ -168,7 +173,7 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
   };
 
   const handleDeleteItem = async (item: any) => {
-    if (!firestore || !restaurantId || !confirm(`Delete ${item.name}? This action cannot be undone.`)) return;
+    if (!firestore || !restaurantId || !window.confirm(`Delete ${item.name}? This action cannot be undone.`)) return;
     try {
       await deleteDoc(doc(firestore, 'restaurants', restaurantId, 'menus', item.menuId, 'items', item.id));
       setItems(prev => prev.filter(i => i.id !== item.id));
@@ -283,6 +288,7 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
           <div className="flex bg-white/10 p-1 rounded-xl gap-1">
             {(['all', 'low', 'out'] as const).map((s) => (
               <button
+                type="button"
                 key={s}
                 onClick={() => setFilterStatus(s)}
                 className={cn(
@@ -482,7 +488,7 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
             <div className="space-y-6">
               <ImageUploader 
                 label="Item Visual"
-                path={`restaurants/${restaurantId}/inventory/${editingItemId || Date.now()}`}
+                path={uploadPath}
                 currentUrl={itemForm.imageUrl}
                 onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})}
                 onDelete={() => setItemForm({...itemForm, imageUrl: ''})}

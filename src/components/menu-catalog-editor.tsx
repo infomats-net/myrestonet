@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,14 +52,18 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   const [itemForm, setItemForm] = useState({ name: '', description: '', price: '', category: 'Main', imageUrl: '' });
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
 
-  // 1. Fetch Menus
+  // Stabilize path for item uploads
+  const uploadPath = useMemo(() => {
+    const id = editingItemId || `new-item-${Date.now()}`;
+    return `restaurants/${restaurantId}/items/${id}`;
+  }, [restaurantId, editingItemId]);
+
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'menus');
   }, [firestore, restaurantId]);
   const { data: menus, isLoading: loadingMenus } = useCollection(menusQuery);
 
-  // 2. Fetch Items for selected menu
   const itemsQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId || !selectedMenuId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items');
@@ -100,7 +104,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   };
 
   const handleDeleteMenu = async (id: string) => {
-    if (!firestore || !restaurantId) return;
+    if (!firestore || !restaurantId || !window.confirm("Delete this entire menu catalog?")) return;
     try {
       await deleteDoc(doc(firestore, 'restaurants', restaurantId, 'menus', id));
       if (selectedMenuId === id) setSelectedMenuId(null);
@@ -144,7 +148,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   };
 
   const handleDeleteItem = async (id: string) => {
-    if (!firestore || !restaurantId || !selectedMenuId) return;
+    if (!firestore || !restaurantId || !selectedMenuId || !window.confirm("Delete this menu item?")) return;
     try {
       await deleteDoc(doc(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items', id));
       toast({ title: "Menu Item Removed" });
@@ -172,12 +176,10 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     setLoading(true);
     try {
       const currentPlaceholderId = PlaceHolderImages.find(p => p.imageUrl === itemForm.imageUrl)?.id;
-      
       const { placeholderId } = await selectPlaceholder({ 
         itemName: itemForm.name,
         excludeIds: currentPlaceholderId ? [currentPlaceholderId] : []
       });
-      
       const img = PlaceHolderImages.find(p => p.id === placeholderId)?.imageUrl || '';
       setItemForm(prev => ({ ...prev, imageUrl: img }));
       toast({ title: "New Image Option Found" });
@@ -218,6 +220,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
                 </div>
                 <Button 
+                  type="button"
                   variant="ghost" 
                   size="icon" 
                   className="text-slate-300 hover:text-destructive rounded-full"
@@ -252,7 +255,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                 menuId={selectedMenuId} 
                 onSuccess={() => {}} 
               />
-              <Button onClick={() => setIsItemDialogOpen(true)} className="flex-1 md:flex-none rounded-2xl h-12 px-6 shadow-xl font-black">
+              <Button onClick={() => { setEditingItemId(null); setItemForm({ name: '', description: '', price: '', category: 'Main', imageUrl: '' }); setIsItemDialogOpen(true); }} className="flex-1 md:flex-none rounded-2xl h-12 px-6 shadow-xl font-black">
                 <Plus className="mr-2 h-4 w-4" /> Add Menu Item
               </Button>
             </div>
@@ -310,6 +313,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                         <td className="p-6 text-right">
                           <div className="flex justify-end gap-2">
                             <Button 
+                              type="button"
                               variant="ghost" 
                               size="icon" 
                               className="rounded-full"
@@ -325,9 +329,10 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                                 setIsItemDialogOpen(true);
                               }}
                             >
-                              <Sparkles className="h-4 w-4 text-primary" />
+                              <Edit3Icon className="h-4 w-4 text-primary" />
                             </Button>
                             <Button 
+                              type="button"
                               variant="ghost" 
                               size="icon" 
                               className="text-slate-300 hover:text-destructive rounded-full"
@@ -339,17 +344,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                         </td>
                       </tr>
                     ))}
-                    {(!items || items.length === 0) && (
-                      <tr>
-                        <td colSpan={4} className="p-20 text-center">
-                          <div className="space-y-4">
-                            <Search className="h-12 w-12 mx-auto opacity-10" />
-                            <p className="text-slate-400 font-bold italic">No menu items in this menu yet.</p>
-                            <Button variant="link" onClick={() => setIsItemDialogOpen(true)}>Add your first item</Button>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
                   </tbody>
                 </table>
               </div>
@@ -357,52 +351,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
           </Card>
         </div>
       )}
-
-      {/* Menu Dialog */}
-      <Dialog open={isMenuDialogOpen} onOpenChange={setIsMenuDialogOpen}>
-        <DialogContent className="rounded-[2.5rem]">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black">New Menu Catalog</DialogTitle>
-            <DialogDescription>Create a container for a category of items.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-6 py-6">
-            <div className="space-y-2">
-              <Label>Menu Name</Label>
-              <Input 
-                value={menuForm.name} 
-                onChange={e => setMenuForm({...menuForm, name: e.target.value})} 
-                placeholder="e.g. Signature Mains" 
-                className="h-12 rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between items-center">
-                <Label>Description (Optional)</Label>
-                <Button 
-                  variant="link" 
-                  size="sm" 
-                  className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"
-                  onClick={handleAiMenuDescription}
-                  disabled={loading || !menuForm.name}
-                >
-                  <Sparkles className="h-3 w-3" /> Magic Write
-                </Button>
-              </div>
-              <Textarea 
-                value={menuForm.description} 
-                onChange={e => setMenuForm({...menuForm, description: e.target.value})} 
-                placeholder="Briefly describe what's in this menu..." 
-                className="rounded-xl min-h-[100px]"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button className="w-full h-14 rounded-2xl font-black shadow-xl" onClick={handleAddMenu} disabled={loading || !menuForm.name}>
-              {loading ? <Loader2 className="animate-spin" /> : "Initialize Menu"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Item Dialog */}
       <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
@@ -447,61 +395,30 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Appetizing Description</Label>
-                  <Button 
-                    variant="link" 
-                    size="sm" 
-                    className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"
-                    onClick={handleAiDescription}
-                    disabled={loading || !itemForm.name}
-                  >
-                    <Sparkles className="h-3 w-3" /> Magic Write
+                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-[10px] font-black" onClick={handleAiDescription} disabled={loading || !itemForm.name}>
+                    <Sparkles className="h-3 w-3 mr-1" /> AI Write
                   </Button>
                 </div>
-                <Textarea 
-                  value={itemForm.description} 
-                  onChange={e => setItemForm({...itemForm, description: e.target.value})} 
-                  placeholder="Describe ingredients and preparation..." 
-                  className="rounded-xl min-h-[120px] text-sm"
-                />
+                <Textarea value={itemForm.description} onChange={e => setItemForm({...itemForm, description: e.target.value})} className="rounded-xl min-h-[120px]" />
               </div>
             </div>
 
             <div className="space-y-6">
               <ImageUploader 
                 label="Item Image"
-                path={`restaurants/${restaurantId}/items/${editingItemId || `new-${Date.now()}`}`}
+                path={uploadPath}
                 currentUrl={itemForm.imageUrl}
                 onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})}
+                onDelete={() => setItemForm({...itemForm, imageUrl: ''})}
               />
-
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Fallback / AI Option</Label>
-                  <Button 
-                    variant="link" 
-                    size="sm" 
-                    className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"
-                    onClick={handleAiImage}
-                    disabled={loading || !itemForm.name}
-                  >
-                    <ImageIcon className="h-3 w-3" /> Auto-Image
+                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-[10px] font-black" onClick={handleAiImage} disabled={loading || !itemForm.name}>
+                    <ImageIcon className="h-3 w-3 mr-1" /> Auto-Image
                   </Button>
                 </div>
-                <Input 
-                  value={itemForm.imageUrl} 
-                  onChange={e => setItemForm({...itemForm, imageUrl: e.target.value})} 
-                  placeholder="Or paste URL..." 
-                  className="h-10 text-xs rounded-xl"
-                />
-              </div>
-
-              <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
-                <p className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-2">
-                  <CheckCircle2 className="h-3 w-3" /> Live Store Update
-                </p>
-                <p className="text-[10px] text-slate-500 mt-1 leading-relaxed">
-                  Saving this item will immediately update your public storefront for all active customers.
-                </p>
+                <Input value={itemForm.imageUrl} onChange={e => setItemForm({...itemForm, imageUrl: e.target.value})} placeholder="Or paste URL..." className="h-10 text-xs" />
               </div>
             </div>
           </div>
@@ -509,12 +426,20 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
           <DialogFooter className="pt-6 border-t">
             <Button variant="outline" onClick={() => setIsItemDialogOpen(false)} className="rounded-2xl h-12">Cancel</Button>
             <Button className="h-12 rounded-2xl px-10 font-black shadow-xl" onClick={handleSaveItem} disabled={loading || !itemForm.name}>
-              {loading ? <Loader2 className="animate-spin mr-2" /> : <Plus className="mr-2" />}
-              {editingItemId ? 'Update Menu Item' : 'Add Menu Item'}
+              {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" />}
+              {editingItemId ? 'Update Item' : 'Add Item'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function Edit3Icon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+    </svg>
   );
 }

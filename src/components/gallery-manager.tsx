@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,12 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ url: '', caption: '' });
 
-  // 1. Fetch Gallery Images
+  // Stabilize path for new gallery uploads
+  const uploadPath = useMemo(() => {
+    const timestamp = Date.now();
+    return `restaurants/${restaurantId}/gallery/${timestamp}`;
+  }, [restaurantId, isNewDialogOpen]);
+
   const galleryQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'gallery');
@@ -65,7 +70,7 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
   };
 
   const handleDeleteImage = async (id: string) => {
-    if (!firestore || !restaurantId) return;
+    if (!firestore || !restaurantId || !window.confirm("Permanently delete this photo?")) return;
     try {
       await deleteDoc(doc(firestore, 'restaurants', restaurantId, 'gallery', id));
       toast({ title: "Photo Removed" });
@@ -111,7 +116,7 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
             <p className="text-muted-foreground text-sm font-medium">Manage your restaurant's visual story.</p>
           </div>
         </div>
-        <Button onClick={() => setIsNewDialogOpen(true)} className="rounded-2xl h-12 px-6 shadow-xl font-black">
+        <Button onClick={() => { setForm({url: '', caption: ''}); setIsNewDialogOpen(true); }} className="rounded-2xl h-12 px-6 shadow-xl font-black">
           <Plus className="mr-2 h-4 w-4" /> Add Photo
         </Button>
       </div>
@@ -127,6 +132,7 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
               <p className="text-white text-xs font-bold mb-4 line-clamp-2">{image.caption}</p>
               <Button 
+                type="button"
                 variant="destructive" 
                 size="icon" 
                 className="rounded-full self-end"
@@ -152,7 +158,6 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
         )}
       </div>
 
-      {/* Add Photo Dialog */}
       <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
         <DialogContent className="rounded-[2.5rem] max-w-md">
           <DialogHeader>
@@ -162,15 +167,17 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
           
           <div className="space-y-6 py-6">
             <ImageUploader 
-              path={`restaurants/${restaurantId}/gallery/${Date.now()}`}
+              path={uploadPath}
               currentUrl={form.url}
               onUploadSuccess={(url) => setForm({...form, url})}
+              onDelete={() => setForm({...form, url: ''})}
             />
 
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <Label>Or use URL / AI</Label>
                 <Button 
+                  type="button"
                   variant="link" 
                   size="sm" 
                   className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"
@@ -193,7 +200,7 @@ export function GalleryManager({ restaurantId }: { restaurantId: string }) {
               <Input 
                 value={form.caption} 
                 onChange={e => setForm({...form, caption: e.target.value})} 
-                placeholder="e.g. Our cozy terrace at sunset" 
+                placeholder="e.g. Our cozy terrace" 
                 className="h-12 rounded-xl"
               />
             </div>

@@ -50,7 +50,7 @@ export function ImageUploader({ path, onUploadSuccess, onDelete, className, labe
               else reject(new Error('Image conversion failed.'));
             },
             'image/webp',
-            0.8 // High quality factor with significant compression benefits
+            0.8
           );
         };
         img.onerror = () => reject(new Error('Failed to load image for processing.'));
@@ -98,7 +98,7 @@ export function ImageUploader({ path, onUploadSuccess, onDelete, className, labe
           setUploading(false);
           setProgress(0);
           onUploadSuccess(downloadURL);
-          toast({ title: 'Visual Updated', description: 'Image optimized to WebP and uploaded successfully.' });
+          toast({ title: 'Visual Updated', description: 'Image optimized and uploaded successfully.' });
         }
       );
     } catch (err: any) {
@@ -109,25 +109,28 @@ export function ImageUploader({ path, onUploadSuccess, onDelete, className, labe
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!storage || !currentUrl) return;
+    if (!currentUrl) return;
 
-    if (!confirm("Are you sure you want to permanently delete this image?")) return;
+    if (!window.confirm("Are you sure you want to permanently delete this image from storage?")) return;
 
     setUploading(true);
     try {
-      const cleanPath = path.replace(/\.[^/.]+$/, "");
-      const finalPath = `${cleanPath}.webp`;
-      const storageRef = ref(storage, finalPath);
-      
-      await deleteObject(storageRef).catch(err => {
-        // If not found in storage, we just proceed to clear the URL from the app
-        if (err.code !== 'storage/object-not-found') throw err;
-      });
+      // If storage is available, attempt to delete the physical file
+      if (storage) {
+        const cleanPath = path.replace(/\.[^/.]+$/, "");
+        const finalPath = `${cleanPath}.webp`;
+        const storageRef = ref(storage, finalPath);
+        
+        await deleteObject(storageRef).catch(err => {
+          // If the file isn't in our storage (e.g. AI suggested external URL), we just proceed
+          console.warn("Storage cleanup skipped:", err.code);
+        });
+      }
       
       if (onDelete) onDelete();
-      toast({ title: 'Visual Removed', description: 'The image has been deleted from storage.' });
+      toast({ title: 'Visual Removed', description: 'The image has been cleared from your profile.' });
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Delete Failed', description: err.message });
+      toast({ variant: 'destructive', title: 'Delete Failed', description: 'Could not complete the removal process.' });
     } finally {
       setUploading(false);
     }
@@ -149,6 +152,7 @@ export function ImageUploader({ path, onUploadSuccess, onDelete, className, labe
             <img src={currentUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
               <Button 
+                type="button"
                 variant="secondary" 
                 size="sm" 
                 className="rounded-xl font-bold h-9 gap-2"
@@ -158,6 +162,7 @@ export function ImageUploader({ path, onUploadSuccess, onDelete, className, labe
               </Button>
               {onDelete && (
                 <Button 
+                  type="button"
                   variant="destructive" 
                   size="sm" 
                   className="rounded-xl font-bold h-9 gap-2"
@@ -185,7 +190,7 @@ export function ImageUploader({ path, onUploadSuccess, onDelete, className, labe
                 </div>
                 <div>
                   <p className="text-sm font-bold text-slate-900">Click to upload image</p>
-                  <p className="text-[10px] text-slate-400 font-medium">Files are auto-converted to lightweight WebP</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Auto-converted to lightweight WebP</p>
                 </div>
                 <Button 
                   type="button"
