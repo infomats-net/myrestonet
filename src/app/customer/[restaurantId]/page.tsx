@@ -22,7 +22,9 @@ import {
   User,
   Map as MapIcon,
   CalendarDays,
-  Menu as MenuIcon
+  Menu as MenuIcon,
+  X,
+  Maximize2
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -70,6 +72,9 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [paymentMethod, setPaymentMethod] = useState<string>('cod');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  
+  // Lightbox state
+  const [selectedImage, setSelectedImage] = useState<any>(null);
 
   // Customer Delivery Info
   const [customerInfo, setCustomerInfo] = useState({
@@ -418,17 +423,26 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               </div>
               <div className="flex flex-wrap justify-center gap-8">
                 {gallery?.map((img, i) => (
-                  <div key={i} className="relative rounded-[3rem] overflow-hidden shadow-2xl group w-full sm:w-[calc(50%-2rem)] lg:w-[calc(33.333%-2rem)] max-w-md aspect-square">
+                  <div 
+                    key={i} 
+                    className="relative rounded-[3rem] overflow-hidden shadow-2xl group w-full sm:w-[calc(50%-2rem)] lg:w-[calc(33.333%-2rem)] max-w-md aspect-square cursor-zoom-in bg-white/50"
+                    onClick={() => setSelectedImage(img)}
+                  >
                     <img 
                       src={img.url} 
                       alt={img.caption} 
-                      className="w-full h-full object-cover hover:scale-110 transition-transform duration-700" 
+                      className="w-full h-full object-contain hover:scale-105 transition-transform duration-700" 
                     />
-                    {img.caption && (
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
-                        <p className="text-white text-xs font-bold uppercase tracking-[0.2em]">{img.caption}</p>
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-8">
+                      <div className="flex justify-end">
+                        <div className="bg-white/20 backdrop-blur-md p-2 rounded-full">
+                          <Maximize2 className="h-4 w-4 text-white" />
+                        </div>
                       </div>
-                    )}
+                      {img.caption && (
+                        <p className="text-white text-xs font-bold uppercase tracking-[0.2em]">{img.caption}</p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -544,6 +558,31 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           </Button>
         </div>
       )}
+
+      {/* Gallery Lightbox */}
+      <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 overflow-hidden border-none bg-black/90 rounded-[3rem]">
+          <DialogTitle className="sr-only">Full Image View</DialogTitle>
+          <div className="relative w-full h-full flex items-center justify-center p-4">
+            <button 
+              onClick={() => setSelectedImage(null)}
+              className="absolute top-6 right-6 z-50 bg-white/10 hover:bg-white/20 backdrop-blur-md p-3 rounded-full text-white transition-all"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <img 
+              src={selectedImage?.url} 
+              alt={selectedImage?.caption || 'Full View'} 
+              className="max-w-full max-h-full object-contain shadow-2xl rounded-2xl" 
+            />
+            {selectedImage?.caption && (
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-xl px-8 py-4 rounded-full border border-white/10">
+                <p className="text-white font-black text-sm uppercase tracking-[0.2em]">{selectedImage.caption}</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Sheet open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
         <SheetContent className="w-full sm:max-w-md rounded-l-[3rem] p-0 flex flex-col">
