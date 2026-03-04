@@ -72,6 +72,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [paymentMethod, setPaymentMethod] = useState<string>('cod');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [isOpen, setIsOpen] = useState<boolean | null>(null);
   
   // Lightbox state
   const [selectedImage, setSelectedImage] = useState<any>(null);
@@ -117,19 +118,31 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [allMenuItems, setAllMenuItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
+  // Handle Hydration Safe "Open" status
+  useEffect(() => {
+    if (operatingHours !== undefined) {
+      setIsOpen(checkIsRestaurantOpen(operatingHours));
+    }
+  }, [operatingHours]);
+
   useEffect(() => {
     if (!firestore || !restaurantId || !menus) return;
     const fetchAllItems = async () => {
       setLoadingItems(true);
       const items: any[] = [];
-      for (const menu of menus) {
-        const querySnapshot = await getDocs(collection(firestore, 'restaurants', restaurantId, 'menus', menu.id, 'items'));
-        querySnapshot.forEach((doc) => {
-          items.push({ ...doc.data(), id: doc.id, menuId: menu.id });
-        });
+      try {
+        for (const menu of menus) {
+          const querySnapshot = await getDocs(collection(firestore, 'restaurants', restaurantId, 'menus', menu.id, 'items'));
+          querySnapshot.forEach((doc) => {
+            items.push({ ...doc.data(), id: doc.id, menuId: menu.id });
+          });
+        }
+        setAllMenuItems(items);
+      } catch (e) {
+        console.error("Error fetching menu items:", e);
+      } finally {
+        setLoadingItems(false);
       }
-      setAllMenuItems(items);
-      setLoadingItems(false);
     };
     fetchAllItems();
   }, [firestore, restaurantId, menus]);
@@ -238,7 +251,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   if (loadingRes || loadingMenus || loadingItems) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10" /></div>;
   if (!restaurant) return <div className="min-h-screen flex items-center justify-center"><h1>Restaurant Not Found</h1></div>;
 
-  const isOpen = checkIsRestaurantOpen(operatingHours);
   const theme = designSettings?.theme || { primary: '#22c55e', background: '#ffffff', text: '#0f172a' };
   const currencySymbol = restaurant?.baseCurrency === 'USD' ? '$' : restaurant?.baseCurrency || '$';
 
@@ -314,7 +326,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                   <div className="space-y-2">
                     {cardConfig.showBadges && (
                       <Badge className={cn("px-4 py-1 rounded-full font-black text-[10px] uppercase tracking-widest", isOpen ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
-                        {isOpen ? "Open Now" : "Closed"}
+                        {isOpen === null ? "Loading..." : isOpen ? "Open Now" : "Closed"}
                       </Badge>
                     )}
                     <h2 className="text-3xl font-black text-slate-900">Experience Excellence</h2>
@@ -398,7 +410,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           style2: MenuStyle2,
           style3: MenuStyle3,
           style4: MenuStyle4
-        }[layoutStyle] || MenuStyle1;
+        }[layoutStyle as keyof typeof MenuStyle1] || MenuStyle1;
 
         return (
           <div key={key} id="menu-list">
@@ -506,6 +518,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             <iframe
               width="100%"
               height="100%"
+              title="Restaurant Location"
               style={{ border: 0 }}
               loading="lazy"
               allowFullScreen
@@ -685,7 +698,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             <Button 
               className="w-full h-16 rounded-2xl text-xl font-black shadow-xl" 
               style={{ backgroundColor: theme.primary }}
-              disabled={cart.length === 0 || isProcessing || !isOpen || !customerInfo.name || !customerInfo.address}
+              disabled={cart.length === 0 || isProcessing || !customerInfo.name || !customerInfo.address}
               onClick={handleCheckout}
             >
               {isProcessing ? <Loader2 className="animate-spin" /> : orderComplete ? <CheckCircle2 /> : "Confirm Order"}
