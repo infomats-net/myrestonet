@@ -162,7 +162,7 @@ export function MenuScanner({ restaurantId, menuId, onSuccess }: MenuScannerProp
       </Button>
 
       <Dialog open={isOpen} onOpenChange={(v) => { if(!v) resetScanner(); setIsOpen(v); }}>
-        <DialogContent className="rounded-[2.5rem] max-w-2xl overflow-hidden p-0">
+        <DialogContent className="rounded-[2.5rem] max-w-3xl overflow-hidden p-0">
           <DialogHeader className="p-8 border-b bg-slate-50/50">
             <DialogTitle className="text-2xl font-black flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-primary" /> Menu Digitizer
@@ -197,8 +197,8 @@ export function MenuScanner({ restaurantId, menuId, onSuccess }: MenuScannerProp
                 )}
 
                 {mode === 'camera' && (
-                  <div className="relative w-full aspect-[3/4] max-w-sm rounded-[2rem] overflow-hidden bg-black shadow-2xl border-4 border-white">
-                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                  <div className="relative w-full aspect-video max-w-2xl rounded-[2rem] overflow-hidden bg-black shadow-2xl border-4 border-white">
+                    <video ref={videoRef} className="w-full h-full object-contain" autoPlay muted playsInline />
                     <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-4">
                       <Button variant="outline" onClick={resetScanner} className="rounded-full h-12 w-12 bg-white/20 backdrop-blur-md border-white/20 text-white">
                         <X />
@@ -219,9 +219,9 @@ export function MenuScanner({ restaurantId, menuId, onSuccess }: MenuScannerProp
                 )}
 
                 {capturedImage && mode === 'selection' && (
-                  <div className="space-y-8 w-full max-w-md animate-in zoom-in-95 duration-300">
-                    <div className="relative aspect-[3/4] rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white">
-                      <img src={capturedImage} className="w-full h-full object-cover" alt="Captured Menu" />
+                  <div className="space-y-8 w-full max-w-2xl animate-in zoom-in-95 duration-300">
+                    <div className="relative rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white bg-slate-900 flex items-center justify-center min-h-[300px]">
+                      <img src={capturedImage} className="max-w-full max-h-[500px] object-contain" alt="Captured Menu" />
                       <button 
                         onClick={() => setCapturedImage(null)}
                         className="absolute top-4 right-4 bg-black/50 backdrop-blur-md p-2 rounded-full text-white hover:bg-black/70"
