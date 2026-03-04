@@ -392,6 +392,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               currencySymbol={currencySymbol}
               theme={theme}
               addToCart={addToCart}
+              cart={cart}
             />
           </div>
         );
@@ -523,7 +524,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               <span>View Your Order</span>
             </div>
             <div className="bg-white/95 text-slate-900 px-4 py-1 rounded-full text-sm">
-              {cart.length} Items
+              {cart.reduce((sum, i) => sum + i.quantity, 0)} Items
             </div>
           </Button>
         </div>
