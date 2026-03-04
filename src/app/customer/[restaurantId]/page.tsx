@@ -416,13 +416,17 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 <h2 className="text-4xl font-black" style={{ color: theme.text }}>Visual Atmosphere</h2>
                 <p className="text-slate-400 font-medium mt-2">A glimpse into our dining experience.</p>
               </div>
-              <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+              <div className="flex flex-wrap justify-center gap-8">
                 {gallery?.map((img, i) => (
-                  <div key={i} className="relative rounded-[2rem] overflow-hidden shadow-lg group">
-                    <img src={img.url} alt={img.caption} className="w-full hover:scale-105 transition-transform duration-700" />
+                  <div key={i} className="relative rounded-[3rem] overflow-hidden shadow-2xl group w-full sm:w-[calc(50%-2rem)] lg:w-[calc(33.333%-2rem)] max-w-md aspect-square">
+                    <img 
+                      src={img.url} 
+                      alt={img.caption} 
+                      className="w-full h-full object-cover hover:scale-110 transition-transform duration-700" 
+                    />
                     {img.caption && (
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
-                        <p className="text-white text-xs font-bold uppercase tracking-widest">{img.caption}</p>
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-8">
+                        <p className="text-white text-xs font-bold uppercase tracking-[0.2em]">{img.caption}</p>
                       </div>
                     )}
                   </div>
