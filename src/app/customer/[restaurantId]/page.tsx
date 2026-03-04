@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
@@ -313,7 +312,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'siteBanner':
         return (
-          <section key={key} id="site-banner" className="w-full h-24 md:h-40 overflow-hidden bg-slate-50 border-b relative">
+          <section key={key} id="site-banner" className="w-full h-48 md:h-80 overflow-hidden bg-slate-50 border-b relative">
             {designSettings?.branding?.siteBannerUrl ? (
               <img src={designSettings.branding.siteBannerUrl} className="w-full h-full object-cover" alt="Site Banner" />
             ) : (
@@ -744,7 +743,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <DialogDescription className="text-slate-500 mt-2 mb-8">
             Order <strong>#{lastOrderNumber}</strong> is being prepared. An AI-generated receipt has been sent to <strong>{customerInfo.email}</strong>.
           </DialogDescription>
-          <Button className="w-full h-14 rounded-2xl font-black" onClick={() => setOrderComplete(false)}>Perfect, Thanks!</Button>
+          <Button className="w-full h-14 rounded-2xl font-black" onClick={() => orderComplete && setOrderComplete(false)}>Perfect, Thanks!</Button>
         </DialogContent>
       </Dialog>
     </div>
