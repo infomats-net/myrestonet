@@ -4,23 +4,48 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Package, 
   Search, 
   Loader2, 
   AlertTriangle, 
   CheckCircle2, 
-  ArrowUpDown,
-  Plus,
-  Minus,
-  Save,
-  Filter
+  Plus, 
+  Minus, 
+  Edit3, 
+  Trash2, 
+  Sparkles,
+  Image as ImageIcon,
+  DollarSign,
+  Tag,
+  Utensils
 } from 'lucide-react';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogDescription, 
+  DialogFooter, 
+  DialogHeader, 
+  DialogTitle 
+} from "@/components/ui/dialog";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, updateDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, updateDoc, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { generateItemDescription } from '@/ai/flows/generate-item-description';
+import { selectPlaceholder } from '@/ai/flows/select-placeholder';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { ImageUploader } from '@/components/image-uploader';
 
 export function InventoryManager({ restaurantId }: { restaurantId: string }) {
   const firestore = useFirestore();
@@ -32,7 +57,21 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
   const [filterStatus, setFilterStatus] = useState<'all' | 'low' | 'out'>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // Fetch all menus first to get their IDs
+  // CRUD State
+  const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [itemForm, setItemForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    category: 'Main',
+    imageUrl: '',
+    inventory: '0',
+    menuId: ''
+  });
+
+  // Fetch all menus to populate menu selector and fetch items
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'menus');
@@ -40,7 +79,6 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
   
   const { data: menus, isLoading: loadingMenus } = useCollection(menusQuery);
 
-  // Load all items from all menus
   const fetchAllItems = async () => {
     if (!firestore || !restaurantId || !menus) return;
     setLoading(true);
@@ -91,6 +129,115 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
     }
   };
 
+  const handleSaveItem = async () => {
+    if (!firestore || !restaurantId || !itemForm.menuId || !itemForm.name) {
+      toast({ variant: "destructive", title: "Missing Information", description: "Name and Menu Selection are required." });
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const data = {
+        name: itemForm.name,
+        description: itemForm.description,
+        price: parseFloat(itemForm.price) || 0,
+        category: itemForm.category,
+        imageUrl: itemForm.imageUrl,
+        inventory: parseInt(itemForm.inventory) || 0,
+        updatedAt: serverTimestamp()
+      };
+
+      if (editingItemId) {
+        await updateDoc(doc(firestore, 'restaurants', restaurantId, 'menus', itemForm.menuId, 'items', editingItemId), data);
+        toast({ title: "Item Updated" });
+      } else {
+        await addDoc(collection(firestore, 'restaurants', restaurantId, 'menus', itemForm.menuId, 'items'), {
+          ...data,
+          createdAt: serverTimestamp()
+        });
+        toast({ title: "Item Created" });
+      }
+      
+      setIsItemDialogOpen(false);
+      resetForm();
+      fetchAllItems(); // Refresh full list
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: e.message });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteItem = async (item: any) => {
+    if (!firestore || !restaurantId || !confirm(`Delete ${item.name}? This action cannot be undone.`)) return;
+    try {
+      await deleteDoc(doc(firestore, 'restaurants', restaurantId, 'menus', item.menuId, 'items', item.id));
+      setItems(prev => prev.filter(i => i.id !== item.id));
+      toast({ title: "Item Removed" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Delete Failed" });
+    }
+  };
+
+  const handleAiDescription = async () => {
+    if (!itemForm.name) return;
+    setIsProcessing(true);
+    try {
+      const { description } = await generateItemDescription({ itemName: itemForm.name });
+      setItemForm(prev => ({ ...prev, description }));
+      toast({ title: "AI Description Generated" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "AI Error" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleAiImage = async () => {
+    if (!itemForm.name) return;
+    setIsProcessing(true);
+    try {
+      const currentPlaceholderId = PlaceHolderImages.find(p => p.imageUrl === itemForm.imageUrl)?.id;
+      const { placeholderId } = await selectPlaceholder({ 
+        itemName: itemForm.name,
+        excludeIds: currentPlaceholderId ? [currentPlaceholderId] : []
+      });
+      const img = PlaceHolderImages.find(p => p.id === placeholderId)?.imageUrl || '';
+      setItemForm(prev => ({ ...prev, imageUrl: img }));
+      toast({ title: "AI Image Found" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "AI Error" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const resetForm = () => {
+    setItemForm({
+      name: '',
+      description: '',
+      price: '',
+      category: 'Main',
+      imageUrl: '',
+      inventory: '0',
+      menuId: menus?.[0]?.id || ''
+    });
+    setEditingItemId(null);
+  };
+
+  const openEdit = (item: any) => {
+    setEditingItemId(item.id);
+    setItemForm({
+      name: item.name,
+      description: item.description || '',
+      price: item.price?.toString() || '0',
+      category: item.category || 'Main',
+      imageUrl: item.imageUrl || '',
+      inventory: item.inventory?.toString() || '0',
+      menuId: item.menuId
+    });
+    setIsItemDialogOpen(true);
+  };
+
   const getStatus = (count: number) => {
     if (count <= 0) return { label: 'Out of Stock', color: 'bg-rose-100 text-rose-700', icon: AlertTriangle };
     if (count <= 5) return { label: 'Low Stock', color: 'bg-amber-100 text-amber-700', icon: AlertTriangle };
@@ -112,22 +259,22 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/5 border border-white/10 p-8 rounded-[2.5rem] backdrop-blur-md">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white/5 border border-white/10 p-8 rounded-[2.5rem] backdrop-blur-md">
         <div className="flex items-center gap-4">
           <div className="bg-primary/20 w-14 h-14 rounded-2xl flex items-center justify-center text-primary shadow-xl border border-primary/10">
             <Package className="h-7 w-7" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-white">Stock Control</h2>
-            <p className="text-slate-400 text-sm font-medium">Monitor and manage real-time item availability.</p>
+            <h2 className="text-2xl font-black text-white">Inventory Control</h2>
+            <p className="text-slate-400 text-sm font-medium">Bulk management of stock levels and items.</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <div className="relative w-full md:w-64">
+        <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+          <div className="relative flex-1 lg:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
-              placeholder="Search items..." 
+              placeholder="Search inventory..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 h-12 rounded-xl bg-white/10 border-white/10 text-white placeholder:text-slate-500 focus:bg-white/20"
@@ -143,10 +290,13 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
                   filterStatus === s ? "bg-white text-black shadow-lg" : "text-slate-400 hover:text-white"
                 )}
               >
-                {s === 'all' ? 'All' : s === 'low' ? 'Low' : 'Out'}
+                {s}
               </button>
             ))}
           </div>
+          <Button onClick={() => { resetForm(); setIsItemDialogOpen(true); }} className="rounded-2xl h-12 px-6 shadow-xl bg-primary hover:bg-primary/90 text-white font-black">
+            <Plus className="mr-2 h-4 w-4" /> New Inventory Item
+          </Button>
         </div>
       </div>
 
@@ -156,11 +306,11 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
             <table className="w-full text-left">
               <thead className="bg-slate-50/50 border-b">
                 <tr>
-                  <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Menu Item</th>
-                  <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Category / Menu</th>
-                  <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Current Stock</th>
+                  <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Item Details</th>
+                  <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Category</th>
+                  <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">Stock</th>
                   <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
-                  <th className="p-6 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Quick Adjust</th>
+                  <th className="p-6 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -168,7 +318,7 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
                   const inventory = item.inventory || 0;
                   const status = getStatus(inventory);
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                    <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="p-6">
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden border">
@@ -178,19 +328,39 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
                               alt={item.name} 
                             />
                           </div>
-                          <span className="font-black text-slate-900">{item.name}</span>
+                          <div>
+                            <p className="font-black text-slate-900">{item.name}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tighter italic">{item.menuName}</p>
+                          </div>
                         </div>
                       </td>
                       <td className="p-6">
-                        <div className="space-y-1">
-                          <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold uppercase text-[9px] tracking-widest">
-                            {item.category || 'Uncategorized'}
-                          </Badge>
-                          <p className="text-[10px] text-slate-400 font-medium italic">{item.menuName}</p>
-                        </div>
+                        <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none font-bold uppercase text-[9px] tracking-widest">
+                          {item.category || 'Uncategorized'}
+                        </Badge>
                       </td>
                       <td className="p-6 text-center">
-                        <span className="text-xl font-black text-slate-900">{inventory}</span>
+                        <div className="flex items-center justify-center gap-3">
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-lg border-slate-200"
+                            disabled={updatingId === item.id || inventory <= 0}
+                            onClick={() => updateStock(item.menuId, item.id, inventory - 1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-lg font-black w-8 text-center">{inventory}</span>
+                          <Button 
+                            variant="outline" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-lg border-slate-200"
+                            disabled={updatingId === item.id}
+                            onClick={() => updateStock(item.menuId, item.id, inventory + 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </td>
                       <td className="p-6">
                         <div className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest", status.color)}>
@@ -199,30 +369,12 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
                         </div>
                       </td>
                       <td className="p-6 text-right">
-                        <div className="flex justify-end items-center gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-9 w-9 rounded-xl border-slate-200"
-                            disabled={updatingId === item.id || inventory <= 0}
-                            onClick={() => updateStock(item.menuId, item.id, inventory - 1)}
-                          >
-                            <Minus className="h-4 w-4" />
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(item)} className="rounded-full text-slate-400 hover:text-primary">
+                            <Edit3 className="h-4 w-4" />
                           </Button>
-                          <Input 
-                            type="number"
-                            className="w-16 h-9 rounded-xl text-center font-bold bg-slate-50"
-                            value={inventory}
-                            onChange={(e) => updateStock(item.menuId, item.id, parseInt(e.target.value) || 0)}
-                          />
-                          <Button 
-                            variant="outline" 
-                            size="icon" 
-                            className="h-9 w-9 rounded-xl border-slate-200"
-                            disabled={updatingId === item.id}
-                            onClick={() => updateStock(item.menuId, item.id, inventory + 1)}
-                          >
-                            <Plus className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" onClick={() => handleDeleteItem(item)} className="rounded-full text-slate-400 hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </td>
@@ -234,7 +386,7 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
                     <td colSpan={5} className="p-24 text-center">
                       <div className="space-y-4">
                         <Package className="h-16 w-16 mx-auto opacity-10 text-slate-400" />
-                        <p className="font-bold text-slate-400 uppercase text-xs tracking-widest">No items found</p>
+                        <p className="font-bold text-slate-400 uppercase text-xs tracking-widest">No matching inventory records</p>
                       </div>
                     </td>
                   </tr>
@@ -244,6 +396,133 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Item Create/Edit Dialog */}
+      <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
+        <DialogContent className="rounded-[2.5rem] max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">{editingItemId ? 'Edit Inventory Item' : 'New Inventory Item'}</DialogTitle>
+            <DialogDescription>Define the core parameters and stock levels for this menu item.</DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6 max-h-[60vh] overflow-y-auto no-scrollbar">
+            <div className="space-y-6">
+              <div className="space-y-2">
+                <Label>Menu Assignment</Label>
+                <Select 
+                  disabled={!!editingItemId} 
+                  value={itemForm.menuId} 
+                  onValueChange={(v) => setItemForm({...itemForm, menuId: v})}
+                >
+                  <SelectTrigger className="h-12 rounded-xl bg-slate-50 border-slate-100">
+                    <SelectValue placeholder="Select target menu..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {menus?.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Utensils className="h-3 w-3" /> Item Name</Label>
+                <Input 
+                  value={itemForm.name} 
+                  onChange={e => setItemForm({...itemForm, name: e.target.value})} 
+                  placeholder="e.g. Signature Ribeye" 
+                  className="h-12 rounded-xl"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label><DollarSign className="h-3 w-3 inline mr-1" />Price</Label>
+                  <Input 
+                    type="number" 
+                    value={itemForm.price} 
+                    onChange={e => setItemForm({...itemForm, price: e.target.value})} 
+                    className="h-12 rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label><Package className="h-3 w-3 inline mr-1" />Initial Stock</Label>
+                  <Input 
+                    type="number" 
+                    value={itemForm.inventory} 
+                    onChange={e => setItemForm({...itemForm, inventory: e.target.value})} 
+                    className="h-12 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Tag className="h-3 w-3" /> Category</Label>
+                <Input 
+                  value={itemForm.category} 
+                  onChange={e => setItemForm({...itemForm, category: e.target.value})} 
+                  className="h-12 rounded-xl"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label>Description</Label>
+                  <Button variant="link" size="sm" onClick={handleAiDescription} className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1">
+                    <Sparkles className="h-3 w-3" /> AI Write
+                  </Button>
+                </div>
+                <Textarea 
+                  value={itemForm.description} 
+                  onChange={e => setItemForm({...itemForm, description: e.target.value})} 
+                  placeholder="Describe ingredients..." 
+                  className="rounded-xl min-h-[100px]"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <ImageUploader 
+                label="Item Visual"
+                path={`restaurants/${restaurantId}/inventory/${editingItemId || Date.now()}`}
+                currentUrl={itemForm.imageUrl}
+                onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})}
+              />
+
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <Label>AI Visual Option</Label>
+                  <Button variant="link" size="sm" onClick={handleAiImage} className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1">
+                    <Sparkles className="h-3 w-3" /> Auto-Suggest
+                  </Button>
+                </div>
+                <Input 
+                  value={itemForm.imageUrl} 
+                  onChange={e => setItemForm({...itemForm, imageUrl: e.target.value})} 
+                  placeholder="URL..." 
+                  className="h-10 text-xs rounded-xl"
+                />
+              </div>
+
+              <div className="bg-slate-900 p-6 rounded-3xl text-white space-y-3">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-black uppercase tracking-widest">Inventory Integrity</span>
+                </div>
+                <p className="text-[10px] text-slate-400 leading-relaxed">
+                  Changes made here will affect the global catalog and live customer storefront immediately.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="pt-6 border-t">
+            <Button variant="outline" onClick={() => setIsItemDialogOpen(false)} className="rounded-2xl h-12">Cancel</Button>
+            <Button className="h-12 rounded-2xl px-10 font-black shadow-xl" onClick={handleSaveItem} disabled={isProcessing || !itemForm.name || !itemForm.menuId}>
+              {isProcessing ? <Loader2 className="animate-spin mr-2" /> : editingItemId ? <CheckCircle2 className="mr-2" /> : <Plus className="mr-2" />}
+              {editingItemId ? 'Update Inventory' : 'Create Item'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
