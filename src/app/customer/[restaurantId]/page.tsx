@@ -250,15 +250,26 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         return (
           <nav key={key} className="sticky top-0 z-[100] w-full border-b backdrop-blur-lg h-20 flex items-center bg-white/95" style={{ borderBottomColor: theme.primary + '20' }}>
             <div className="max-w-7xl mx-auto w-full px-6 flex items-center justify-between">
-              <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2">
+              <Link href={`/customer/${restaurantId}`} className="flex items-center gap-2 shrink-0">
                 {designSettings?.branding?.logoUrl ? (
                   <img src={designSettings.branding.logoUrl} alt="Logo" className="h-10 w-auto" />
                 ) : (
                   <div className="bg-primary rounded-lg p-1.5" style={{ backgroundColor: theme.primary }}><UtensilsCrossed className="text-white" /></div>
                 )}
-                <span className="text-xl font-black" style={{ color: theme.text }}>{restaurant.name}</span>
+                <span className="text-xl font-black hidden sm:inline" style={{ color: theme.text }}>{restaurant.name}</span>
               </Link>
-              <button className="relative p-2" onClick={() => setIsCheckoutOpen(true)}>
+
+              {/* Navigation Links Bar */}
+              <div className="hidden md:flex items-center gap-8 mx-auto">
+                <a href="#hero" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Home</a>
+                <a href="#menu-list" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Menu</a>
+                {designSettings?.sections?.about?.visible && <a href="#about" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>About</a>}
+                {designSettings?.sections?.gallery?.visible && <a href="#gallery" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Gallery</a>}
+                {designSettings?.sections?.contact?.visible && <a href="#contact" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Contact</a>}
+                <Link href={`/customer/${restaurantId}/reserve`} className="text-sm font-black px-4 py-2 rounded-full text-white shadow-md transition-transform hover:scale-105" style={{ backgroundColor: theme.primary }}>Book Table</Link>
+              </div>
+
+              <button className="relative p-2 shrink-0" onClick={() => setIsCheckoutOpen(true)}>
                 <ShoppingBag className="h-6 w-6" style={{ color: theme.text }} />
                 {cart.length > 0 && (
                   <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black" style={{ backgroundColor: theme.primary }}>{cart.length}</span>
@@ -270,7 +281,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'hero':
         return (
-          <section key={key} className="relative h-[500px] flex items-center justify-center text-center px-6 overflow-hidden">
+          <section key={key} id="hero" className="relative h-[500px] flex items-center justify-center text-center px-6 overflow-hidden">
             {designSettings?.branding?.bannerUrl ? (
               <img src={designSettings.branding.bannerUrl} className="absolute inset-0 w-full h-full object-cover" alt="Banner" />
             ) : (
@@ -348,7 +359,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'about':
         return (
-          <section key={key} className="max-w-6xl mx-auto px-6 py-20 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+          <section key={key} id="about" className="max-w-6xl mx-auto px-6 py-20 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
               <Badge variant="outline" className="px-4 py-1 rounded-full text-primary border-primary/20 font-black text-[10px] uppercase tracking-[0.2em]" style={{ color: theme.primary }}>Our Heritage</Badge>
               <h2 className="text-5xl font-black tracking-tight" style={{ color: theme.text }}>Crafting culinary stories since 2024.</h2>
@@ -399,7 +410,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'gallery':
         return (
-          <section key={key} className="py-20 bg-slate-50/50">
+          <section key={key} id="gallery" className="py-20 bg-slate-50/50">
             <div className="max-w-7xl mx-auto px-6 space-y-12">
               <div className="text-center">
                 <h2 className="text-4xl font-black" style={{ color: theme.text }}>Visual Atmosphere</h2>
@@ -423,7 +434,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'testimonials':
         return (
-          <section key={key} className="py-20 text-center">
+          <section key={key} id="testimonials" className="py-20 text-center">
             <div className="max-w-4xl mx-auto px-6 space-y-8">
               <Quote className="h-12 w-12 mx-auto text-primary opacity-20" style={{ color: theme.primary }} />
               <h2 className="text-4xl font-black" style={{ color: theme.text }}>What our guests say.</h2>
@@ -442,7 +453,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'contact':
         return (
-          <section key={key} className="py-20 border-t" style={{ borderTopColor: theme.primary + '10' }}>
+          <section key={key} id="contact" className="py-20 border-t" style={{ borderTopColor: theme.primary + '10' }}>
             <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12">
               <div className="space-y-4">
                 <h3 className="font-black text-xs uppercase tracking-[0.2em] text-primary" style={{ color: theme.primary }}>Reach Out</h3>
@@ -473,7 +484,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       case 'map':
         const addressQuery = `${restaurant.address}, ${restaurant.city}, ${restaurant.country}`;
         return (
-          <section key={key} className="h-96 w-full bg-slate-100 relative overflow-hidden">
+          <section key={key} id="map" className="h-96 w-full bg-slate-100 relative overflow-hidden">
             <iframe
               width="100%"
               height="100%"
@@ -487,7 +498,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'bookingCTA':
         return (
-          <section key={key} className="py-20 px-6">
+          <section key={key} id="booking" className="py-20 px-6">
             <div className="max-w-6xl mx-auto rounded-[4rem] p-12 md:p-24 text-center space-y-10 text-white relative overflow-hidden shadow-2xl" style={{ backgroundColor: theme.primary }}>
               <div className="absolute inset-0 bg-black/10" />
               <div className="relative z-10 space-y-6">
@@ -508,7 +519,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   };
 
   return (
-    <div className="min-h-screen pb-24" style={{ backgroundColor: theme.background }}>
+    <div className="min-h-screen pb-24 scroll-smooth" style={{ backgroundColor: theme.background }}>
       {sectionOrder.map(renderSection)}
 
       {/* Cart Navigation (Floating) */}
