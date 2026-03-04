@@ -48,6 +48,7 @@ import { checkIsRestaurantOpen } from '@/lib/operating-hours';
 import { generateEmailContent } from '@/ai/flows/generate-email-content';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { MenuStyle1, MenuStyle2, MenuStyle3, MenuStyle4 } from '@/components/menu-layouts';
 
 type CartItem = {
   id: string;
@@ -375,41 +376,23 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         );
 
       case 'menuList':
+        const layoutStyle = designSettings?.menuLayout || 'style1';
+        const LayoutComponent = {
+          style1: MenuStyle1,
+          style2: MenuStyle2,
+          style3: MenuStyle3,
+          style4: MenuStyle4
+        }[layoutStyle] || MenuStyle1;
+
         return (
-          <div key={key} id="menu-list" className="max-w-6xl mx-auto px-6 py-20 space-y-16">
-            <div className="text-center space-y-4">
-              <h2 className="text-5xl font-black" style={{ color: theme.text }}>Our Curated Catalog</h2>
-              <p className="text-slate-400 font-medium">Explore the signature flavors of {restaurant.name}</p>
-            </div>
-            {menus?.map(menu => (
-              <div key={menu.id} className="space-y-10">
-                <div className="flex items-center gap-6">
-                  <h3 className="text-3xl font-black whitespace-nowrap" style={{ color: theme.text }}>{menu.name}</h3>
-                  <div className="h-px bg-slate-100 flex-1" />
-                </div>
-                <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-                  {allMenuItems.filter(i => i.menuId === menu.id).map(item => (
-                    <Card key={item.id} className="overflow-hidden border-none shadow-xl rounded-[2.5rem] bg-white group hover:scale-[1.02] transition-all duration-500">
-                      <div className="relative h-64">
-                        <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/400`} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg">
-                          <span className="font-black text-lg text-slate-900">{currencySymbol}{item.price}</span>
-                        </div>
-                      </div>
-                      <CardContent className="p-8 space-y-6">
-                        <div className="space-y-2">
-                          <h4 className="font-black text-2xl group-hover:text-primary transition-colors" style={{ color: theme.text }}>{item.name}</h4>
-                          <p className="text-sm text-slate-400 font-medium line-clamp-2 leading-relaxed">{item.description}</p>
-                        </div>
-                        <Button className="w-full h-12 rounded-2xl font-black shadow-lg" style={{ backgroundColor: theme.primary }} onClick={() => addToCart(item)}>
-                          Add to Selection <ChevronRight className="ml-2 h-4 w-4" />
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div key={key} id="menu-list">
+            <LayoutComponent 
+              menus={menus || []}
+              allMenuItems={allMenuItems}
+              currencySymbol={currencySymbol}
+              theme={theme}
+              addToCart={addToCart}
+            />
           </div>
         );
 

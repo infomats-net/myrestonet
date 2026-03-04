@@ -34,7 +34,8 @@ import {
   Map as MapIcon,
   Menu,
   CalendarDays,
-  ShieldCheck
+  ShieldCheck,
+  Columns
 } from 'lucide-react';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -84,6 +85,7 @@ interface DesignSettings {
     bookingCTA: { visible: boolean };
   };
   sectionOrder: string[];
+  menuLayout?: 'style1' | 'style2' | 'style3' | 'style4';
   customCss?: string;
 }
 
@@ -141,6 +143,7 @@ const DEFAULT_SETTINGS: DesignSettings = {
     bookingCTA: { visible: true }
   },
   sectionOrder: DEFAULT_ORDER,
+  menuLayout: 'style1',
   customCss: '/* Enter custom CSS here */\n.hero-title { font-size: 5rem; }'
 };
 
@@ -159,6 +162,13 @@ const FONT_OPTIONS = [
   { name: 'Roboto (Clean)', value: 'Roboto' },
   { name: 'Poppins (Soft)', value: 'Poppins' },
   { name: 'Lora (Classic)', value: 'Lora' },
+];
+
+const MENU_LAYOUT_OPTIONS = [
+  { name: 'Classic List', value: 'style1' },
+  { name: 'Grid Cards', value: 'style2' },
+  { name: 'Category Tabs', value: 'style3' },
+  { name: 'Modern Minimal', value: 'style4' },
 ];
 
 export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
@@ -205,6 +215,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
               }
             },
             sectionOrder: mergedOrder,
+            menuLayout: data.menuLayout || 'style1',
             customCss: data.customCss ?? DEFAULT_SETTINGS.customCss
           } as DesignSettings);
         }
@@ -479,75 +490,96 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="layout" className="space-y-4 mt-0">
-                   <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4">Sections Order & Visibility</h4>
-                   <div className="space-y-3">
-                    {settings.sectionOrder.map((sectionKey, index) => {
-                      const sectionInfo = SECTION_LABELS[sectionKey];
-                      if (!sectionInfo) return null;
-                      
-                      return (
-                        <div key={sectionKey} className="space-y-2">
-                          <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border shadow-sm group hover:border-primary/20 transition-colors">
-                            <div className="flex flex-col gap-1">
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 text-slate-300 hover:text-primary disabled:opacity-30" 
-                                disabled={index === 0}
-                                onClick={() => moveSection(index, 'up')}
-                              >
-                                <ChevronUp className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 text-slate-300 hover:text-primary disabled:opacity-30" 
-                                disabled={index === settings.sectionOrder.length - 1}
-                                onClick={() => moveSection(index, 'down')}
-                              >
-                                <ChevronDown className="h-4 w-4" />
-                              </Button>
+                <TabsContent value="layout" className="space-y-8 mt-0">
+                   <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase flex items-center gap-2">
+                      <Columns className="h-3 w-3" /> Menu Layout Style
+                    </h4>
+                    <Select 
+                      value={settings.menuLayout || 'style1'} 
+                      onValueChange={(v) => setSettings({...settings, menuLayout: v as any})}
+                    >
+                      <SelectTrigger className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-2xl">
+                        {MENU_LAYOUT_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                   </div>
+
+                   <div className="space-y-4">
+                    <h4 className="text-[10px] font-bold text-slate-400 tracking-[0.2em] uppercase mb-4">Sections Order & Visibility</h4>
+                    <div className="space-y-3">
+                      {settings.sectionOrder.map((sectionKey, index) => {
+                        const sectionInfo = SECTION_LABELS[sectionKey];
+                        if (!sectionInfo) return null;
+                        
+                        return (
+                          <div key={sectionKey} className="space-y-2">
+                            <div className="flex items-center gap-3 p-3 bg-white rounded-2xl border shadow-sm group hover:border-primary/20 transition-colors">
+                              <div className="flex flex-col gap-1">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 text-slate-300 hover:text-primary disabled:opacity-30" 
+                                  disabled={index === 0}
+                                  onClick={() => moveSection(index, 'up')}
+                                >
+                                  <ChevronUp className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 text-slate-300 hover:text-primary disabled:opacity-30" 
+                                  disabled={index === settings.sectionOrder.length - 1}
+                                  onClick={() => moveSection(index, 'down')}
+                                >
+                                  <ChevronDown className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              
+                              <div className="flex-1 flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                                  <sectionInfo.icon className="h-4 w-4" />
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">{sectionInfo.label}</span>
+                              </div>
+
+                              <Switch 
+                                className="scale-75"
+                                checked={(settings.sections as any)[sectionKey].visible} 
+                                onCheckedChange={(v) => updateSectionVisibility(sectionKey, v)} 
+                              />
                             </div>
                             
-                            <div className="flex-1 flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
-                                <sectionInfo.icon className="h-4 w-4" />
+                            {sectionKey === 'welcomeCard' && settings.sections.welcomeCard.visible && (
+                              <div className="ml-12 p-4 bg-slate-50/30 rounded-2xl border border-dashed space-y-4 animate-in slide-in-from-top-2 duration-300">
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Status Badges</Label>
+                                  <Switch className="scale-75" checked={settings.sections.welcomeCard.showBadges} onCheckedChange={(v) => updateWelcomeCardSetting('showBadges', v)} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Ratings</Label>
+                                  <Switch className="scale-75" checked={settings.sections.welcomeCard.showRating} onCheckedChange={(v) => updateWelcomeCardSetting('showRating', v)} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Location Details</Label>
+                                  <Switch className="scale-75" checked={settings.sections.welcomeCard.showLocation} onCheckedChange={(v) => updateWelcomeCardSetting('showLocation', v)} />
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Delivery & Wait Info</Label>
+                                  <Switch className="scale-75" checked={settings.sections.welcomeCard.showDeliveryInfo} onCheckedChange={(v) => updateWelcomeCardSetting('showDeliveryInfo', v)} />
+                                </div>
                               </div>
-                              <span className="text-xs font-bold text-slate-700">{sectionInfo.label}</span>
-                            </div>
-
-                            <Switch 
-                              className="scale-75"
-                              checked={(settings.sections as any)[sectionKey].visible} 
-                              onCheckedChange={(v) => updateSectionVisibility(sectionKey, v)} 
-                            />
+                            )}
                           </div>
-                          
-                          {sectionKey === 'welcomeCard' && settings.sections.welcomeCard.visible && (
-                            <div className="ml-12 p-4 bg-slate-50/30 rounded-2xl border border-dashed space-y-4 animate-in slide-in-from-top-2 duration-300">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Status Badges</Label>
-                                <Switch className="scale-75" checked={settings.sections.welcomeCard.showBadges} onCheckedChange={(v) => updateWelcomeCardSetting('showBadges', v)} />
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Ratings</Label>
-                                <Switch className="scale-75" checked={settings.sections.welcomeCard.showRating} onCheckedChange={(v) => updateWelcomeCardSetting('showRating', v)} />
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Location Details</Label>
-                                <Switch className="scale-75" checked={settings.sections.welcomeCard.showLocation} onCheckedChange={(v) => updateWelcomeCardSetting('showLocation', v)} />
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <Label className="text-[10px] font-bold text-slate-500 uppercase">Show Delivery & Wait Info</Label>
-                                <Switch className="scale-75" checked={settings.sections.welcomeCard.showDeliveryInfo} onCheckedChange={(v) => updateWelcomeCardSetting('showDeliveryInfo', v)} />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                   </div>
                 </TabsContent>
 
                 <TabsContent value="fonts" className="space-y-6 mt-0">
