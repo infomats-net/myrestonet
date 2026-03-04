@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -25,9 +24,10 @@ import {
   Camera,
   Palette,
   Settings as SettingsIcon,
-  LayoutDashboard
+  LayoutDashboard,
+  Package
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,6 +43,7 @@ import { OrdersManager } from '@/components/orders-manager';
 import { RestaurantBilling } from '@/components/restaurant-billing';
 import { PaymentsManager } from '@/components/payments-manager';
 import { StoreSettingsManager } from '@/components/store-settings-manager';
+import { InventoryManager } from '@/components/inventory-manager';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -185,9 +186,10 @@ function DashboardContent() {
   return (
     <div className="p-8 space-y-8 w-full animate-in fade-in duration-500">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full bg-black p-8 md:p-12 rounded-[3rem] shadow-2xl">
-        <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full max-w-2xl mx-auto flex gap-1 overflow-x-auto no-scrollbar">
+        <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full max-w-3xl mx-auto flex gap-1 overflow-x-auto no-scrollbar">
           <TabsTrigger value="overview" className={tabTriggerStyle}><LayoutDashboard className="h-4 w-4" /> <span className="hidden lg:inline">Dashboard</span></TabsTrigger>
           <TabsTrigger value="orders" className={tabTriggerStyle}><ShoppingBag className="h-4 w-4" /> <span className="hidden lg:inline">Orders</span></TabsTrigger>
+          <TabsTrigger value="inventory" className={tabTriggerStyle}><Package className="h-4 w-4" /> <span className="hidden lg:inline">Inventory</span></TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}><CalendarDays className="h-4 w-4" /> <span className="hidden lg:inline">Reservations</span></TabsTrigger>
         </TabsList>
 
@@ -274,6 +276,10 @@ function DashboardContent() {
 
         <TabsContent value="orders">
           <OrdersManager restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+
+        <TabsContent value="inventory">
+          <InventoryManager restaurantId={effectiveRestaurantId!} />
         </TabsContent>
 
         <TabsContent value="reservations" className="space-y-6">

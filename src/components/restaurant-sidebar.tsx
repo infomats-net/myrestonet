@@ -1,4 +1,3 @@
-
 "use client"
 
 import { 
@@ -17,7 +16,8 @@ import {
   LayoutGrid,
   CalendarDays,
   CreditCard,
-  Banknote
+  Banknote,
+  Package
 } from "lucide-react"
 import {
   Sidebar,
@@ -141,6 +141,14 @@ function SidebarLinks() {
                   <Link href={getHref('orders')}>
                     <ShoppingCart />
                     <span>Orders</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Inventory" isActive={isTabActive('inventory')}>
+                  <Link href={getHref('inventory')}>
+                    <Package />
+                    <span>Inventory</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
