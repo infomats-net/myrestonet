@@ -59,6 +59,7 @@ interface DesignSettings {
   branding: {
     logoUrl?: string;
     bannerUrl?: string;
+    siteBannerUrl?: string;
   };
   typography: {
     fontFamily: string;
@@ -67,6 +68,7 @@ interface DesignSettings {
   };
   sections: {
     navbar: { visible: boolean };
+    siteBanner: { visible: boolean };
     hero: { visible: boolean; height: string };
     welcomeCard: { 
       visible: boolean;
@@ -91,7 +93,8 @@ interface DesignSettings {
 
 const SECTION_LABELS: Record<string, { label: string; icon: any }> = {
   navbar: { label: 'Navigation Bar', icon: Menu },
-  hero: { label: 'Hero Banner', icon: Monitor },
+  siteBanner: { label: 'Site Banner (Image Strip)', icon: ImageIcon },
+  hero: { label: 'Hero Banner (Immersive)', icon: Monitor },
   welcomeCard: { label: 'Info Card', icon: Info },
   about: { label: 'About Us', icon: User },
   menuList: { label: 'Menu Catalog', icon: UtensilsCrossed },
@@ -102,7 +105,7 @@ const SECTION_LABELS: Record<string, { label: string; icon: any }> = {
   bookingCTA: { label: 'Booking Section (Plan Your Visit)', icon: CalendarDays },
 };
 
-const DEFAULT_ORDER = ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
+const DEFAULT_ORDER = ['navbar', 'siteBanner', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
 
 const DEFAULT_SETTINGS: DesignSettings = {
   theme: {
@@ -116,7 +119,8 @@ const DEFAULT_SETTINGS: DesignSettings = {
   },
   branding: {
     logoUrl: '',
-    bannerUrl: ''
+    bannerUrl: '',
+    siteBannerUrl: ''
   },
   typography: {
     fontFamily: 'Inter',
@@ -125,6 +129,7 @@ const DEFAULT_SETTINGS: DesignSettings = {
   },
   sections: {
     navbar: { visible: true },
+    siteBanner: { visible: true },
     hero: { visible: true, height: '400px' },
     welcomeCard: { 
       visible: true,
@@ -487,6 +492,13 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       currentUrl={settings.branding.bannerUrl}
                       onUploadSuccess={(url) => setSettings({...settings, branding: {...settings.branding, bannerUrl: url}})}
                     />
+
+                    <ImageUploader 
+                      label="Site Banner (Top Strip)"
+                      path={`restaurants/${restaurantId}/branding/siteBanner`}
+                      currentUrl={settings.branding.siteBannerUrl}
+                      onUploadSuccess={(url) => setSettings({...settings, branding: {...settings.branding, siteBannerUrl: url}})}
+                    />
                   </div>
                 </TabsContent>
 
@@ -646,6 +658,18 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                   if (!section?.visible || sectionKey === 'navbar') return null;
 
                   switch(sectionKey) {
+                    case 'siteBanner':
+                      return (
+                        <div key="siteBanner" className="w-full h-24 overflow-hidden bg-slate-100">
+                          {settings.branding.siteBannerUrl ? (
+                            <img src={settings.branding.siteBannerUrl} className="w-full h-full object-cover" alt="Banner" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-slate-300">
+                              <ImageIcon className="h-6 w-6" />
+                            </div>
+                          )}
+                        </div>
+                      );
                     case 'hero':
                       return (
                         <section key="hero" className="h-64 flex flex-col items-center justify-center text-center p-8 relative overflow-hidden">

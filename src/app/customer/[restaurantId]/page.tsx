@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
@@ -25,7 +24,8 @@ import {
   CalendarDays,
   Menu as MenuIcon,
   X,
-  Maximize2
+  Maximize2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,7 +60,7 @@ type CartItem = {
   quantity: number;
 };
 
-const DEFAULT_SECTION_ORDER = ['navbar', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
+const DEFAULT_SECTION_ORDER = ['navbar', 'siteBanner', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
 
 export default function CustomerStorefront({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = use(params);
@@ -266,7 +266,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     const config = designSettings?.sections?.[key];
     const isVisible = config ? config.visible : true;
 
-    // menuList is usually required, but we allow toggle for other sections.
+    // navbar and menuList are special, but we handle toggle for others.
     if (!isVisible && key !== 'menuList' && key !== 'navbar') return null; 
 
     switch (key) {
@@ -301,6 +301,19 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               </button>
             </div>
           </nav>
+        );
+
+      case 'siteBanner':
+        return (
+          <section key={key} id="site-banner" className="w-full h-24 md:h-40 overflow-hidden bg-slate-50 border-b">
+            {designSettings?.branding?.siteBannerUrl ? (
+              <img src={designSettings.branding.siteBannerUrl} className="w-full h-full object-cover" alt="Site Banner" />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-r from-slate-50 to-slate-100 flex items-center justify-center">
+                <ImageIcon className="text-slate-200 h-8 w-8" />
+              </div>
+            )}
+          </section>
         );
 
       case 'hero':
