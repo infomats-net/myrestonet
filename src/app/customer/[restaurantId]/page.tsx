@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
@@ -243,16 +244,22 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   };
 
   const sectionOrder = useMemo(() => {
-    const rawOrder = designSettings?.sectionOrder || DEFAULT_SECTION_ORDER;
-    const mergedOrder = [...rawOrder];
-    DEFAULT_SECTION_ORDER.forEach(key => {
-      if (!mergedOrder.includes(key)) {
-        mergedOrder.push(key);
+    // If no order is saved, use the default
+    if (!designSettings?.sectionOrder) return DEFAULT_SECTION_ORDER;
+
+    // Merge logic: ensure all default sections are present, maintaining merchant order
+    const merged = [...designSettings.sectionOrder];
+    
+    DEFAULT_SECTION_ORDER.forEach((key, index) => {
+      if (!merged.includes(key)) {
+        // Try to insert it at its intended default position
+        merged.splice(index, 0, key);
       }
     });
-    // For visual consistency, ensure 'navbar' is always at index 0 if it is present
-    const cleanOrder = mergedOrder.filter(k => k !== 'navbar');
-    return ['navbar', ...cleanOrder];
+
+    // Clean duplicates and ensure navbar is first
+    const clean = Array.from(new Set(merged)).filter(k => k !== 'navbar');
+    return ['navbar', ...clean];
   }, [designSettings?.sectionOrder]);
 
   if (loadingRes || loadingMenus || loadingItems) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin h-10" /></div>;
@@ -264,7 +271,8 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   // Dynamic Section Rendering Engine
   const renderSection = (key: string) => {
     const config = designSettings?.sections?.[key];
-    const isVisible = config ? config.visible : true;
+    // IMPORTANT: Default to VISIBLE if the config for this section doesn't exist yet
+    const isVisible = config?.visible !== false;
 
     // navbar and menuList are special, but we handle toggle for others.
     if (!isVisible && key !== 'menuList' && key !== 'navbar') return null; 
@@ -287,9 +295,9 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               <div className="hidden md:flex items-center gap-8 mx-auto">
                 <a href="#hero" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Home</a>
                 <a href="#menu-list" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Menu</a>
-                {designSettings?.sections?.about?.visible && <a href="#about" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>About</a>}
-                {designSettings?.sections?.gallery?.visible && <a href="#gallery" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Gallery</a>}
-                {designSettings?.sections?.contact?.visible && <a href="#contact" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Contact</a>}
+                {designSettings?.sections?.about?.visible !== false && <a href="#about" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>About</a>}
+                {designSettings?.sections?.gallery?.visible !== false && <a href="#gallery" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Gallery</a>}
+                {designSettings?.sections?.contact?.visible !== false && <a href="#contact" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Contact</a>}
                 <Link href={`/customer/${restaurantId}/reserve`} className="text-sm font-black px-4 py-2 rounded-full text-white shadow-md transition-transform hover:scale-105" style={{ backgroundColor: theme.primary }}>Book Table</Link>
               </div>
 
@@ -305,7 +313,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       case 'siteBanner':
         return (
-          <section key={key} id="site-banner" className="w-full h-24 md:h-40 overflow-hidden bg-slate-50 border-b">
+          <section key={key} id="site-banner" className="w-full h-24 md:h-40 overflow-hidden bg-slate-50 border-b relative">
             {designSettings?.branding?.siteBannerUrl ? (
               <img src={designSettings.branding.siteBannerUrl} className="w-full h-full object-cover" alt="Site Banner" />
             ) : (
@@ -344,14 +352,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               <CardContent className="p-10 md:p-12 space-y-8">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                   <div className="space-y-2">
-                    {cardConfig.showBadges && (
+                    {cardConfig.showBadges !== false && (
                       <Badge className={cn("px-4 py-1 rounded-full font-black text-[10px] uppercase tracking-widest", isOpen ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600")}>
                         {isOpen === null ? "Loading..." : isOpen ? "Open Now" : "Closed"}
                       </Badge>
                     )}
                     <h2 className="text-3xl font-black text-slate-900">Experience Excellence</h2>
                   </div>
-                  {cardConfig.showRating && (
+                  {cardConfig.showRating !== false && (
                     <div className="flex items-center gap-2 bg-slate-50 px-6 py-3 rounded-2xl border">
                       <Star className="h-5 w-5 text-amber-400 fill-current" />
                       <span className="font-black text-xl text-slate-900">4.9</span>
@@ -361,7 +369,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pt-8 border-t border-slate-100">
-                  {cardConfig.showLocation && (
+                  {cardConfig.showLocation !== false && (
                     <div className="flex items-start gap-4">
                       <div className="bg-primary/10 p-3 rounded-xl text-primary" style={{ backgroundColor: theme.primary + '15', color: theme.primary }}><MapPin className="h-5 w-5" /></div>
                       <div>
@@ -370,7 +378,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                       </div>
                     </div>
                   )}
-                  {cardConfig.showDeliveryInfo && (
+                  {cardConfig.showDeliveryInfo !== false && (
                     <>
                       <div className="flex items-start gap-4">
                         <div className="bg-blue-50 p-3 rounded-xl text-blue-600"><Truck className="h-5 w-5" /></div>
