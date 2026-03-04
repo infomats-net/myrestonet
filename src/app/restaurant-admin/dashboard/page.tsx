@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -230,7 +231,7 @@ function DashboardContent() {
                       <div className="flex items-center gap-4">
                         <div className="bg-primary/10 p-2 rounded-lg"><ShoppingBag className="h-4 w-4 text-primary" /></div>
                         <div>
-                          <p className="font-bold text-slate-900">Order #{order.id.slice(-4).toUpperCase()}</p>
+                          <p className="font-bold text-slate-900">Order #{order.orderNumber || order.id.slice(-4).toUpperCase()}</p>
                           <p className="text-xs text-slate-400">{format(new Date(order.createdAt), 'h:mm a')}</p>
                         </div>
                       </div>

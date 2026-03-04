@@ -97,6 +97,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "orderNumber": { "type": "string", "description": "Numeric order ID for easy staff reference." },
         "customerId": { "type": "string" },
         "customerName": { "type": "string" },
         "customerEmail": { "type": "string" },

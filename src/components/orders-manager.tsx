@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -110,7 +111,7 @@ export function OrdersManager({ restaurantId }: { restaurantId: string }) {
                     <Hash className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                    <p className="font-black text-lg text-slate-900 leading-tight">Order #{order.id.slice(-6).toUpperCase()}</p>
+                    <p className="font-black text-lg text-slate-900 leading-tight">Order #{order.orderNumber || order.id.slice(-6).toUpperCase()}</p>
                     <p className="text-[11px] font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-widest">
                       <Phone className="h-3 w-3 text-primary" /> {order.customerPhone || 'No Phone'}
                     </p>

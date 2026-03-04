@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
@@ -72,6 +73,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [paymentMethod, setPaymentMethod] = useState<string>('cod');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [lastOrderNumber, setLastOrderNumber] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   
   // Lightbox state
@@ -178,7 +180,11 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         user = userCredential.user;
       }
 
+      // Generate a numeric-only order ID (6 digits)
+      const orderNumber = Math.floor(100000 + Math.random() * 900000).toString();
+
       const orderData = {
+        orderNumber,
         customerId: user.uid,
         customerName: customerInfo.name,
         customerEmail: customerInfo.email,
@@ -198,6 +204,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       addDoc(ordersRef, orderData)
         .then(async () => {
           setCart([]);
+          setLastOrderNumber(orderNumber);
           setOrderComplete(true);
           setIsCheckoutOpen(false);
           toast({ title: "Order Placed!" });
@@ -206,7 +213,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             type: 'order_confirmed',
             recipientName: customerInfo.name,
             restaurantName: restaurant?.name,
-            details: `Total: ${total} ${restaurant?.baseCurrency}. Items: ${cart.length}`
+            details: `Order #: ${orderNumber}. Total: ${total} ${restaurant?.baseCurrency}. Items: ${cart.length}`
           }).then(emailContent => {
             addDoc(collection(firestore, 'mail'), {
               to: [customerInfo.email],
@@ -714,7 +721,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           </div>
           <DialogTitle className="text-3xl font-black">Order Received!</DialogTitle>
           <DialogDescription className="text-slate-500 mt-2 mb-8">
-            We are preparing your meal. An AI-generated receipt has been sent to <strong>{customerInfo.email}</strong>.
+            Order <strong>#{lastOrderNumber}</strong> is being prepared. An AI-generated receipt has been sent to <strong>{customerInfo.email}</strong>.
           </DialogDescription>
           <Button className="w-full h-14 rounded-2xl font-black" onClick={() => setOrderComplete(false)}>Perfect, Thanks!</Button>
         </DialogContent>
