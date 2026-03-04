@@ -1,23 +1,24 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { useFirebase } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Upload, Loader2, Image as ImageIcon, Trash2, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
 interface ImageUploaderProps {
   path: string;
   onUploadSuccess: (url: string) => void;
+  onDelete?: () => void;
   className?: string;
   label?: string;
   currentUrl?: string;
 }
 
-export function ImageUploader({ path, onUploadSuccess, className, label, currentUrl }: ImageUploaderProps) {
+export function ImageUploader({ path, onUploadSuccess, onDelete, className, label, currentUrl }: ImageUploaderProps) {
   const { storage } = useFirebase();
   const { toast } = useToast();
   const [progress, setProgress] = useState(0);
@@ -63,7 +64,6 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
   const handleUpload = async (file: File) => {
     if (!storage || !file) return;
 
-    // Validate initial file type
     if (!file.type.startsWith('image/')) {
       toast({ variant: 'destructive', title: 'Invalid file', description: 'Please select an image file.' });
       return;
@@ -73,11 +73,9 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
     setProgress(0);
     
     try {
-      // 1. Process image to WebP for optimization
       const webpBlob = await convertToWebP(file);
       
-      // 2. Prepare path (ensure it ends with .webp extension)
-      const cleanPath = path.replace(/\.[^/.]+$/, ""); // Strip existing extension if present
+      const cleanPath = path.replace(/\.[^/.]+$/, "");
       const finalPath = `${cleanPath}.webp`;
       
       const storageRef = ref(storage, finalPath);
@@ -109,6 +107,32 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
     }
   };
 
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!storage || !currentUrl) return;
+
+    if (!confirm("Are you sure you want to permanently delete this image?")) return;
+
+    setUploading(true);
+    try {
+      const cleanPath = path.replace(/\.[^/.]+$/, "");
+      const finalPath = `${cleanPath}.webp`;
+      const storageRef = ref(storage, finalPath);
+      
+      await deleteObject(storageRef).catch(err => {
+        // If not found in storage, we just proceed to clear the URL from the app
+        if (err.code !== 'storage/object-not-found') throw err;
+      });
+      
+      if (onDelete) onDelete();
+      toast({ title: 'Visual Removed', description: 'The image has been deleted from storage.' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Delete Failed', description: err.message });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className={cn("space-y-4", className)}>
       {label && <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>}
@@ -130,8 +154,18 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
                 className="rounded-xl font-bold h-9 gap-2"
                 onClick={() => fileInputRef.current?.click()}
               >
-                <Upload className="h-4 w-4" /> Replace
+                <RefreshCw className="h-4 w-4" /> Replace
               </Button>
+              {onDelete && (
+                <Button 
+                  variant="destructive" 
+                  size="sm" 
+                  className="rounded-xl font-bold h-9 gap-2"
+                  onClick={handleDelete}
+                >
+                  <Trash2 className="h-4 w-4" /> Remove
+                </Button>
+              )}
             </div>
           </>
         ) : (
@@ -140,7 +174,7 @@ export function ImageUploader({ path, onUploadSuccess, className, label, current
               <div className="w-full space-y-4 px-4">
                 <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
                 <div className="space-y-2">
-                  <p className="text-xs font-black text-primary uppercase tracking-widest">Optimizing & Uploading {Math.round(progress)}%</p>
+                  <p className="text-xs font-black text-primary uppercase tracking-widest">Processing {Math.round(progress)}%</p>
                   <Progress value={progress} className="h-1.5" />
                 </div>
               </div>

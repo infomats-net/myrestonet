@@ -484,6 +484,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       path={`restaurants/${restaurantId}/branding/logo`}
                       currentUrl={settings.branding.logoUrl}
                       onUploadSuccess={(url) => setSettings({...settings, branding: {...settings.branding, logoUrl: url}})}
+                      onDelete={() => setSettings({...settings, branding: {...settings.branding, logoUrl: ''}})}
                     />
 
                     <ImageUploader 
@@ -491,6 +492,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       path={`restaurants/${restaurantId}/branding/banner`}
                       currentUrl={settings.branding.bannerUrl}
                       onUploadSuccess={(url) => setSettings({...settings, branding: {...settings.branding, bannerUrl: url}})}
+                      onDelete={() => setSettings({...settings, branding: {...settings.branding, bannerUrl: ''}})}
                     />
 
                     <ImageUploader 
@@ -498,6 +500,7 @@ export function DesignSystemEditor({ restaurantId }: { restaurantId: string }) {
                       path={`restaurants/${restaurantId}/branding/siteBanner`}
                       currentUrl={settings.branding.siteBannerUrl}
                       onUploadSuccess={(url) => setSettings({...settings, branding: {...settings.branding, siteBannerUrl: url}})}
+                      onDelete={() => setSettings({...settings, branding: {...settings.branding, siteBannerUrl: ''}})}
                     />
                   </div>
                 </TabsContent>

@@ -485,6 +485,7 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
                 path={`restaurants/${restaurantId}/inventory/${editingItemId || Date.now()}`}
                 currentUrl={itemForm.imageUrl}
                 onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})}
+                onDelete={() => setItemForm({...itemForm, imageUrl: ''})}
               />
 
               <div className="space-y-2">
