@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -19,7 +18,8 @@ import {
   Zap,
   Clock,
   XCircle,
-  Settings2
+  Settings2,
+  Sparkle
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -31,6 +31,7 @@ interface MenuLayoutProps {
   theme: { primary: string; text: string; background: string };
   addToCart: (item: any) => void;
   cart: any[];
+  bestSellerIds?: Set<string>;
 }
 
 const getItemQuantity = (cart: any[], itemId: string) => {
@@ -57,10 +58,35 @@ const DietaryBadges = ({ item }: { item: any }) => {
   );
 };
 
+const ItemBadges = ({ item, isBestSeller }: { item: any, isBestSeller: boolean }) => (
+  <div className="absolute top-4 left-4 flex flex-col gap-1.5 z-10">
+    {isBestSeller && (
+      <div className="bg-amber-500 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5 animate-pulse">
+        <Star className="h-3 w-3 fill-current" /> Best Seller
+      </div>
+    )}
+    {item.isNew && (
+      <div className="bg-blue-500 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5">
+        <Sparkle className="h-3 w-3 fill-current" /> New
+      </div>
+    )}
+    {item.isPopular && !isBestSeller && (
+      <div className="bg-amber-400 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5">
+        <Star className="h-3 w-3 fill-current" /> Featured
+      </div>
+    )}
+    {item.isCombo && (
+      <div className="bg-indigo-500 text-white px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5">
+        <Zap className="h-3 w-3 fill-current" /> Combo
+      </div>
+    )}
+  </div>
+);
+
 /**
  * Style 1: Classic List
  */
-export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCart, cart }: MenuLayoutProps) {
+export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCart, cart, bestSellerIds }: MenuLayoutProps) {
   return (
     <div className="max-w-6xl mx-auto px-6 py-10 space-y-16">
       {menus?.map(menu => {
@@ -79,6 +105,7 @@ export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCa
                 const isOutOfStock = item.isOutOfStock;
                 const hasSpecialPrice = !!item.specialPrice;
                 const hasAddons = item.addOns && item.addOns.length > 0;
+                const isBestSeller = bestSellerIds?.has(item.id) || false;
 
                 return (
                   <Card key={item.id} className={cn(
@@ -88,6 +115,8 @@ export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCa
                     <div className="relative h-64">
                       <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/600/400`} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                       
+                      <ItemBadges item={item} isBestSeller={isBestSeller} />
+
                       <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg flex flex-col items-end">
                         {hasSpecialPrice ? (
                           <>
@@ -98,18 +127,6 @@ export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCa
                           <span className="font-black text-lg text-slate-900">{currencySymbol}{item.price}</span>
                         )}
                       </div>
-
-                      {item.isPopular && (
-                        <div className="absolute top-4 left-4 bg-amber-400 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5">
-                          <Star className="h-3 w-3 fill-current" /> Popular
-                        </div>
-                      )}
-
-                      {item.isCombo && (
-                        <div className="absolute top-14 left-4 bg-blue-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5">
-                          <Zap className="h-3 w-2 fill-current" /> Combo
-                        </div>
-                      )}
 
                       {hasAddons && (
                         <div className="absolute bottom-4 right-4 bg-white/80 backdrop-blur-md px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-600 shadow-sm border">
@@ -161,7 +178,7 @@ export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCa
 /**
  * Style 2: Grid Cards
  */
-export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCart, cart }: MenuLayoutProps) {
+export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCart, cart, bestSellerIds }: MenuLayoutProps) {
   return (
     <div className="max-w-7xl mx-auto px-6 py-10 space-y-24">
       <div className="flex items-center gap-4 border-l-8 pl-6" style={{ borderColor: theme.primary }}>
@@ -182,6 +199,7 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
                 const quantity = getItemQuantity(cart, item.id);
                 const isOutOfStock = item.isOutOfStock;
                 const hasAddons = item.addOns && item.addOns.length > 0;
+                const isBestSeller = bestSellerIds?.has(item.id) || false;
                 
                 return (
                   <Card key={item.id} className={cn(
@@ -191,14 +209,13 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
                     <div className="aspect-square relative">
                       <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/400`} className="w-full h-full object-cover" alt={item.name} />
                       
-                      {item.isPopular && (
-                        <div className="absolute top-2 left-2 bg-amber-400 text-white p-1.5 rounded-full shadow-lg">
-                          <Star className="h-3 w-3 fill-current" />
-                        </div>
-                      )}
+                      <div className="absolute top-2 left-2 flex flex-col gap-1">
+                        {isBestSeller && <div className="bg-amber-500 text-white p-1.5 rounded-lg shadow-lg animate-pulse"><Star className="h-3 w-3 fill-current" /></div>}
+                        {item.isNew && <div className="bg-blue-500 text-white p-1.5 rounded-lg shadow-lg"><Sparkle className="h-3 w-3 fill-current" /></div>}
+                      </div>
 
                       {item.isCombo && (
-                        <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase shadow-lg flex items-center gap-1">
+                        <div className="absolute top-2 right-2 bg-indigo-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase shadow-lg flex items-center gap-1">
                           <Zap className="h-2 w-2 fill-current" /> Combo
                         </div>
                       )}
@@ -255,7 +272,7 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
 /**
  * Style 3: Category Tabs
  */
-export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCart, cart }: MenuLayoutProps) {
+export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCart, cart, bestSellerIds }: MenuLayoutProps) {
   if (!menus || menus.length === 0) return null;
 
   return (
@@ -290,6 +307,7 @@ export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCa
                   const quantity = getItemQuantity(cart, item.id);
                   const isOutOfStock = item.isOutOfStock;
                   const hasAddons = item.addOns && item.addOns.length > 0;
+                  const isBestSeller = bestSellerIds?.has(item.id) || false;
 
                   return (
                     <div key={item.id} className={cn(
@@ -298,8 +316,11 @@ export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCa
                     )}>
                       <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0 shadow-lg relative">
                         <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/300/300`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={item.name} />
-                        {item.isPopular && <div className="absolute top-2 left-2 bg-amber-400 p-1 rounded-lg text-white"><Star className="h-3 w-3 fill-current" /></div>}
-                        {item.isCombo && <div className="absolute top-2 right-2 bg-blue-500 p-1 rounded-lg text-white"><Zap className="h-3 w-3 fill-current" /></div>}
+                        
+                        <div className="absolute top-2 left-2 flex flex-col gap-1">
+                          {isBestSeller && <div className="bg-amber-500 p-1 rounded-lg text-white"><Star className="h-3 w-3 fill-current" /></div>}
+                          {item.isNew && <div className="bg-blue-500 p-1 rounded-lg text-white"><Sparkle className="h-3 w-3 fill-current" /></div>}
+                        </div>
                       </div>
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
@@ -345,7 +366,7 @@ export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCa
 /**
  * Style 4: Modern Minimal
  */
-export function MenuStyle4({ menus, allMenuItems, currencySymbol, theme, addToCart, cart }: MenuLayoutProps) {
+export function MenuStyle4({ menus, allMenuItems, currencySymbol, theme, addToCart, cart, bestSellerIds }: MenuLayoutProps) {
   return (
     <div className="max-w-4xl mx-auto px-6 py-10 space-y-24">
       <div className="text-center">
@@ -368,6 +389,7 @@ export function MenuStyle4({ menus, allMenuItems, currencySymbol, theme, addToCa
                 const quantity = getItemQuantity(cart, item.id);
                 const isOutOfStock = item.isOutOfStock;
                 const hasAddons = item.addOns && item.addOns.length > 0;
+                const isBestSeller = bestSellerIds?.has(item.id) || false;
 
                 return (
                   <div key={item.id} className={cn(
@@ -377,8 +399,11 @@ export function MenuStyle4({ menus, allMenuItems, currencySymbol, theme, addToCa
                     <div className="md:col-span-1">
                       <div className="aspect-[4/5] rounded-lg overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-700 relative">
                         <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/500`} className="w-full h-full object-cover" alt={item.name} />
-                        {item.isPopular && <div className="absolute top-2 right-2 bg-white/80 p-1.5 rounded-lg"><Star className="h-3 w-3 text-amber-500 fill-current" /></div>}
-                        {item.isCombo && <div className="absolute bottom-2 left-2 bg-blue-500/90 text-white px-2 py-0.5 rounded text-[8px] font-black">COMBO</div>}
+                        
+                        <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                          {isBestSeller && <div className="bg-white/80 p-1.5 rounded-lg"><Star className="h-3 w-3 text-amber-500 fill-current" /></div>}
+                          {item.isNew && <div className="bg-white/80 p-1.5 rounded-lg"><Sparkle className="h-3 w-3 text-blue-500 fill-current" /></div>}
+                        </div>
                       </div>
                     </div>
                     <div className="md:col-span-2 space-y-4">

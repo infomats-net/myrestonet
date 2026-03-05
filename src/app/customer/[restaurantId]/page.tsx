@@ -1,9 +1,8 @@
-
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useFirebase } from '@/firebase';
-import { doc, collection, addDoc, getDocs } from 'firebase/firestore';
+import { doc, collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { 
   Loader2, 
@@ -38,7 +37,8 @@ import {
   AlertTriangle,
   Tag,
   Plus,
-  Minus
+  Minus,
+  Sparkle
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -74,7 +74,7 @@ type AddOn = {
 
 type CartItem = {
   id: string;
-  uniqueId: string; // To handle same item with different addons
+  uniqueId: string; 
   name: string;
   price: number;
   quantity: number;
@@ -179,6 +179,24 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     return [...DIETARY_FILTERS, ...customFilters];
   }, [customDietaryTags]);
 
+  const ordersQuery = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return query(collection(firestore, 'restaurants', restaurantId, 'orders'), orderBy('createdAt', 'desc'));
+  }, [firestore, restaurantId]);
+  const { data: allOrders } = useCollection(ordersQuery);
+
+  const bestSellerIds = useMemo(() => {
+    if (!allOrders) return new Set<string>();
+    const counts: Record<string, number> = {};
+    allOrders.forEach(order => {
+      order.items?.forEach((item: any) => {
+        counts[item.id] = (counts[item.id] || 0) + (item.quantity || 1);
+      });
+    });
+    // Automated Threshold: ordered more than 5 times
+    return new Set(Object.keys(counts).filter(id => counts[id] >= 5));
+  }, [allOrders]);
+
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'menus');
@@ -244,7 +262,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       return;
     }
 
-    // If item has add-ons, open customization dialog
     if (item.addOns && item.addOns.length > 0) {
       setCustomizingItem(item);
       setActiveAddOns([]);
@@ -259,7 +276,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     const addOnsTotal = selectedAddOns.reduce((sum, a) => sum + (a.price || 0), 0);
     const finalPrice = basePrice + addOnsTotal;
 
-    // Create a unique key for the item + its specific add-ons
     const uniqueId = `${item.id}-${selectedAddOns.map(a => a.name).sort().join('|')}`;
 
     setCart(prev => {
@@ -569,6 +585,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                   <div className="flex gap-6 overflow-x-auto no-scrollbar pb-6 px-2 -mx-2">
                     {popularItems.map(item => {
                       const hasAddons = item.addOns && item.addOns.length > 0;
+                      const isBestSeller = bestSellerIds.has(item.id);
                       return (
                         <Card key={item.id} className={cn(
                           "min-w-[280px] rounded-[2rem] border-none shadow-xl overflow-hidden flex flex-col group cursor-pointer relative",
@@ -588,11 +605,23 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                               )}
                             </div>
 
-                            {item.isCombo && (
-                              <div className="absolute top-3 left-3 bg-blue-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
-                                <Zap className="h-2 w-2 fill-current" /> Combo
-                              </div>
-                            )}
+                            <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                              {isBestSeller && (
+                                <div className="bg-amber-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg animate-pulse">
+                                  <Star className="h-2 w-2 fill-current" /> Best Seller
+                                </div>
+                              )}
+                              {item.isNew && (
+                                <div className="bg-blue-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
+                                  <Sparkle className="h-2 w-2 fill-current" /> New
+                                </div>
+                              )}
+                              {item.isCombo && (
+                                <div className="bg-indigo-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
+                                  <Zap className="h-2 w-2 fill-current" /> Combo
+                                </div>
+                              )}
+                            </div>
 
                             {hasAddons && (
                               <div className="absolute bottom-3 right-3 bg-white/80 backdrop-blur-md px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-600 shadow-sm">
@@ -639,6 +668,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               theme={theme}
               addToCart={addToCart}
               cart={cart}
+              bestSellerIds={bestSellerIds}
             />
           </div>
         );

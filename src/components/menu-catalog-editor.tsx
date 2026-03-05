@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef } from 'react';
@@ -28,7 +27,8 @@ import {
   AlertTriangle,
   X,
   Tag,
-  DollarSign
+  DollarSign,
+  Sparkle
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -73,6 +73,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     isPopular: false,
     isCombo: false,
     isOutOfStock: false,
+    isNew: false,
     specialPrice: '',
     dietary: [] as string[],
     addOns: [] as { name: string, price: number }[]
@@ -294,7 +295,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   const resetItemForm = () => {
     setItemForm({ 
       name: '', description: '', price: '', category: '', imageUrl: '', 
-      isPopular: false, isCombo: false, isOutOfStock: false, specialPrice: '', dietary: [], addOns: []
+      isPopular: false, isCombo: false, isOutOfStock: false, isNew: false, specialPrice: '', dietary: [], addOns: []
     });
     setEditingItemId(null);
   };
@@ -374,6 +375,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                             <p className="font-black text-slate-900">{item.name}</p>
                             <div className="flex flex-wrap gap-1 mt-1">
                               {item.category && <Badge variant="secondary" className="text-[8px] uppercase px-1 bg-slate-100 text-slate-500 border-none">{item.category}</Badge>}
+                              {item.isNew && <Badge className="text-[8px] uppercase px-1 bg-blue-100 text-blue-600 border-none">New</Badge>}
                               {item.dietary?.map((d: string) => (
                                 <Badge key={d} variant="outline" className="text-[8px] uppercase px-1">{d}</Badge>
                               ))}
@@ -586,6 +588,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
               <div className="space-y-4 bg-slate-50 p-6 rounded-3xl">
                 <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Star className="h-4 w-4" /> Featured / Popular</Label><Switch checked={itemForm.isPopular} onCheckedChange={v => setItemForm({...itemForm, isPopular: v})} /></div>
                 <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Zap className="h-4 w-4" /> Combo / Meal Deal</Label><Switch checked={itemForm.isCombo} onCheckedChange={v => setItemForm({...itemForm, isCombo: v})} /></div>
+                <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Sparkle className="h-4 w-4" /> Mark as New Item</Label><Switch checked={itemForm.isNew} onCheckedChange={v => setItemForm({...itemForm, isNew: v})} /></div>
                 <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Out of Stock</Label><Switch checked={itemForm.isOutOfStock} onCheckedChange={v => setItemForm({...itemForm, isOutOfStock: v})} /></div>
               </div>
             </div>

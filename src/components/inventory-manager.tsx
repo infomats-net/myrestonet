@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -8,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { 
   Package, 
   Search, 
@@ -22,7 +22,10 @@ import {
   DollarSign,
   Tag,
   Utensils,
-  X
+  X,
+  Star,
+  Zap,
+  Sparkle
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -68,6 +71,10 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
     imageUrl: '',
     inventory: '0',
     menuId: '',
+    isPopular: false,
+    isCombo: false,
+    isNew: false,
+    isOutOfStock: false,
     addOns: [] as { name: string, price: number }[]
   });
 
@@ -166,6 +173,10 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
         category: itemForm.category,
         imageUrl: itemForm.imageUrl,
         inventory: parseInt(itemForm.inventory) || 0,
+        isPopular: itemForm.isPopular,
+        isCombo: itemForm.isCombo,
+        isNew: itemForm.isNew,
+        isOutOfStock: itemForm.isOutOfStock,
         addOns: itemForm.addOns || [],
         updatedAt: serverTimestamp()
       };
@@ -225,6 +236,10 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
       imageUrl: '',
       inventory: '0',
       menuId: menus?.[0]?.id || '',
+      isPopular: false,
+      isCombo: false,
+      isNew: false,
+      isOutOfStock: false,
       addOns: []
     });
     setEditingItemId(null);
@@ -240,6 +255,10 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
       imageUrl: item.imageUrl || '',
       inventory: item.inventory?.toString() || '0',
       menuId: item.menuId,
+      isPopular: item.isPopular || false,
+      isCombo: item.isCombo || false,
+      isNew: item.isNew || false,
+      isOutOfStock: item.isOutOfStock || false,
       addOns: item.addOns || []
     });
     setIsItemDialogOpen(true);
@@ -535,6 +554,13 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
                 onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})}
                 onDelete={() => setItemForm({...itemForm, imageUrl: ''})}
               />
+
+              <div className="space-y-4 bg-slate-50 p-6 rounded-3xl">
+                <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Star className="h-4 w-4" /> Featured / Popular</Label><Switch checked={itemForm.isPopular} onCheckedChange={v => setItemForm({...itemForm, isPopular: v})} /></div>
+                <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Zap className="h-4 w-4" /> Combo / Meal Deal</Label><Switch checked={itemForm.isCombo} onCheckedChange={v => setItemForm({...itemForm, isCombo: v})} /></div>
+                <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Sparkle className="h-4 w-4" /> Mark as New Item</Label><Switch checked={itemForm.isNew} onCheckedChange={v => setItemForm({...itemForm, isNew: v})} /></div>
+                <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Out of Stock</Label><Switch checked={itemForm.isOutOfStock} onCheckedChange={v => setItemForm({...itemForm, isOutOfStock: v})} /></div>
+              </div>
 
               <div className="bg-slate-900 p-6 rounded-3xl text-white space-y-3">
                 <div className="flex items-center gap-2">
