@@ -14,11 +14,14 @@ service cloud.firestore {
     }
 
     function isPlatformAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid));
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
     }
 
     function isRestaurantAdmin(restaurantId) {
-      return isSignedIn() && exists(/databases/$(database)/documents/restaurants/$(restaurantId)/adminUsers/$(request.auth.uid));
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return isSignedIn() && 
+             (userData.role == 'restaurant_admin' || userData.role == 'staff') && 
+             userData.restaurantId == restaurantId;
     }
 
     function isExistingOwner(ownerIdField) {
