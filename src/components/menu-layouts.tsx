@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -191,9 +190,16 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
                       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end">
                         <div className="flex flex-col">
                           {quantity > 0 && <span className="text-[9px] text-primary font-black uppercase mb-1" style={{ color: theme.primary }}>Added ({quantity})</span>}
-                          <span className="text-white font-black text-xl">
-                            {currencySymbol}{item.specialPrice || item.price}
-                          </span>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-white font-black text-xl">
+                              {currencySymbol}{item.specialPrice || item.price}
+                            </span>
+                            {item.specialPrice && (
+                              <span className="text-white/60 text-[10px] line-through font-bold">
+                                {currencySymbol}{item.price}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <Button 
                           size="icon" 
