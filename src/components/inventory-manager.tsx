@@ -49,6 +49,21 @@ import { cn } from '@/lib/utils';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
 import { ImageUploader } from '@/components/image-uploader';
 
+const DEFAULT_ITEM_FORM = {
+  name: '',
+  description: '',
+  price: '',
+  category: 'Main',
+  imageUrl: '',
+  inventory: '0',
+  menuId: '',
+  isPopular: false,
+  isCombo: false,
+  isNew: false,
+  isOutOfStock: false,
+  addOns: [] as { name: string, price: number }[]
+};
+
 export function InventoryManager({ restaurantId }: { restaurantId: string }) {
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -63,20 +78,7 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [itemForm, setItemForm] = useState({
-    name: '',
-    description: '',
-    price: '',
-    category: 'Main',
-    imageUrl: '',
-    inventory: '0',
-    menuId: '',
-    isPopular: false,
-    isCombo: false,
-    isNew: false,
-    isOutOfStock: false,
-    addOns: [] as { name: string, price: number }[]
-  });
+  const [itemForm, setItemForm] = useState(DEFAULT_ITEM_FORM);
 
   const [newAddOn, setNewAddOn] = useState({ name: '', price: '' });
 
@@ -229,18 +231,8 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
 
   const resetForm = () => {
     setItemForm({
-      name: '',
-      description: '',
-      price: '',
-      category: 'Main',
-      imageUrl: '',
-      inventory: '0',
-      menuId: menus?.[0]?.id || '',
-      isPopular: false,
-      isCombo: false,
-      isNew: false,
-      isOutOfStock: false,
-      addOns: []
+      ...DEFAULT_ITEM_FORM,
+      menuId: menus?.[0]?.id || ''
     });
     setEditingItemId(null);
   };
@@ -248,17 +240,14 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
   const openEdit = (item: any) => {
     setEditingItemId(item.id);
     setItemForm({
-      name: item.name,
+      ...DEFAULT_ITEM_FORM,
+      ...item,
       description: item.description || '',
       price: item.price?.toString() || '0',
       category: item.category || 'Main',
       imageUrl: item.imageUrl || '',
       inventory: item.inventory?.toString() || '0',
       menuId: item.menuId,
-      isPopular: item.isPopular || false,
-      isCombo: item.isCombo || false,
-      isNew: item.isNew || false,
-      isOutOfStock: item.isOutOfStock || false,
       addOns: item.addOns || []
     });
     setIsItemDialogOpen(true);

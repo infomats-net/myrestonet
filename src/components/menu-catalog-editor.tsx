@@ -65,6 +65,27 @@ const DIETARY_OPTIONS = [
   { id: 'spicy', label: 'Spicy', icon: Flame },
 ];
 
+const DEFAULT_ITEM_FORM = { 
+  name: '', 
+  description: '', 
+  price: '', 
+  category: '', 
+  imageUrl: '', 
+  isPopular: false, 
+  isCombo: false, 
+  isOutOfStock: false, 
+  isNew: false, 
+  specialPrice: '', 
+  dietary: [] as string[], 
+  addOns: [] as { name: string, price: number }[],
+  upsellIds: [] as string[], 
+  crossSellIds: [] as string[], 
+  isLTO: false, 
+  ltoExpiry: '', 
+  quantityDiscounts: [] as { minQty: number, discountPrice: number }[], 
+  enableAIRecommendations: true 
+};
+
 export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   const { firestore } = useFirebase();
   const { toast } = useToast();
@@ -74,26 +95,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [menuForm, setMenuForm] = useState({ name: '', description: '' });
-  const [itemForm, setItemForm] = useState({ 
-    name: '', 
-    description: '', 
-    price: '', 
-    category: '', 
-    imageUrl: '',
-    isPopular: false,
-    isCombo: false,
-    isOutOfStock: false,
-    isNew: false,
-    specialPrice: '',
-    dietary: [] as string[],
-    addOns: [] as { name: string, price: number }[],
-    upsellIds: [] as string[],
-    crossSellIds: [] as string[],
-    isLTO: false,
-    ltoExpiry: '',
-    quantityDiscounts: [] as { minQty: number, discountPrice: number }[],
-    enableAIRecommendations: true,
-  });
+  const [itemForm, setItemForm] = useState(DEFAULT_ITEM_FORM);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [newCustomTag, setNewCustomTag] = useState('');
   const [newAddOn, setNewAddOn] = useState({ name: '', price: '' });
@@ -247,12 +249,25 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   };
 
   const resetItemForm = () => {
-    setItemForm({ 
-      name: '', description: '', price: '', category: '', imageUrl: '', 
-      isPopular: false, isCombo: false, isOutOfStock: false, isNew: false, specialPrice: '', dietary: [], addOns: [],
-      upsellIds: [], crossSellIds: [], isLTO: false, ltoExpiry: '', quantityDiscounts: [], enableAIRecommendations: true
-    });
+    setItemForm(DEFAULT_ITEM_FORM);
     setEditingItemId(null);
+  };
+
+  const openEdit = (item: any) => {
+    setEditingItemId(item.id);
+    setItemForm({
+      ...DEFAULT_ITEM_FORM,
+      ...item,
+      price: item.price?.toString() || '',
+      specialPrice: item.specialPrice?.toString() || '',
+      ltoExpiry: item.ltoExpiry || '',
+      dietary: item.dietary || [],
+      addOns: item.addOns || [],
+      upsellIds: item.upsellIds || [],
+      crossSellIds: item.crossSellIds || [],
+      quantityDiscounts: item.quantityDiscounts || [],
+    });
+    setIsItemDialogOpen(true);
   };
 
   const addQtyDiscount = () => {
@@ -334,7 +349,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                       <td className="p-6 font-black">${item.specialPrice || item.price}</td>
                       <td className="p-6 text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => { setEditingItemId(item.id); setItemForm({ ...item, price: item.price.toString(), specialPrice: item.specialPrice?.toString() || '' }); setIsItemDialogOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(item)}><Edit3 className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" className="text-slate-300 hover:text-destructive" onClick={() => deleteDoc(doc(firestore!, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </td>
