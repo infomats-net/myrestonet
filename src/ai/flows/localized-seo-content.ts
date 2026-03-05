@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A Genkit flow for generating localized SEO content (meta-tags and Schema.org markup) for restaurants.
@@ -24,6 +25,7 @@ const LocalizedSeoContentInputSchema = z.object({
   locale: z
     .string()
     .describe('The target locale for localization (e.g., "en-US", "es-ES", "fr-FR").'),
+  usps: z.array(z.string()).optional().describe('Unique Selling Points (e.g. "Roof Terrace", "Family Owned").'),
 });
 export type LocalizedSeoContentInput = z.infer<typeof LocalizedSeoContentInputSchema>;
 
@@ -35,6 +37,10 @@ const LocalizedSeoContentOutputSchema = z.object({
   schemaMarkup: z
     .string()
     .describe('JSON-LD Schema.org markup for LocalBusiness, optimized for the restaurant.'),
+  seoAudit: z.object({
+    score: z.number().min(0).max(100).describe('An AI calculated score for the current store content quality.'),
+    recommendations: z.array(z.string()).describe('Actionable tips to improve search ranking.'),
+  }),
 });
 export type LocalizedSeoContentOutput = z.infer<typeof LocalizedSeoContentOutputSchema>;
 
@@ -61,6 +67,7 @@ Website URL: {{{websiteUrl}}}
 Phone Number: {{{phoneNumber}}}
 Address: {{{address}}}
 Target Locale: {{{locale}}}
+{{#if usps}}USPs: {{#each usps}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}
 
 ---
 
@@ -68,7 +75,8 @@ Instructions:
 1. Generate a concise and compelling 'metaTitle' (up to 60 characters) that includes the restaurant name, cuisine, and location, optimized for the target locale.
 2. Create an engaging 'metaDescription' (up to 160 characters) that highlights the restaurant's offerings, unique selling points, and location, optimized for the target locale.
 3. Provide a list of up to 10 relevant 'keywords' for the restaurant, considering its cuisine, location, and specialties, localized for the target locale.
-4. Generate full JSON-LD Schema.org markup for a 'LocalBusiness' type, specifically tailored for a 'Restaurant'. Include properties such as '@context', '@type', 'name', 'address' (PostalAddress), 'telephone', 'url', 'servesCuisine', 'menu', 'acceptsReservations', 'priceRange', and 'hasMap' (using a generic Google Maps URL if a specific one is not provided). Ensure all text fields are localized according to the 'Target Locale'. Ensure address is broken down into streetAddress, addressLocality, addressRegion, postalCode, addressCountry.
+4. Generate full JSON-LD Schema.org markup for a 'LocalBusiness' type, specifically tailored for a 'Restaurant'. Include properties such as '@context', '@type', 'name', 'address' (PostalAddress), 'telephone', 'url', 'servesCuisine', 'menu', 'acceptsReservations', 'priceRange', and 'hasMap'.
+5. Conduct an 'seoAudit': Provide an SEO health score (0-100) based on how complete the restaurant's data is, and give 3-5 specific recommendations to improve their local ranking.
 
 Only output the JSON structure as described by the output schema, with all fields populated.`,
 });

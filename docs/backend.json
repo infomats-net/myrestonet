@@ -31,7 +31,25 @@
         "city": { "type": "string" },
         "country": { "type": "string" },
         "subscriptionStatus": { "type": "string" },
-        "tables": { "type": "array", "items": { "type": "object" } }
+        "tables": { "type": "array", "items": { "type": "object" } },
+        "socialLinks": {
+          "type": "object",
+          "properties": {
+            "instagram": { "type": "string" },
+            "facebook": { "type": "string" },
+            "twitter": { "type": "string" },
+            "website": { "type": "string" }
+          }
+        },
+        "seoSettings": {
+          "type": "object",
+          "properties": {
+            "metaTitle": { "type": "string" },
+            "metaDescription": { "type": "string" },
+            "keywords": { "type": "array", "items": { "type": "string" } },
+            "usps": { "type": "array", "items": { "type": "string" } }
+          }
+        }
       }
     },
     "MenuItem": {
