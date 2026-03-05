@@ -18,7 +18,8 @@ import {
   CalendarDays,
   CreditCard,
   Banknote,
-  Package
+  Package,
+  Settings2
 } from "lucide-react"
 import {
   Sidebar,
@@ -193,6 +194,14 @@ function SidebarLinks() {
           <SidebarGroupLabel>Business & Settings</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Features" isActive={isTabActive('features')}>
+                  <Link href={getHref('features')}>
+                    <Settings2 className="text-orange-500" />
+                    <span>Feature Control Suite</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Payments (Stripe)" isActive={isTabActive('payments')}>
                   <Link href={getHref('payments')}>
