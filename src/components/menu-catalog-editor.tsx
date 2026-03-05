@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,8 +42,8 @@ import {
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
-import { useFirebase, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { useFirebase, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, setDoc, arrayUnion } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
@@ -74,7 +74,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     name: '', 
     description: '', 
     price: '', 
-    category: 'Main', 
+    category: '', 
     imageUrl: '',
     isPopular: false,
     isCombo: false,
@@ -87,6 +87,14 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [replacingItemId, setReplacingItemId] = useState<string | null>(null);
   const [activeReplaceItem, setActiveReplaceItem] = useState<any>(null);
+
+  // --- Category Persistence ---
+  const categoriesRef = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return doc(firestore, 'restaurants', restaurantId, 'config', 'menuCategories');
+  }, [firestore, restaurantId]);
+  const { data: categoriesDoc } = useDoc(categoriesRef);
+  const savedCategories = categoriesDoc?.list || [];
 
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
@@ -191,6 +199,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
         updatedAt: serverTimestamp()
       };
 
+      // 1. Persist the item
       if (editingItemId) {
         await updateDoc(doc(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items', editingItemId), data);
       } else {
@@ -199,6 +208,16 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
           createdAt: serverTimestamp()
         });
       }
+
+      // 2. Persist the category permanently for this restaurant
+      if (itemForm.category.trim()) {
+        const catRef = doc(firestore, 'restaurants', restaurantId, 'config', 'menuCategories');
+        await setDoc(catRef, {
+          list: arrayUnion(itemForm.category.trim()),
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+
       setIsItemDialogOpen(false);
       resetItemForm();
       toast({ title: "Catalog Updated" });
@@ -229,7 +248,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
 
   const resetItemForm = () => {
     setItemForm({ 
-      name: '', description: '', price: '', category: 'Main', imageUrl: '', 
+      name: '', description: '', price: '', category: '', imageUrl: '', 
       isPopular: false, isCombo: false, isOutOfStock: false, specialPrice: '', dietary: [] 
     });
     setEditingItemId(null);
@@ -309,6 +328,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                           <div>
                             <p className="font-black text-slate-900">{item.name}</p>
                             <div className="flex gap-1 mt-1">
+                              {item.category && <Badge variant="secondary" className="text-[8px] uppercase px-1 bg-slate-100 text-slate-500 border-none">{item.category}</Badge>}
                               {item.dietary?.map((d: string) => <Badge key={d} variant="outline" className="text-[8px] uppercase px-1">{d}</Badge>)}
                             </div>
                           </div>
@@ -373,6 +393,27 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                   placeholder="e.g. Starters, Main, Dessert"
                   className="h-12 rounded-xl" 
                 />
+                
+                {savedCategories.length > 0 && (
+                  <div className="space-y-2 mt-2">
+                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Saved Categories</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {savedCategories.map((cat: string) => (
+                        <Badge 
+                          key={cat} 
+                          variant="secondary" 
+                          className={cn(
+                            "cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors text-[9px] font-bold uppercase py-1 px-2 border-none",
+                            itemForm.category === cat ? "bg-primary text-white" : "bg-slate-100 text-slate-500"
+                          )}
+                          onClick={() => setItemForm({...itemForm, category: cat})}
+                        >
+                          {cat}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
