@@ -10,16 +10,16 @@ service cloud.firestore {
     function isSuperAdmin() {
       return request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "super_admin";
+        getUser().role == "super_admin";
     }
 
     function isPartner() {
       return request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "marketing_partner";
+        getUser().role == "marketing_partner";
     }
 
-    function belongsToRestaurant(restaurantId) {
+    function isRestaurantAdmin(restaurantId) {
       return request.auth != null && 
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         getUser().restaurantId == restaurantId;
@@ -39,7 +39,16 @@ service cloud.firestore {
       return false;
     }
 
+    // God Mode: Super Admin Oversight
     match /{allPaths=**} {
+      allow read, write: if isSuperAdmin();
+    }
+
+    // Collection Group Access for Global Support Views
+    match /{path=**}/tickets/{ticketId} {
+      allow read, list: if isSuperAdmin();
+    }
+    match /{path=**}/messages/{messageId} {
       allow read, write: if isSuperAdmin();
     }
 
@@ -68,8 +77,10 @@ service cloud.firestore {
 
       match /menus/{menuId} {
         allow read: if true;
+        allow write: if hasPermission(restaurantId, "update_settings");
         match /items/{itemId} {
           allow read: if true;
+          allow write: if hasPermission(restaurantId, "update_settings");
         }
       }
 
@@ -80,10 +91,16 @@ service cloud.firestore {
       }
 
       match /orders/{orderId} {
-        // Customers can read their own orders, staff can read all orders for their restaurant
         allow read: if hasPermission(restaurantId, "read") || (request.auth != null && request.auth.uid == resource.data.customerId);
         allow update: if hasPermission(restaurantId, "update_settings");
-        allow create: if true; // Any visitor can create an order
+        allow create: if true;
+      }
+
+      match /tickets/{ticketId} {
+        allow read, write: if isRestaurantAdmin(restaurantId) || isSuperAdmin();
+        match /messages/{messageId} {
+          allow read, write: if isRestaurantAdmin(restaurantId) || isSuperAdmin();
+        }
       }
 
       match /gallery/{imageId} {

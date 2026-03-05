@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -25,7 +26,8 @@ import {
   Palette,
   Settings as SettingsIcon,
   LayoutDashboard,
-  Package
+  Package,
+  LifeBuoy
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
@@ -44,6 +46,7 @@ import { RestaurantBilling } from '@/components/restaurant-billing';
 import { PaymentsManager } from '@/components/payments-manager';
 import { StoreSettingsManager } from '@/components/store-settings-manager';
 import { InventoryManager } from '@/components/inventory-manager';
+import { SupportTicketingSystem } from '@/components/support-ticketing-system';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -186,11 +189,12 @@ function DashboardContent() {
   return (
     <div className="p-8 space-y-8 w-full animate-in fade-in duration-500">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full bg-black p-8 md:p-12 rounded-[3rem] shadow-2xl">
-        <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full max-w-3xl mx-auto flex gap-1 overflow-x-auto no-scrollbar">
+        <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full max-w-4xl mx-auto flex gap-1 overflow-x-auto no-scrollbar">
           <TabsTrigger value="overview" className={tabTriggerStyle}><LayoutDashboard className="h-4 w-4" /> <span className="hidden lg:inline">Dashboard</span></TabsTrigger>
           <TabsTrigger value="orders" className={tabTriggerStyle}><ShoppingBag className="h-4 w-4" /> <span className="hidden lg:inline">Orders</span></TabsTrigger>
           <TabsTrigger value="inventory" className={tabTriggerStyle}><Package className="h-4 w-4" /> <span className="hidden lg:inline">Inventory</span></TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}><CalendarDays className="h-4 w-4" /> <span className="hidden lg:inline">Reservations</span></TabsTrigger>
+          <TabsTrigger value="support" className={tabTriggerStyle}><LifeBuoy className="h-4 w-4" /> <span className="hidden lg:inline">Support</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
@@ -358,7 +362,10 @@ function DashboardContent() {
           </Card>
         </TabsContent>
 
-        {/* These Tabs remain registered so sidebar navigation works, but triggers are moved to sidebar */}
+        <TabsContent value="support">
+          <SupportTicketingSystem restaurantId={effectiveRestaurantId!} />
+        </TabsContent>
+
         <TabsContent value="menu">
           <MenuCatalogEditor restaurantId={effectiveRestaurantId!} />
         </TabsContent>

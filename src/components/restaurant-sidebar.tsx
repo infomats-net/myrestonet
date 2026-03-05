@@ -1,3 +1,4 @@
+
 "use client"
 
 import { 
@@ -17,7 +18,8 @@ import {
   CalendarDays,
   CreditCard,
   Banknote,
-  Package
+  Package,
+  LifeBuoy
 } from "lucide-react"
 import {
   Sidebar,
@@ -189,7 +191,7 @@ function SidebarLinks() {
         </SidebarGroup>
         
         <SidebarGroup>
-          <SidebarGroupLabel>Business & Finance</SidebarGroupLabel>
+          <SidebarGroupLabel>Business & Support</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -205,6 +207,14 @@ function SidebarLinks() {
                   <Link href={getHref('billing')}>
                     <CreditCard className="text-primary" />
                     <span>Platform Billing</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Support Tickets" isActive={isTabActive('support')}>
+                  <Link href={getHref('support')}>
+                    <LifeBuoy className="text-blue-600" />
+                    <span>Support Center</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

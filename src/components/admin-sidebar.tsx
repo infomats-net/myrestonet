@@ -11,7 +11,8 @@ import {
   Settings,
   Bell,
   Briefcase,
-  LifeBuoy
+  LifeBuoy,
+  MessageSquare
 } from "lucide-react"
 import {
   Sidebar,
@@ -78,6 +79,14 @@ export function AdminSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
+                <SidebarMenuButton asChild tooltip="Support Tickets" isActive={pathname === "/super-admin/support"}>
+                  <Link href="/super-admin/support">
+                    <MessageSquare className="text-blue-600" />
+                    <span>Support Tickets</span>
+                  </Link>
+                </SidebarMenuItem>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Partners" isActive={pathname === "/super-admin/partners"}>
                   <Link href="/super-admin/partners">
                     <Briefcase />
@@ -86,10 +95,10 @@ export function AdminSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Support Users" isActive={pathname === "/super-admin/support"}>
+                <SidebarMenuButton asChild tooltip="Support Staff" isActive={pathname === "/super-admin/support-staff"}>
                   <Link href="/super-admin/support">
                     <LifeBuoy />
-                    <span>Support Staff</span>
+                    <span>Internal Staff</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

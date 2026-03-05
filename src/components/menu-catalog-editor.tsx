@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,7 +21,9 @@ import {
   CheckCircle2,
   DollarSign,
   Tag,
-  Upload
+  Upload,
+  RefreshCw,
+  Edit3
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -30,8 +33,9 @@ import {
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirebase, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
 import { selectPlaceholder } from '@/ai/flows/select-placeholder';
@@ -41,7 +45,7 @@ import { MenuScanner } from '@/components/menu-scanner';
 import { cn } from '@/lib/utils';
 
 export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
-  const firestore = useFirestore();
+  const { storage, firestore } = useFirebase();
   const { toast } = useToast();
 
   const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
@@ -51,12 +55,11 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   const [menuForm, setMenuForm] = useState({ name: '', description: '' });
   const [itemForm, setItemForm] = useState({ name: '', description: '', price: '', category: 'Main', imageUrl: '' });
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-
-  // Stabilize path for item uploads
-  const uploadPath = useMemo(() => {
-    const id = editingItemId || `new-item-${Date.now()}`;
-    return `restaurants/${restaurantId}/items/${id}`;
-  }, [restaurantId, editingItemId]);
+  
+  // Quick Replace State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [replacingItemId, setReplacingItemId] = useState<string | null>(null);
+  const [activeReplaceItem, setActiveReplaceItem] = useState<any>(null);
 
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
@@ -69,6 +72,53 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     return collection(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items');
   }, [firestore, restaurantId, selectedMenuId]);
   const { data: items, isLoading: loadingItems } = useCollection(itemsQuery);
+
+  const convertToWebP = async (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Canvas Error'));
+            return;
+          }
+          ctx.drawImage(img, 0, 0);
+          canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Blob Error')), 'image/webp', 0.8);
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleQuickReplaceImage = async (file: File) => {
+    if (!storage || !firestore || !restaurantId || !selectedMenuId || !activeReplaceItem) return;
+    
+    setReplacingItemId(activeReplaceItem.id);
+    try {
+      const webpBlob = await convertToWebP(file);
+      const storageRef = ref(storage, `restaurants/${restaurantId}/items/${activeReplaceItem.id}.webp`);
+      await uploadBytes(storageRef, webpBlob, { contentType: 'image/webp' });
+      const downloadURL = await getDownloadURL(storageRef);
+      
+      await updateDoc(doc(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items', activeReplaceItem.id), {
+        imageUrl: downloadURL,
+        updatedAt: serverTimestamp()
+      });
+      
+      toast({ title: "Visual Updated", description: `${activeReplaceItem.name} image replaced.` });
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Replace Failed", description: e.message });
+    } finally {
+      setReplacingItemId(null);
+      setActiveReplaceItem(null);
+    }
+  };
 
   const handleAddMenu = async () => {
     if (!firestore || !restaurantId || !menuForm.name) return;
@@ -86,31 +136,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
       toast({ variant: "destructive", title: "Error", description: e.message });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleAiMenuDescription = async () => {
-    if (!menuForm.name) return;
-    setLoading(true);
-    try {
-      const { description } = await generateItemDescription({ itemName: menuForm.name });
-      setMenuForm(prev => ({ ...prev, description }));
-      toast({ title: "AI Description Generated" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "AI Error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDeleteMenu = async (id: string) => {
-    if (!firestore || !restaurantId || !window.confirm("Delete this entire menu catalog?")) return;
-    try {
-      await deleteDoc(doc(firestore, 'restaurants', restaurantId, 'menus', id));
-      if (selectedMenuId === id) setSelectedMenuId(null);
-      toast({ title: "Menu Deleted" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error" });
     }
   };
 
@@ -139,7 +164,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
       setIsItemDialogOpen(false);
       setItemForm({ name: '', description: '', price: '', category: 'Main', imageUrl: '' });
       setEditingItemId(null);
-      toast({ title: editingItemId ? "Menu Item Updated" : "Menu Item Added" });
+      toast({ title: editingItemId ? "Item Updated" : "Item Added" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error" });
     } finally {
@@ -151,42 +176,9 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     if (!firestore || !restaurantId || !selectedMenuId || !window.confirm("Delete this menu item?")) return;
     try {
       await deleteDoc(doc(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items', id));
-      toast({ title: "Menu Item Removed" });
+      toast({ title: "Item Removed" });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error" });
-    }
-  };
-
-  const handleAiDescription = async () => {
-    if (!itemForm.name) return;
-    setLoading(true);
-    try {
-      const { description } = await generateItemDescription({ itemName: itemForm.name });
-      setItemForm(prev => ({ ...prev, description }));
-      toast({ title: "AI Description Generated" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "AI Error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAiImage = async () => {
-    if (!itemForm.name) return;
-    setLoading(true);
-    try {
-      const currentPlaceholderId = PlaceHolderImages.find(p => p.imageUrl === itemForm.imageUrl)?.id;
-      const { placeholderId } = await selectPlaceholder({ 
-        itemName: itemForm.name,
-        excludeIds: currentPlaceholderId ? [currentPlaceholderId] : []
-      });
-      const img = PlaceHolderImages.find(p => p.id === placeholderId)?.imageUrl || '';
-      setItemForm(prev => ({ ...prev, imageUrl: img }));
-      toast({ title: "New Image Option Found" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "AI Error" });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -204,7 +196,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
               <Plus className="h-8 w-8" />
             </div>
             <h3 className="text-xl font-black">Create New Menu</h3>
-            <p className="text-sm text-slate-400 mt-2">e.g. Lunch Specials, Wine List</p>
+            <p className="text-sm text-slate-400 mt-2">Group items into manageable catalogs.</p>
           </Card>
 
           {menus?.map(menu => (
@@ -224,7 +216,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                   variant="ghost" 
                   size="icon" 
                   className="text-slate-300 hover:text-destructive rounded-full"
-                  onClick={(e) => { e.stopPropagation(); handleDeleteMenu(menu.id); }}
+                  onClick={(e) => { e.stopPropagation(); deleteDoc(doc(firestore!, 'restaurants', restaurantId, 'menus', menu.id)); }}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -268,7 +260,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                   {menus?.find(m => m.id === selectedMenuId)?.name}
                 </CardTitle>
                 <CardDescription className="text-sm font-medium mt-1">
-                  Manage availability and presentation for this menu.
+                  Click the refresh icon on any photo to quickly update item visuals.
                 </CardDescription>
               </div>
               <Badge className="h-8 rounded-full px-4 bg-emerald-50 text-emerald-600 border-none font-black text-[10px] uppercase tracking-widest">
@@ -291,7 +283,19 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                       <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
                         <td className="p-6">
                           <div className="flex items-center gap-4">
-                            <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border">
+                            <div className="relative w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border group/thumb">
+                              {replacingItemId === item.id ? (
+                                <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10">
+                                  <Loader2 className="animate-spin h-5 w-5 text-primary" />
+                                </div>
+                              ) : (
+                                <button 
+                                  className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center text-white z-10"
+                                  onClick={() => { setActiveReplaceItem(item); fileInputRef.current?.click(); }}
+                                >
+                                  <RefreshCw className="h-5 w-5" />
+                                </button>
+                              )}
                               <img 
                                 src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} 
                                 alt={item.name}
@@ -313,7 +317,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                         <td className="p-6 text-right">
                           <div className="flex justify-end gap-2">
                             <Button 
-                              type="button"
                               variant="ghost" 
                               size="icon" 
                               className="rounded-full"
@@ -329,10 +332,9 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                                 setIsItemDialogOpen(true);
                               }}
                             >
-                              <Edit3Icon className="h-4 w-4 text-primary" />
+                              <Edit3 className="h-4 w-4 text-primary" />
                             </Button>
                             <Button 
-                              type="button"
                               variant="ghost" 
                               size="icon" 
                               className="text-slate-300 hover:text-destructive rounded-full"
@@ -352,6 +354,18 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
         </div>
       )}
 
+      {/* Hidden Global File Input for Quick Replace */}
+      <input 
+        type="file" 
+        className="hidden" 
+        ref={fileInputRef} 
+        accept="image/*"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleQuickReplaceImage(file);
+        }}
+      />
+
       {/* Item Dialog */}
       <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
         <DialogContent className="rounded-[2.5rem] max-w-2xl">
@@ -364,41 +378,20 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
             <div className="space-y-6">
               <div className="space-y-2">
                 <Label className="flex items-center gap-2"><Utensils className="h-3 w-3" /> Item Name</Label>
-                <Input 
-                  value={itemForm.name} 
-                  onChange={e => setItemForm({...itemForm, name: e.target.value})} 
-                  placeholder="e.g. Truffle Pizza" 
-                  className="h-12 rounded-xl"
-                />
+                <Input value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="h-12 rounded-xl" />
               </div>
-
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><DollarSign className="h-3 w-3" /> Price</Label>
-                  <Input 
-                    type="number" 
-                    value={itemForm.price} 
-                    onChange={e => setItemForm({...itemForm, price: e.target.value})} 
-                    className="h-12 rounded-xl"
-                  />
+                  <Label><DollarSign className="h-3 w-3 inline mr-1" />Price</Label>
+                  <Input type="number" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} className="h-12 rounded-xl" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-2"><Tag className="h-3 w-3" /> Category</Label>
-                  <Input 
-                    value={itemForm.category} 
-                    onChange={e => setItemForm({...itemForm, category: e.target.value})} 
-                    className="h-12 rounded-xl"
-                  />
+                  <Label><Tag className="h-3 w-3 inline mr-1" />Category</Label>
+                  <Input value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})} className="h-12 rounded-xl" />
                 </div>
               </div>
-
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label>Appetizing Description</Label>
-                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-[10px] font-black" onClick={handleAiDescription} disabled={loading || !itemForm.name}>
-                    <Sparkles className="h-3 w-3 mr-1" /> AI Write
-                  </Button>
-                </div>
+                <Label>Description</Label>
                 <Textarea value={itemForm.description} onChange={e => setItemForm({...itemForm, description: e.target.value})} className="rounded-xl min-h-[120px]" />
               </div>
             </div>
@@ -406,40 +399,22 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
             <div className="space-y-6">
               <ImageUploader 
                 label="Item Image"
-                path={uploadPath}
+                path={`restaurants/${restaurantId}/items/${editingItemId || 'temp'}`}
                 currentUrl={itemForm.imageUrl}
                 onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})}
                 onDelete={() => setItemForm({...itemForm, imageUrl: ''})}
               />
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label>Fallback / AI Option</Label>
-                  <Button type="button" variant="link" size="sm" className="h-auto p-0 text-[10px] font-black" onClick={handleAiImage} disabled={loading || !itemForm.name}>
-                    <ImageIcon className="h-3 w-3 mr-1" /> Auto-Image
-                  </Button>
-                </div>
-                <Input value={itemForm.imageUrl} onChange={e => setItemForm({...itemForm, imageUrl: e.target.value})} placeholder="Or paste URL..." className="h-10 text-xs" />
-              </div>
             </div>
           </div>
 
           <DialogFooter className="pt-6 border-t">
             <Button variant="outline" onClick={() => setIsItemDialogOpen(false)} className="rounded-2xl h-12">Cancel</Button>
             <Button className="h-12 rounded-2xl px-10 font-black shadow-xl" onClick={handleSaveItem} disabled={loading || !itemForm.name}>
-              {loading ? <Loader2 className="animate-spin mr-2" /> : <CheckCircle2 className="mr-2" />}
-              {editingItemId ? 'Update Item' : 'Add Item'}
+              {loading ? <Loader2 className="animate-spin mr-2" /> : editingItemId ? "Update Item" : "Add Item"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function Edit3Icon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-    </svg>
   );
 }

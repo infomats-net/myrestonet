@@ -26,6 +26,34 @@
       },
       "required": ["id", "role"]
     },
+    "Ticket": {
+      "title": "Support Ticket",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["open", "pending", "resolved", "closed"] },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "urgent"] },
+        "category": { "type": "string" },
+        "restaurantId": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastReplyAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "TicketMessage": {
+      "title": "Ticket Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderUid": { "type": "string" },
+        "senderRole": { "type": "string" },
+        "message": { "type": "string" },
+        "attachmentUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Partner": {
       "title": "Partner",
       "description": "A reseller or marketing agency that onboards restaurants.",
@@ -122,6 +150,8 @@
     "/partners/{partnerId}": { "schema": { "$ref": "#/backend/entities/Partner" } },
     "/restaurants/{restaurantId}": { "schema": { "$ref": "#/backend/entities/Restaurant" } },
     "/restaurants/{restaurantId}/orders/{orderId}": { "schema": { "$ref": "#/backend/entities/Order" } },
+    "/restaurants/{restaurantId}/tickets/{ticketId}": { "schema": { "$ref": "#/backend/entities/Ticket" } },
+    "/restaurants/{restaurantId}/tickets/{ticketId}/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/TicketMessage" } },
     "/tiers/{tierId}": { "schema": { "$ref": "#/backend/entities/SubscriptionTier" } }
   }
 }
