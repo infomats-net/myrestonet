@@ -14,7 +14,7 @@ import {
   Utensils, 
   Sparkles, 
   Loader2, 
-  ChevronRight,
+  ChevronRight, 
   ChevronLeft,
   RefreshCw,
   Edit3,
@@ -41,8 +41,6 @@ import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, setDoc,
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
-import { selectPlaceholder } from '@/ai/flows/select-placeholder';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ImageUploader } from '@/components/image-uploader';
 import { MenuScanner } from '@/components/menu-scanner';
 import { cn } from '@/lib/utils';
@@ -164,28 +162,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
       toast({ title: "AI Description Generated" });
     } catch (e) {
       toast({ variant: "destructive", title: "AI Error", description: "Could not generate description." });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAiImage = async () => {
-    if (!itemForm.name) {
-      toast({ variant: "destructive", title: "Name required" });
-      return;
-    }
-    setLoading(true);
-    try {
-      const currentPlaceholderId = PlaceHolderImages.find(p => p.imageUrl === itemForm.imageUrl)?.id;
-      const { placeholderId } = await selectPlaceholder({ 
-        itemName: itemForm.name,
-        excludeIds: currentPlaceholderId ? [currentPlaceholderId] : []
-      });
-      const img = PlaceHolderImages.find(p => p.id === placeholderId)?.imageUrl || '';
-      setItemForm(prev => ({ ...prev, imageUrl: img }));
-      toast({ title: "AI Image Suggested" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "AI Error" });
     } finally {
       setLoading(false);
     }
@@ -545,16 +521,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
             <div className="space-y-6">
               <ImageUploader path={`restaurants/${restaurantId}/items/${editingItemId || 'temp'}`} currentUrl={itemForm.imageUrl} onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})} onDelete={() => setItemForm({...itemForm, imageUrl: ''})} />
               
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label>AI Visual Option</Label>
-                  <Button variant="link" size="sm" onClick={handleAiImage} className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1" disabled={loading}>
-                    <Sparkles className="h-3 w-3" /> AI Suggest
-                  </Button>
-                </div>
-                <Input value={itemForm.imageUrl} onChange={e => setItemForm({...itemForm, imageUrl: e.target.value})} placeholder="Visual URL..." className="h-10 text-xs rounded-xl" />
-              </div>
-
               <div className="space-y-4 bg-slate-50 p-6 rounded-3xl">
                 <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Star className="h-4 w-4" /> Featured / Popular</Label><Switch checked={itemForm.isPopular} onCheckedChange={v => setItemForm({...itemForm, isPopular: v})} /></div>
                 <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Zap className="h-4 w-4" /> Combo / Meal Deal</Label><Switch checked={itemForm.isCombo} onCheckedChange={v => setItemForm({...itemForm, isCombo: v})} /></div>

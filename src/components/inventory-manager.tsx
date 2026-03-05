@@ -18,7 +18,6 @@ import {
   Edit3, 
   Trash2, 
   Sparkles,
-  Image as ImageIcon,
   DollarSign,
   Tag,
   Utensils
@@ -43,8 +42,6 @@ import { collection, doc, updateDoc, getDocs, addDoc, deleteDoc, serverTimestamp
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
-import { selectPlaceholder } from '@/ai/flows/select-placeholder';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ImageUploader } from '@/components/image-uploader';
 
 export function InventoryManager({ restaurantId }: { restaurantId: string }) {
@@ -190,25 +187,6 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
       const { description } = await generateItemDescription({ itemName: itemForm.name });
       setItemForm(prev => ({ ...prev, description }));
       toast({ title: "AI Description Generated" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "AI Error" });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleAiImage = async () => {
-    if (!itemForm.name) return;
-    setIsProcessing(true);
-    try {
-      const currentPlaceholderId = PlaceHolderImages.find(p => p.imageUrl === itemForm.imageUrl)?.id;
-      const { placeholderId } = await selectPlaceholder({ 
-        itemName: itemForm.name,
-        excludeIds: currentPlaceholderId ? [currentPlaceholderId] : []
-      });
-      const img = PlaceHolderImages.find(p => p.id === placeholderId)?.imageUrl || '';
-      setItemForm(prev => ({ ...prev, imageUrl: img }));
-      toast({ title: "AI Image Found" });
     } catch (e) {
       toast({ variant: "destructive", title: "AI Error" });
     } finally {
@@ -493,21 +471,6 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
                 onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})}
                 onDelete={() => setItemForm({...itemForm, imageUrl: ''})}
               />
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label>AI Visual Option</Label>
-                  <Button variant="link" size="sm" onClick={handleAiImage} className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1">
-                    <Sparkles className="h-3 w-3" /> Auto-Suggest
-                  </Button>
-                </div>
-                <Input 
-                  value={itemForm.imageUrl} 
-                  onChange={e => setItemForm({...itemForm, imageUrl: e.target.value})} 
-                  placeholder="URL..." 
-                  className="h-10 text-xs rounded-xl"
-                />
-              </div>
 
               <div className="bg-slate-900 p-6 rounded-3xl text-white space-y-3">
                 <div className="flex items-center gap-2">
