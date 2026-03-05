@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -21,7 +22,9 @@ import {
   Settings2,
   Sparkle,
   TrendingUp,
-  History
+  History,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -33,6 +36,7 @@ interface MenuLayoutProps {
   currencySymbol: string;
   theme: { primary: string; text: string; background: string };
   addToCart: (item: any) => void;
+  updateQuantity: (id: string, delta: number) => void;
   cart: any[];
   bestSellerIds?: Set<string>;
 }
@@ -66,12 +70,19 @@ const ItemBadges = ({ item, isBestSeller }: { item: any, isBestSeller: boolean }
   );
 };
 
-export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCart, cart, bestSellerIds }: MenuLayoutProps) {
+export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCart, updateQuantity, cart, bestSellerIds }: MenuLayoutProps) {
   return (
     <div className="max-w-7xl mx-auto py-10 space-y-24">
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {allMenuItems.map(item => {
           const isBestSeller = bestSellerIds?.has(item.id) || false;
+          
+          // Calculate total count of this base item in cart
+          const inCartCount = cart
+            .filter(i => i.id === item.id)
+            .reduce((sum, i) => sum + i.quantity, 0);
+
+          const hasOptions = item.addOns?.length > 0;
           
           return (
             <Card key={item.id} className={cn(
@@ -84,9 +95,43 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
                 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-6">
                   <p className="text-white text-[10px] font-medium leading-relaxed line-clamp-3 mb-4">{item.description}</p>
-                  <Button className="w-full rounded-xl font-black h-10 text-xs" style={{ backgroundColor: theme.primary }} onClick={() => addToCart(item)}>
-                    {item.addOns?.length > 0 ? "Customize" : "Quick Add"}
-                  </Button>
+                  
+                  {/* Quick Controls or Trigger Modal */}
+                  {hasOptions ? (
+                    <Button className="w-full rounded-xl font-black h-10 text-xs" style={{ backgroundColor: theme.primary }} onClick={() => addToCart(item)}>
+                      Customize
+                    </Button>
+                  ) : (
+                    inCartCount > 0 ? (
+                      <div className="flex items-center justify-between bg-white rounded-xl p-1 shadow-xl">
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-8 w-8 rounded-lg text-slate-900"
+                          onClick={() => updateQuantity(item.id, -1)}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </Button>
+                        <span className="font-black text-slate-900 text-sm">{inCartCount}</span>
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-8 w-8 rounded-lg text-slate-900"
+                          onClick={() => updateQuantity(item.id, 1)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button 
+                        className="w-full rounded-xl font-black h-10 text-xs" 
+                        style={{ backgroundColor: theme.primary }} 
+                        onClick={() => updateQuantity(item.id, 1)}
+                      >
+                        Quick Add
+                      </Button>
+                    )
+                  )}
                 </div>
 
                 {!item.isOutOfStock && (
@@ -98,6 +143,11 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
               <CardContent className="p-6">
                 <div className="flex justify-between items-start">
                   <h4 className="font-black text-lg leading-tight truncate">{item.name}</h4>
+                  {inCartCount > 0 && (
+                    <Badge className="bg-primary text-white border-none h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px]">
+                      {inCartCount}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">{item.category}</p>
               </CardContent>
@@ -109,7 +159,6 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
   );
 }
 
-// Additional styles (MenuStyle1, 3, 4) should follow similar patterns for badges
 export function MenuStyle1(props: MenuLayoutProps) { return <MenuStyle2 {...props} />; }
 export function MenuStyle3(props: MenuLayoutProps) { return <MenuStyle2 {...props} />; }
 export function MenuStyle4(props: MenuLayoutProps) { return <MenuStyle2 {...props} />; }

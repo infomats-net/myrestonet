@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
@@ -12,7 +13,9 @@ import {
   ShieldCheck, 
   Sparkles,
   Heart,
-  UserCircle
+  UserCircle,
+  Plus,
+  ArrowRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -70,8 +73,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   const [customizingItem, setCustomizingItem] = useState<any>(null);
   const [activeAddOns, setActiveAddOns] = useState<AddOn[]>([]);
-  const [aiRecs, setAiRecs] = useState<any[]>([]);
-  const [loadingAI, setLoadingAI] = useState(false);
 
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
@@ -128,6 +129,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     });
   }, [allMenuItems, searchTerm, activeDietaryFilters]);
 
+  // Upsell logic: Suggest 3 items not in cart
+  const upsellItems = useMemo(() => {
+    const inCartIds = new Set(cart.map(i => i.id));
+    return allMenuItems
+      .filter(item => !inCartIds.has(item.id) && !item.isOutOfStock)
+      .slice(0, 3);
+  }, [allMenuItems, cart]);
+
   const toggleFavorite = async (itemId: string) => {
     if (!user) {
       toast({ title: "Account Required", description: "Please sign in to save favorites." });
@@ -143,10 +152,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     } catch (e) {}
   };
 
-  const addToCart = (item: any, quantity = 1) => {
+  const addToCart = (item: any, quantity = 1, specificAddOns: AddOn[] = activeAddOns) => {
     if (item.isOutOfStock) return;
-    const uniqueId = `${item.id}-${activeAddOns.map(a => a.name).sort().join('|')}`;
-    const addOnsTotal = activeAddOns.reduce((s, a) => s + a.price, 0);
+    const uniqueId = `${item.id}-${specificAddOns.map(a => a.name).sort().join('|')}`;
+    const addOnsTotal = specificAddOns.reduce((s, a) => s + a.price, 0);
     const finalPrice = (item.specialPrice || item.price) + addOnsTotal;
 
     setCart(prev => {
@@ -154,7 +163,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       if (existing) {
         return prev.map(i => i.uniqueId === uniqueId ? { ...i, quantity: i.quantity + quantity } : i);
       }
-      return [...prev, { id: item.id, uniqueId, name: item.name, price: finalPrice, quantity, selectedAddOns: activeAddOns }];
+      return [...prev, { id: item.id, uniqueId, name: item.name, price: finalPrice, quantity, selectedAddOns: specificAddOns }];
     });
     
     setCustomizingItem(null);
@@ -162,7 +171,32 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     toast({ title: "Added to Cart" });
   };
 
+  const updateQuantity = (itemId: string, delta: number) => {
+    setCart(prev => {
+      // Find the base version (no add-ons) first
+      const idx = prev.findIndex(i => i.id === itemId && i.selectedAddOns.length === 0);
+      if (idx > -1) {
+        const newQty = prev[idx].quantity + delta;
+        if (newQty <= 0) return prev.filter((_, i) => i !== idx);
+        const next = [...prev];
+        next[idx] = { ...next[idx], quantity: newQty };
+        return next;
+      }
+      
+      // If adding new base item
+      if (delta > 0) {
+        const item = allMenuItems.find(i => i.id === itemId);
+        if (item) {
+          const finalPrice = item.specialPrice || item.price;
+          return [...prev, { id: item.id, uniqueId: `${item.id}-`, name: item.name, price: finalPrice, quantity: 1, selectedAddOns: [] }];
+        }
+      }
+      return prev;
+    });
+  };
+
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const handleCheckout = async () => {
     if (!user) {
@@ -202,7 +236,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   if (loadingRes || loadingItems) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className="min-h-screen pb-24 scroll-smooth" style={{ backgroundColor: designSettings?.theme?.background || '#fff' }}>
+    <div className="min-h-screen pb-32 scroll-smooth" style={{ backgroundColor: designSettings?.theme?.background || '#fff' }}>
       <nav className="sticky top-0 z-[100] w-full border-b backdrop-blur-lg h-20 flex items-center bg-white/95 px-6">
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <Link href={`/customer/${restaurantId}`} className="text-xl font-black">{restaurant?.name}</Link>
@@ -218,7 +252,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             )}
             <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-slate-50" onClick={() => setIsCheckoutOpen(true)}>
               <ShoppingBag className="h-5 w-5" />
-              {cart.length > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">{cart.length}</Badge>}
+              {cart.length > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">{totalItems}</Badge>}
             </Button>
           </div>
         </div>
@@ -239,10 +273,35 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           currencySymbol="$" 
           theme={{ primary: designSettings?.theme?.primary || '#22c55e', text: '#000', background: '#fff' }} 
           addToCart={(item) => setCustomizingItem(item)} 
+          updateQuantity={updateQuantity}
           cart={cart}
           bestSellerIds={bestSellerIds}
         />
       </div>
+
+      {/* Sticky Checkout Bar */}
+      {cart.length > 0 && (
+        <div className="fixed bottom-6 left-0 right-0 z-[110] px-6 animate-in slide-in-from-bottom duration-500">
+          <div className="max-w-xl mx-auto bg-slate-900 text-white rounded-3xl p-4 shadow-2xl flex items-center justify-between border border-white/10 backdrop-blur-xl">
+            <div className="flex items-center gap-4 pl-4">
+              <div className="bg-primary rounded-xl p-2.5">
+                <ShoppingBag className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1">{totalItems} Items</p>
+                <p className="text-xl font-black">${subtotal.toFixed(2)}</p>
+              </div>
+            </div>
+            <Button 
+              className="h-14 px-8 rounded-2xl font-black text-lg gap-2 shadow-xl"
+              style={{ backgroundColor: designSettings?.theme?.primary || '#22c55e' }}
+              onClick={() => setIsCheckoutOpen(true)}
+            >
+              Checkout <ArrowRight className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Dialog open={!!customizingItem} onOpenChange={() => setCustomizingItem(null)}>
         <DialogContent className="rounded-[2.5rem] max-w-2xl overflow-hidden p-0">
@@ -290,20 +349,56 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       <Sheet open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
         <SheetContent className="w-full sm:max-w-md rounded-l-[3rem] p-8 space-y-8 flex flex-col">
           <SheetHeader><SheetTitle className="text-3xl font-black">Your Cart</SheetTitle></SheetHeader>
-          <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
-            {cart.map(item => (
-              <div key={item.uniqueId} className="flex justify-between items-start border-b pb-4">
-                <div>
-                  <p className="font-black text-slate-900">{item.name}</p>
-                  <p className="text-xs text-slate-400">{item.quantity}x • ${item.price.toFixed(2)}</p>
+          <div className="flex-1 overflow-y-auto no-scrollbar space-y-8">
+            <div className="space-y-6">
+              {cart.map(item => (
+                <div key={item.uniqueId} className="flex justify-between items-start border-b pb-4">
+                  <div>
+                    <p className="font-black text-slate-900">{item.name}</p>
+                    {item.selectedAddOns.length > 0 && (
+                      <p className="text-[10px] text-slate-400 italic">
+                        {item.selectedAddOns.map(a => a.name).join(', ')}
+                      </p>
+                    )}
+                    <p className="text-xs text-slate-400 mt-1">{item.quantity}x • ${item.price.toFixed(2)}</p>
+                  </div>
+                  <span className="font-black text-slate-900">${(item.price * item.quantity).toFixed(2)}</span>
                 </div>
-                <span className="font-black">${(item.price * item.quantity).toFixed(2)}</span>
+              ))}
+            </div>
+
+            {/* Smart Upsell Section */}
+            {upsellItems.length > 0 && (
+              <div className="space-y-4 pt-4 border-t">
+                <h3 className="font-black text-xs uppercase tracking-widest text-slate-400">Customers also add</h3>
+                <div className="space-y-3">
+                  {upsellItems.map(item => (
+                    <div key={item.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 group transition-all hover:bg-white hover:shadow-md">
+                      <div className="flex items-center gap-3">
+                        <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-12 h-12 rounded-xl object-cover" alt="" />
+                        <div>
+                          <p className="text-xs font-black text-slate-900">{item.name}</p>
+                          <p className="text-[10px] font-bold text-primary">${item.specialPrice || item.price}</p>
+                        </div>
+                      </div>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-8 w-8 rounded-full bg-white shadow-sm border border-slate-100 text-primary hover:bg-primary hover:text-white"
+                        onClick={() => addToCart(item, 1, [])}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            )}
           </div>
+
           <div className="bg-slate-900 text-white rounded-3xl p-8 space-y-4 shadow-2xl">
             <div className="flex justify-between text-2xl font-black border-t border-white/10 pt-4"><span>Total</span><span>${subtotal.toFixed(2)}</span></div>
-            <Button onClick={handleCheckout} disabled={isProcessing || cart.length === 0} className="w-full h-16 rounded-2xl font-black text-xl mt-4" style={{ backgroundColor: designSettings?.theme?.primary }}>
+            <Button onClick={handleCheckout} disabled={isProcessing || cart.length === 0} className="w-full h-16 rounded-2xl font-black text-xl mt-4 shadow-lg shadow-primary/20" style={{ backgroundColor: designSettings?.theme?.primary }}>
               {isProcessing ? <Loader2 className="animate-spin" /> : "Complete Order"}
             </Button>
           </div>
