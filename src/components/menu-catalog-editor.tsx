@@ -364,6 +364,17 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6 max-h-[70vh] overflow-y-auto no-scrollbar">
             <div className="space-y-6">
               <div className="space-y-2"><Label>Item Name</Label><Input value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="rounded-xl" /></div>
+              
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2"><Tag className="h-3 w-3" /> Category</Label>
+                <Input 
+                  value={itemForm.category} 
+                  onChange={e => setItemForm({...itemForm, category: e.target.value})} 
+                  placeholder="e.g. Starters, Main, Dessert"
+                  className="h-12 rounded-xl" 
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Base Price</Label><Input type="number" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} className="rounded-xl" /></div>
                 <div className="space-y-2"><Label>Special Price (Optional)</Label><Input type="number" value={itemForm.specialPrice} onChange={e => setItemForm({...itemForm, specialPrice: e.target.value})} className="rounded-xl" /></div>
