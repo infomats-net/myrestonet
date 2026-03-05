@@ -1,4 +1,3 @@
-
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
@@ -99,17 +98,23 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     if (!firestore || !restaurantId) return;
     const fetchAll = async () => {
       setLoadingItems(true);
-      const menusSnap = await getDocs(collection(firestore, 'restaurants', restaurantId, 'menus'));
-      const items: any[] = [];
-      for (const m of menusSnap.docs) {
-        const iSnap = await getDocs(collection(firestore, 'restaurants', restaurantId, 'menus', m.id, 'items'));
-        iSnap.forEach(d => items.push({ ...d.data(), id: d.id, menuId: m.id }));
+      try {
+        const menusSnap = await getDocs(collection(firestore, 'restaurants', restaurantId, 'menus'));
+        const items: any[] = [];
+        for (const m of menusSnap.docs) {
+          const iSnap = await getDocs(collection(firestore, 'restaurants', restaurantId, 'menus', m.id, 'items'));
+          iSnap.forEach(d => items.push({ ...d.data(), id: d.id, menuId: m.id }));
+        }
+        setAllMenuItems(items);
+      } catch (error) {
+        console.error("Failed to load menu items", error);
+        toast({ variant: "destructive", title: "Error", description: "Failed to load restaurant menu." });
+      } finally {
+        setLoadingItems(false);
       }
-      setAllMenuItems(items);
-      setLoadingItems(false);
     };
     fetchAll();
-  }, [firestore, restaurantId]);
+  }, [firestore, restaurantId, toast]);
 
   const bestSellerIds = useMemo(() => {
     return new Set(allMenuItems.filter(i => i.isPopular).map(i => i.id));
