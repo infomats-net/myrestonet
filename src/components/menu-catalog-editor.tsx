@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Plus, 
   Trash2, 
@@ -28,7 +29,12 @@ import {
   X,
   Tag,
   DollarSign,
-  Sparkle
+  Sparkle,
+  TrendingUp,
+  Package,
+  Calendar,
+  Layers,
+  ArrowUpCircle
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -38,8 +44,15 @@ import {
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
 import { useFirebase, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, setDoc, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
@@ -76,7 +89,14 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     isNew: false,
     specialPrice: '',
     dietary: [] as string[],
-    addOns: [] as { name: string, price: number }[]
+    addOns: [] as { name: string, price: number }[],
+    // Smart Selling Fields
+    upsellIds: [] as string[],
+    crossSellIds: [] as string[],
+    isLTO: false,
+    ltoExpiry: '',
+    quantityDiscounts: [] as { minQty: number, discountPrice: number }[],
+    enableAIRecommendations: true,
   });
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [newCustomTag, setNewCustomTag] = useState('');
@@ -86,8 +106,9 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   const [activeReplaceItem, setActiveReplaceItem] = useState<any>(null);
 
   const [newAddOn, setNewAddOn] = useState({ name: '', price: '' });
+  const [newQtyDiscount, setNewQtyDiscount] = useState({ minQty: '', price: '' });
 
-  // --- Category Persistence ---
+  // --- Category & Tag Persistence ---
   const categoriesRef = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return doc(firestore, 'restaurants', restaurantId, 'config', 'menuCategories');
@@ -95,7 +116,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   const { data: categoriesDoc } = useDoc(categoriesRef);
   const savedCategories = categoriesDoc?.list || [];
 
-  // --- Custom Tag Persistence ---
   const dietaryTagsRef = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags');
@@ -114,6 +134,21 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     return collection(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items');
   }, [firestore, restaurantId, selectedMenuId]);
   const { data: items, isLoading: loadingItems } = useCollection(itemsQuery);
+
+  // All items across all menus for linking (upsells/cross-sells)
+  const [allStoreItems, setAllStoreItems] = useState<any[]>([]);
+  useMemo(() => {
+    if (!menus || !firestore) return;
+    const fetchAll = async () => {
+      const results: any[] = [];
+      for (const m of menus) {
+        const snap = await getDocs(collection(firestore, 'restaurants', restaurantId, 'menus', m.id, 'items'));
+        snap.forEach(d => results.push({ id: d.id, name: d.data().name }));
+      }
+      setAllStoreItems(results);
+    };
+    fetchAll();
+  }, [menus, firestore, restaurantId]);
 
   const convertToWebP = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
@@ -211,100 +246,22 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     }
   };
 
-  const handleDeleteCategory = async (category: string) => {
-    if (!firestore || !restaurantId || !window.confirm(`Remove "${category}" from saved categories?`)) return;
-    try {
-      const catRef = doc(firestore, 'restaurants', restaurantId, 'config', 'menuCategories');
-      await updateDoc(catRef, {
-        list: arrayRemove(category),
-        updatedAt: serverTimestamp()
-      });
-      toast({ title: "Category Removed" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error Removing Category" });
-    }
-  };
-
-  const handleAddCustomTag = async () => {
-    if (!newCustomTag.trim() || !firestore || !restaurantId) return;
-    const tag = newCustomTag.trim();
-    try {
-      const tagRef = doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags');
-      await setDoc(tagRef, {
-        list: arrayUnion(tag),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      setNewCustomTag('');
-      toast({ title: "Custom Tag Added" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error Adding Tag" });
-    }
-  };
-
-  const handleDeleteCustomTag = async (tag: string) => {
-    if (!firestore || !restaurantId || !window.confirm(`Delete tag "${tag}" permanently?`)) return;
-    try {
-      const tagRef = doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags');
-      await updateDoc(tagRef, {
-        list: arrayRemove(tag),
-        updatedAt: serverTimestamp()
-      });
-      if (itemForm.dietary.includes(tag)) {
-        toggleDietary(tag);
-      }
-      toast({ title: "Tag Removed" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error Removing Tag" });
-    }
-  };
-
-  const addAddOn = () => {
-    if (!newAddOn.name || !newAddOn.price) return;
-    setItemForm(prev => ({
-      ...prev,
-      addOns: [...(prev.addOns || []), { name: newAddOn.name, price: parseFloat(newAddOn.price) }]
-    }));
-    setNewAddOn({ name: '', price: '' });
-  };
-
-  const removeAddOn = (idx: number) => {
-    setItemForm(prev => ({
-      ...prev,
-      addOns: prev.addOns.filter((_, i) => i !== idx)
-    }));
-  };
-
-  const handleSaveMenu = async () => {
-    if (!firestore || !restaurantId || !menuForm.name) return;
-    setLoading(true);
-    try {
-      await addDoc(collection(firestore, 'restaurants', restaurantId, 'menus'), {
-        ...menuForm,
-        createdAt: serverTimestamp()
-      });
-      setIsMenuDialogOpen(false);
-      setMenuForm({ name: '', description: '' });
-      toast({ title: "Menu Created" });
-    } catch (e) {
-      toast({ variant: "destructive", title: "Error" });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const resetItemForm = () => {
     setItemForm({ 
       name: '', description: '', price: '', category: '', imageUrl: '', 
-      isPopular: false, isCombo: false, isOutOfStock: false, isNew: false, specialPrice: '', dietary: [], addOns: []
+      isPopular: false, isCombo: false, isOutOfStock: false, isNew: false, specialPrice: '', dietary: [], addOns: [],
+      upsellIds: [], crossSellIds: [], isLTO: false, ltoExpiry: '', quantityDiscounts: [], enableAIRecommendations: true
     });
     setEditingItemId(null);
   };
 
-  const toggleDietary = (id: string) => {
+  const addQtyDiscount = () => {
+    if (!newQtyDiscount.minQty || !newQtyDiscount.price) return;
     setItemForm(prev => ({
       ...prev,
-      dietary: prev.dietary.includes(id) ? prev.dietary.filter(d => d !== id) : [...prev.dietary, id]
+      quantityDiscounts: [...(prev.quantityDiscounts || []), { minQty: parseInt(newQtyDiscount.minQty), discountPrice: parseFloat(newQtyDiscount.price) }]
     }));
+    setNewQtyDiscount({ minQty: '', price: '' });
   };
 
   if (loadingMenus) return <div className="p-20 text-center"><Loader2 className="animate-spin h-8" /></div>;
@@ -356,7 +313,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                 <thead className="bg-slate-50 border-b">
                   <tr>
                     <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Item Details</th>
-                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Features</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Smart Features</th>
                     <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Price</th>
                     <th className="p-6 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
                   </tr>
@@ -367,19 +324,13 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                       <td className="p-6">
                         <div className="flex items-center gap-4">
                           <div className="relative w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border group/thumb">
-                            {replacingItemId === item.id ? <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><Loader2 className="animate-spin h-5 w-5" /></div> : 
-                            <button className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center text-white" onClick={() => { setActiveReplaceItem(item); fileInputRef.current?.click(); }}><RefreshCw className="h-5 w-5" /></button>}
                             <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-full h-full object-cover" alt={item.name} />
                           </div>
                           <div>
                             <p className="font-black text-slate-900">{item.name}</p>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {item.category && <Badge variant="secondary" className="text-[8px] uppercase px-1 bg-slate-100 text-slate-500 border-none">{item.category}</Badge>}
-                              {item.isNew && <Badge className="text-[8px] uppercase px-1 bg-blue-100 text-blue-600 border-none">New</Badge>}
-                              {item.dietary?.map((d: string) => (
-                                <Badge key={d} variant="outline" className="text-[8px] uppercase px-1">{d}</Badge>
-                              ))}
-                              {item.addOns?.length > 0 && <Badge variant="outline" className="text-[8px] uppercase px-1 border-primary/20 text-primary">+{item.addOns.length} Options</Badge>}
+                              {item.isLTO && <Badge className="text-[8px] bg-rose-100 text-rose-600 border-none">LTO</Badge>}
+                              {item.upsellIds?.length > 0 && <Badge className="text-[8px] bg-emerald-100 text-emerald-600 border-none">Upsells</Badge>}
                             </div>
                           </div>
                         </div>
@@ -388,15 +339,15 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                         <div className="flex gap-2">
                           {item.isPopular && <Star className="h-4 w-4 text-amber-400 fill-current" />}
                           {item.isCombo && <Zap className="h-4 w-4 text-blue-500 fill-current" />}
-                          {item.isOutOfStock && <AlertTriangle className="h-4 w-4 text-rose-500" />}
+                          {item.quantityDiscounts?.length > 0 && <TrendingUp className="h-4 w-4 text-emerald-500" />}
                         </div>
                       </td>
                       <td className="p-6">
-                        {item.specialPrice ? <div className="flex flex-col"><span className="text-rose-600 font-black">${item.specialPrice}</span><span className="text-[10px] line-through text-slate-400">${item.price}</span></div> : <span className="font-black">${item.price}</span>}
+                        {item.specialPrice ? <div className="flex flex-col"><span className="text-rose-600 font-black">${item.specialPrice}</span></div> : <span className="font-black">${item.price}</span>}
                       </td>
                       <td className="p-6 text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => { setEditingItemId(item.id); setItemForm({ ...item, price: item.price.toString(), specialPrice: item.specialPrice?.toString() || '', dietary: item.dietary || [], addOns: item.addOns || [] }); setIsItemDialogOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => { setEditingItemId(item.id); setItemForm({ ...item, price: item.price.toString(), specialPrice: item.specialPrice?.toString() || '' }); setIsItemDialogOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" className="text-slate-300 hover:text-destructive" onClick={() => deleteDoc(doc(firestore!, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items', item.id))}><Trash2 className="h-4 w-4" /></Button>
                         </div>
                       </td>
@@ -409,191 +360,144 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
         </div>
       )}
 
-      <input type="file" className="hidden" ref={fileInputRef} accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) handleQuickReplaceImage(file); }} />
+      <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
+        <DialogContent className="rounded-[2.5rem] max-w-5xl overflow-hidden p-0">
+          <Tabs defaultValue="basic" className="flex flex-col h-[80vh]">
+            <div className="p-8 border-b bg-slate-50/50 flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-2xl font-black">Item Configuration</DialogTitle>
+                <DialogDescription>Define behavior and smart selling logic for this dish.</DialogDescription>
+              </div>
+              <TabsList className="bg-white border rounded-xl p-1">
+                <TabsTrigger value="basic" className="rounded-lg font-bold">Basic Info</TabsTrigger>
+                <TabsTrigger value="smart" className="rounded-lg font-bold gap-2"><ArrowUpCircle className="h-4 w-4 text-primary" /> Smart Selling</TabsTrigger>
+                <TabsTrigger value="media" className="rounded-lg font-bold">Media</TabsTrigger>
+              </TabsList>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
+              <TabsContent value="basic" className="space-y-6 mt-0">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2"><Label>Item Name</Label><Input value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="h-12 rounded-xl" /></div>
+                  <div className="space-y-2"><Label>Category</Label><Input value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})} className="h-12 rounded-xl" /></div>
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2"><Label>Base Price</Label><Input type="number" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} className="h-12 rounded-xl" /></div>
+                  <div className="space-y-2"><Label>Special Price</Label><Input type="number" value={itemForm.specialPrice} onChange={e => setItemForm({...itemForm, specialPrice: e.target.value})} className="h-12 rounded-xl" /></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center"><Label>Description</Label><Button variant="link" size="sm" onClick={handleAiDescription} className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"><Sparkles className="h-3 w-3" /> AI Write</Button></div>
+                  <Textarea value={itemForm.description} onChange={e => setItemForm({...itemForm, description: e.target.value})} className="rounded-xl min-h-[120px]" />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="smart" className="space-y-10 mt-0">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-6">
+                    <div className="bg-primary/5 p-6 rounded-3xl border border-primary/10 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /><span className="font-black text-sm uppercase">AI Recommendations</span></div>
+                        <Switch checked={itemForm.enableAIRecommendations} onCheckedChange={v => setItemForm({...itemForm, enableAIRecommendations: v})} />
+                      </div>
+                      <p className="text-[10px] text-slate-500 font-medium">When enabled, our AI will automatically suggest pairings for this item based on flavor profiles.</p>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Label className="flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Upsell Suggestions</Label>
+                      <Select onValueChange={v => setItemForm({...itemForm, upsellIds: [...(itemForm.upsellIds || []), v]})}>
+                        <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Add Upsell Item..." /></SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          {allStoreItems.filter(i => i.id !== editingItemId).map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex flex-wrap gap-2">
+                        {itemForm.upsellIds?.map(id => (
+                          <Badge key={id} variant="secondary" className="pl-3 pr-1 py-1 gap-2 rounded-lg bg-emerald-50 text-emerald-700 border-none">
+                            {allStoreItems.find(i => i.id === id)?.name || id}
+                            <button onClick={() => setItemForm({...itemForm, upsellIds: itemForm.upsellIds.filter(x => x !== id)})}><X className="h-3 w-3" /></button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <Label className="flex items-center gap-2"><Zap className="h-4 w-4" /> Quantity Discounts</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Input placeholder="Min Qty" type="number" value={newQtyDiscount.minQty} onChange={e => setNewQtyDiscount({...newQtyDiscount, minQty: e.target.value})} className="h-10 text-xs" />
+                        <Input placeholder="Unit Price" type="number" value={newQtyDiscount.price} onChange={e => setNewQtyDiscount({...newQtyDiscount, price: e.target.value})} className="h-10 text-xs" />
+                        <Button variant="outline" size="sm" onClick={addQtyDiscount} className="h-10 font-black text-[10px]">Add Rule</Button>
+                      </div>
+                      <div className="space-y-2">
+                        {itemForm.quantityDiscounts?.map((d, i) => (
+                          <div key={i} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl text-xs font-bold">
+                            <span>Buy {d.minQty}+ for ${d.discountPrice}/ea</span>
+                            <button onClick={() => setItemForm({...itemForm, quantityDiscounts: itemForm.quantityDiscounts.filter((_, idx) => idx !== i)})}><X className="h-3 w-3 text-slate-300" /></button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2"><Calendar className="h-4 w-4 text-rose-600" /><span className="font-black text-sm uppercase text-rose-900">Limited Time Offer</span></div>
+                        <Switch checked={itemForm.isLTO} onCheckedChange={v => setItemForm({...itemForm, isLTO: v})} />
+                      </div>
+                      {itemForm.isLTO && (
+                        <div className="space-y-2 animate-in fade-in duration-300">
+                          <Label className="text-[10px] uppercase font-bold text-rose-700">Ends On</Label>
+                          <Input type="date" value={itemForm.ltoExpiry} onChange={e => setItemForm({...itemForm, ltoExpiry: e.target.value})} className="h-10 bg-white" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <Label className="flex items-center gap-2"><Layers className="h-4 w-4" /> Cross-Sell Items</Label>
+                      <Select onValueChange={v => setItemForm({...itemForm, crossSellIds: [...(itemForm.crossSellIds || []), v]})}>
+                        <SelectTrigger className="h-12 rounded-xl"><SelectValue placeholder="Add Cross-Sell..." /></SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          {allStoreItems.filter(i => i.id !== editingItemId).map(i => <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex flex-wrap gap-2">
+                        {itemForm.crossSellIds?.map(id => (
+                          <Badge key={id} variant="secondary" className="pl-3 pr-1 py-1 gap-2 rounded-lg bg-blue-50 text-blue-700 border-none">
+                            {allStoreItems.find(i => i.id === id)?.name || id}
+                            <button onClick={() => setItemForm({...itemForm, crossSellIds: itemForm.crossSellIds.filter(x => x !== id)})}><X className="h-3 w-3" /></button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="media" className="space-y-6 mt-0">
+                <ImageUploader path={`restaurants/${restaurantId}/items/${editingItemId || 'temp'}`} currentUrl={itemForm.imageUrl} onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})} onDelete={() => setItemForm({...itemForm, imageUrl: ''})} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl"><Label>Popular</Label><Switch checked={itemForm.isPopular} onCheckedChange={v => setItemForm({...itemForm, isPopular: v})} /></div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl"><Label>Combo Deal</Label><Switch checked={itemForm.isCombo} onCheckedChange={v => setItemForm({...itemForm, isCombo: v})} /></div>
+                </div>
+              </TabsContent>
+            </div>
+
+            <div className="p-8 border-t bg-slate-50/50 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setIsItemDialogOpen(false)} className="rounded-xl h-12 px-8">Cancel</Button>
+              <Button className="rounded-xl h-12 px-12 font-black shadow-lg" onClick={handleSaveItem} disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : "Save Changes"}</Button>
+            </div>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isMenuDialogOpen} onOpenChange={setIsMenuDialogOpen}>
         <DialogContent className="rounded-[2.5rem] max-w-md">
           <DialogHeader><DialogTitle className="text-2xl font-black">Create Menu Category</DialogTitle></DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Category Name</Label>
-              <Input value={menuForm.name} onChange={e => setMenuForm({...menuForm, name: e.target.value})} placeholder="e.g. Main Courses" className="rounded-xl h-12" />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Input value={menuForm.description} onChange={e => setMenuForm({...menuForm, description: e.target.value})} placeholder="e.g. Signature selection of meats" className="rounded-xl h-12" />
-            </div>
+            <div className="space-y-2"><Label>Category Name</Label><Input value={menuForm.name} onChange={e => setMenuForm({...menuForm, name: e.target.value})} className="rounded-xl h-12" /></div>
+            <div className="space-y-2"><Label>Description</Label><Input value={menuForm.description} onChange={e => setMenuForm({...menuForm, description: e.target.value})} className="rounded-xl h-12" /></div>
           </div>
-          <DialogFooter><Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleSaveMenu} disabled={loading || !menuForm.name}>Create Category</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isItemDialogOpen} onOpenChange={setIsItemDialogOpen}>
-        <DialogContent className="rounded-[2.5rem] max-w-4xl">
-          <DialogHeader><DialogTitle className="text-2xl font-black">{editingItemId ? 'Edit Item' : 'New Item'}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6 max-h-[70vh] overflow-y-auto no-scrollbar">
-            <div className="space-y-6">
-              <div className="space-y-2"><Label>Item Name</Label><Input value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="rounded-xl" /></div>
-              
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2"><Tag className="h-3 w-3" /> Category</Label>
-                <Input 
-                  value={itemForm.category} 
-                  onChange={e => setItemForm({...itemForm, category: e.target.value})} 
-                  placeholder="e.g. Starters, Main, Dessert"
-                  className="h-12 rounded-xl" 
-                />
-                
-                {savedCategories.length > 0 && (
-                  <div className="space-y-2 mt-2">
-                    <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Saved Categories</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {savedCategories.map((cat: string) => (
-                        <Badge 
-                          key={cat} 
-                          variant="secondary" 
-                          className={cn(
-                            "cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors text-[9px] font-bold uppercase py-1 px-2 border-none flex items-center gap-1.5",
-                            itemForm.category === cat ? "bg-primary text-white" : "bg-slate-100 text-slate-500"
-                          )}
-                          onClick={() => setItemForm({...itemForm, category: cat})}
-                        >
-                          {cat}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteCategory(cat);
-                            }}
-                            className="hover:text-rose-500 transition-colors"
-                          >
-                            <X className="h-2.5 w-2.5" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2"><Label>Base Price</Label><Input type="number" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} className="rounded-xl" /></div>
-                <div className="space-y-2"><Label>Special Price (Optional)</Label><Input type="number" value={itemForm.specialPrice} onChange={e => setItemForm({...itemForm, specialPrice: e.target.value})} className="rounded-xl" /></div>
-              </div>
-
-              <div className="space-y-4">
-                <Label>Dietary Tags</Label>
-                <div className="flex flex-wrap gap-2">
-                  {DIETARY_OPTIONS.map(opt => (
-                    <Button 
-                      key={opt.id} 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => toggleDietary(opt.id)} 
-                      className={cn("rounded-full gap-2", itemForm.dietary.includes(opt.id) && "bg-primary/10 border-primary text-primary")}
-                    >
-                      <opt.icon className="h-3 w-3" /> {opt.label}
-                    </Button>
-                  ))}
-                  {savedCustomTags.map((tag: string) => (
-                    <div key={tag} className="relative group">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => toggleDietary(tag)} 
-                        className={cn("rounded-full pr-8", itemForm.dietary.includes(tag) && "bg-primary/10 border-primary text-primary")}
-                      >
-                        {tag}
-                      </Button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDeleteCustomTag(tag); }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                
-                <div className="flex gap-2 pt-2">
-                  <Input 
-                    value={newCustomTag} 
-                    onChange={e => setNewCustomTag(e.target.value)} 
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddCustomTag())}
-                    placeholder="Add custom tag (e.g. Keto)..." 
-                    className="h-9 text-xs rounded-xl"
-                  />
-                  <Button variant="ghost" size="sm" onClick={handleAddCustomTag} className="h-9 px-3 rounded-xl border border-dashed text-[10px] font-black uppercase">Add</Button>
-                </div>
-              </div>
-
-              <div className="space-y-4 border-t pt-6">
-                <Label className="flex items-center gap-2">
-                  <Plus className="h-3 w-3" /> Add-ons & Options
-                </Label>
-                <div className="space-y-2">
-                  {itemForm.addOns?.map((addon, idx) => (
-                    <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-bold text-sm">{addon.name}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">+${addon.price}</span>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-rose-500" onClick={() => removeAddOn(idx)}>
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input 
-                    placeholder="Option Name" 
-                    value={newAddOn.name} 
-                    onChange={e => setNewAddOn({...newAddOn, name: e.target.value})}
-                    className="h-9 text-xs"
-                  />
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
-                      <Input 
-                        placeholder="Price" 
-                        type="number"
-                        value={newAddOn.price}
-                        onChange={e => setNewAddOn({...newAddOn, price: e.target.value})}
-                        className="h-9 text-xs pl-6"
-                      />
-                    </div>
-                    <Button variant="outline" size="sm" onClick={addAddOn} className="h-9 font-black uppercase text-[9px]">Add</Button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2 border-t pt-6">
-                <div className="flex justify-between items-center">
-                  <Label>Description</Label>
-                  <Button 
-                    variant="link" 
-                    size="sm" 
-                    onClick={handleAiDescription} 
-                    className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"
-                    disabled={loading}
-                  >
-                    <Sparkles className="h-3 w-3" /> AI Write
-                  </Button>
-                </div>
-                <Textarea value={itemForm.description} onChange={e => setItemForm({...itemForm, description: e.target.value})} className="rounded-xl min-h-[100px]" />
-              </div>
-            </div>
-            <div className="space-y-6">
-              <ImageUploader path={`restaurants/${restaurantId}/items/${editingItemId || 'temp'}`} currentUrl={itemForm.imageUrl} onUploadSuccess={(url) => setItemForm({...itemForm, imageUrl: url})} onDelete={() => setItemForm({...itemForm, imageUrl: ''})} />
-              
-              <div className="space-y-4 bg-slate-50 p-6 rounded-3xl">
-                <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Star className="h-4 w-4" /> Featured / Popular</Label><Switch checked={itemForm.isPopular} onCheckedChange={v => setItemForm({...itemForm, isPopular: v})} /></div>
-                <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Zap className="h-4 w-4" /> Combo / Meal Deal</Label><Switch checked={itemForm.isCombo} onCheckedChange={v => setItemForm({...itemForm, isCombo: v})} /></div>
-                <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><Sparkle className="h-4 w-4" /> Mark as New Item</Label><Switch checked={itemForm.isNew} onCheckedChange={v => setItemForm({...itemForm, isNew: v})} /></div>
-                <div className="flex items-center justify-between"><Label className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" /> Out of Stock</Label><Switch checked={itemForm.isOutOfStock} onCheckedChange={v => setItemForm({...itemForm, isOutOfStock: v})} /></div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter><Button className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" onClick={handleSaveItem} disabled={loading || !itemForm.name}>{loading ? <Loader2 className="animate-spin" /> : editingItemId ? "Update Catalog Item" : "Publish to Catalog"}</Button></DialogFooter>
+          <DialogFooter><Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleSaveMenu} disabled={loading}>Create Category</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

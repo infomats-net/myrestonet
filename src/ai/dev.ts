@@ -1,4 +1,3 @@
-
 import { config } from 'dotenv';
 config();
 
@@ -9,3 +8,4 @@ import '@/ai/flows/generate-item-description.ts';
 import '@/ai/flows/select-placeholder.ts';
 import '@/ai/flows/generate-email-content.ts';
 import '@/ai/flows/import-menu-flow.ts';
+import '@/ai/flows/smart-recommendations.ts';
