@@ -1,126 +1,568 @@
-
 {
   "entities": {
-    "UserProfile": {
-      "title": "UserProfile",
-      "description": "Represents a user in the system.",
+    "CustomerProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CustomerProfile",
       "type": "object",
+      "description": "Stores information specific to a customer account, linked to an external authentication system.",
       "properties": {
-        "id": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["super_admin", "marketing_partner", "restaurant_admin", "staff", "support", "helper"] },
-        "restaurantId": { "type": "string", "description": "The tenant ID this user belongs to (null for admins/partners)." },
-        "partnerId": { "type": "string", "description": "The partner ID this user belongs to (null for super_admin)." },
-        "assignedRestaurants": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the CustomerProfile entity."
+        },
+        "firebaseAuthUid": {
+          "type": "string",
+          "description": "Unique identifier from Firebase Authentication, linking this profile to an authenticated user. (Relationship: Firebase Auth 1:1 CustomerProfile)"
+        },
+        "email": {
+          "type": "string",
+          "description": "The customer's primary email address.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The customer's first name."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The customer's last name."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The customer's primary phone number."
+        },
+        "profileImageUrl": {
+          "type": "string",
+          "description": "URL to the customer's profile image.",
+          "format": "uri"
+        },
+        "loyaltyPoints": {
+          "type": "number",
+          "description": "Current loyalty points accumulated by the customer for reward programs."
+        },
+        "referralCode": {
+          "type": "string",
+          "description": "A unique code assigned to this customer for referring new users."
+        },
+        "referredByCustomerId": {
+          "type": "string",
+          "description": "Reference to the CustomerProfile ID of the customer who referred this user. (Relationship: CustomerProfile 1:N CustomerProfile)"
+        },
+        "walletBalance": {
+          "type": "number",
+          "description": "Current balance in the customer's in-app wallet, usable for purchases."
+        },
+        "favoriteMenuItemIds": {
           "type": "array",
+          "description": "An array of IDs of menu items favorited by the customer. (Relationship: CustomerProfile N:N MenuItem)",
           "items": {
-            "type": "object",
-            "properties": {
-              "restaurantId": { "type": "string" },
-              "permissions": { "type": "array", "items": { "type": "string", "enum": ["read", "update_settings", "guide"] } },
-              "expiryDate": { "type": "string", "format": "date-time" }
-            }
+            "type": "string"
           }
         },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the customer profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the customer profile was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "role"]
+      "required": [
+        "id",
+        "firebaseAuthUid",
+        "email",
+        "firstName",
+        "lastName",
+        "loyaltyPoints",
+        "walletBalance",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "Partner": {
-      "title": "Partner",
-      "description": "A reseller or marketing agency that onboards restaurants.",
+    "Address": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Address",
       "type": "object",
+      "description": "Represents a physical address associated with a customer, used for delivery or billing.",
       "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "country": { "type": "string" },
-        "commissionRate": { "type": "number" },
-        "status": { "type": "string", "enum": ["active", "suspended"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Address entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the CustomerProfile this address belongs to. (Relationship: CustomerProfile 1:N Address)"
+        },
+        "addressLine1": {
+          "type": "string",
+          "description": "The first line of the street address."
+        },
+        "addressLine2": {
+          "type": "string",
+          "description": "The second line of the street address, if applicable."
+        },
+        "city": {
+          "type": "string",
+          "description": "The city of the address."
+        },
+        "stateProvince": {
+          "type": "string",
+          "description": "The state or province of the address."
+        },
+        "postalCode": {
+          "type": "string",
+          "description": "The postal or ZIP code of the address."
+        },
+        "country": {
+          "type": "string",
+          "description": "The country of the address."
+        },
+        "label": {
+          "type": "string",
+          "description": "A user-defined label for the address (e.g., 'Home', 'Work')."
+        },
+        "isDefault": {
+          "type": "boolean",
+          "description": "Indicates if this is the customer's default address."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Geographical latitude of the address for location-based services."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Geographical longitude of the address for location-based services."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the address was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the address was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "name", "commissionRate"]
+      "required": [
+        "id",
+        "customerId",
+        "addressLine1",
+        "city",
+        "stateProvince",
+        "postalCode",
+        "country",
+        "label",
+        "isDefault",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "Restaurant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Restaurant",
       "type": "object",
+      "description": "Represents a restaurant managed by the DineFlow Global platform. (Minimal structure for demonstrating relationships.)",
       "properties": {
-        "id": { "type": "string" },
-        "adminUserId": { "type": "string" },
-        "partnerId": { "type": "string" },
-        "name": { "type": "string" },
-        "city": { "type": "string" },
-        "country": { "type": "string" },
-        "customDomain": { "type": "string" },
-        "logoUrl": { "type": "string" },
-        "bannerUrl": { "type": "string" },
-        "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "trial"] },
-        "tierId": { "type": "string" },
-        "baseCurrency": { "type": "string", "default": "USD" },
-        "stripeAccountId": { "type": "string" },
-        "paymentsEnabled": { "type": "boolean", "default": false },
-        "reservationDepositEnabled": { "type": "boolean", "default": false },
-        "reservationDepositAmount": { "type": "number", "default": 0 },
-        "tables": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "name": { "type": "string" },
-              "size": { "type": "number" },
-              "location": { "type": "string", "enum": ["Indoor", "Outdoor", "Window", "Bar"] },
-              "isActive": { "type": "boolean" }
-            }
-          }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Restaurant entity."
         },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
+        "name": {
+          "type": "string",
+          "description": "The official name of the restaurant."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the restaurant."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the restaurant was added to the platform.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the restaurant information was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "Reservation": {
-      "title": "Reservation",
+    "MenuItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MenuItem",
       "type": "object",
+      "description": "Represents a single item available on a restaurant's menu. (Minimal structure for demonstrating relationships.)",
       "properties": {
-        "id": { "type": "string" },
-        "customerId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "customerEmail": { "type": "string" },
-        "customerPhone": { "type": "string" },
-        "tableIds": { "type": "array", "items": { "type": "string" } },
-        "dateTime": { "type": "string", "format": "date-time" },
-        "partySize": { "type": "number" },
-        "specialRequests": { "type": "string" },
-        "status": { "type": "string", "enum": ["pending", "confirmed", "attended", "cancelled", "no_show"] },
-        "waitlist": { "type": "boolean" },
-        "depositStatus": { "type": "string", "enum": ["none", "pending", "paid", "refunded"] },
-        "depositAmount": { "type": "number" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MenuItem entity."
+        },
+        "restaurantId": {
+          "type": "string",
+          "description": "Reference to the Restaurant that offers this menu item. (Relationship: Restaurant 1:N MenuItem)"
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the menu item."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the menu item."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the menu item was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the menu item was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "restaurantId",
+        "name",
+        "price",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "Order": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Order",
       "type": "object",
+      "description": "Represents a customer's order from a specific restaurant, including order history. (Updated for customer linkage.)",
       "properties": {
-        "id": { "type": "string" },
-        "orderNumber": { "type": "string" },
-        "customerId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "totalAmount": { "type": "number" },
-        "status": { "type": "string", "enum": ["pending", "preparing", "delivered", "cancelled"] },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Order entity."
+        },
+        "restaurantId": {
+          "type": "string",
+          "description": "Reference to the Restaurant from which the order was placed. (Relationship: Restaurant 1:N Order)"
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the CustomerProfile who placed this order, for order history. (Relationship: CustomerProfile 1:N Order)"
+        },
+        "orderItemIds": {
+          "type": "array",
+          "description": "An array of IDs of the OrderItem entities included in this order. (Relationship: Order 1:N OrderItem)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "The total monetary amount of the order, including taxes and fees."
+        },
+        "currency": {
+          "type": "string",
+          "description": "The three-letter currency code (e.g., USD, EUR) for the order total."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the order (e.g., 'pending', 'processing', 'delivered', 'cancelled')."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the order was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the order was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "restaurantId",
+        "customerId",
+        "orderItemIds",
+        "totalAmount",
+        "currency",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "OrderItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "OrderItem",
+      "type": "object",
+      "description": "Represents a single item within a customer's order.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the OrderItem entity."
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Reference to the Order this item belongs to. (Relationship: Order 1:N OrderItem)"
+        },
+        "menuItemId": {
+          "type": "string",
+          "description": "Reference to the MenuItem ordered. (Relationship: MenuItem 1:N OrderItem)"
+        },
+        "quantity": {
+          "type": "number",
+          "description": "The quantity of the menu item ordered."
+        },
+        "unitPrice": {
+          "type": "number",
+          "description": "The price of a single unit of the menu item at the time of order."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Any special instructions or modifications for this specific order item (e.g., 'no onions', 'extra cheese')."
+        }
+      },
+      "required": [
+        "id",
+        "orderId",
+        "menuItemId",
+        "quantity",
+        "unitPrice"
+      ]
+    },
+    "Review": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Review",
+      "type": "object",
+      "description": "Represents a customer's review and rating for a restaurant or a specific menu item.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Review entity."
+        },
+        "customerId": {
+          "type": "string",
+          "description": "Reference to the CustomerProfile who submitted the review. (Relationship: CustomerProfile 1:N Review)"
+        },
+        "restaurantId": {
+          "type": "string",
+          "description": "Reference to the Restaurant being reviewed. (Relationship: Restaurant 1:N Review)"
+        },
+        "menuItemId": {
+          "type": "string",
+          "description": "Optional reference to a specific MenuItem being reviewed. (Relationship: MenuItem 1:N Review)"
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Optional reference to a specific Order associated with this review. (Relationship: Order 1:N Review)"
+        },
+        "rating": {
+          "type": "number",
+          "description": "The rating given by the customer (typically on a scale of 1 to 5)."
+        },
+        "comment": {
+          "type": "string",
+          "description": "The textual comment provided by the customer in their review."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the review was submitted.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the review was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "customerId",
+        "restaurantId",
+        "rating",
+        "comment",
+        "createdAt",
+        "updatedAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "anonymous"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": { "schema": { "$ref": "#/backend/entities/UserProfile" } },
-    "/partners/{partnerId}": { "schema": { "$ref": "#/backend/entities/Partner" } },
-    "/restaurants/{restaurantId}": { "schema": { "$ref": "#/backend/entities/Restaurant" } },
-    "/restaurants/{restaurantId}/orders/{orderId}": { "schema": { "$ref": "#/backend/entities/Order" } },
-    "/restaurants/{restaurantId}/reservations/{reservationId}": { "schema": { "$ref": "#/backend/entities/Reservation" } },
-    "/tiers/{tierId}": { "schema": { "$ref": "#/backend/entities/SubscriptionTier" } }
+    "structure": [
+      {
+        "path": "/customerProfiles/{customerId}",
+        "definition": {
+          "entityName": "CustomerProfile",
+          "schema": {
+            "$ref": "#/backend/entities/CustomerProfile"
+          },
+          "description": "Stores individual customer profiles. The `customerId` in the path must match `request.auth.uid`. Includes fields like `loyaltyPoints`, `walletBalance`, `referralCode`, and `favoriteMenuItemIds`.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The Firebase Authentication UID of the customer, also serving as the document ID."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/customerProfiles/{customerId}/addresses/{addressId}",
+        "definition": {
+          "entityName": "Address",
+          "schema": {
+            "$ref": "#/backend/entities/Address"
+          },
+          "description": "Stores multiple delivery/billing addresses for a specific customer. The `customerId` in the path must match `request.auth.uid`. The document includes denormalized `customerId` for authorization independence.",
+          "params": [
+            {
+              "name": "customerId",
+              "description": "The Firebase Authentication UID of the customer, identifying the owner of this address."
+            },
+            {
+              "name": "addressId",
+              "description": "Unique identifier for the address document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}",
+        "definition": {
+          "entityName": "Restaurant",
+          "schema": {
+            "$ref": "#/backend/entities/Restaurant"
+          },
+          "description": "Stores public and administrative details for each restaurant. Publicly readable for menu browsing. Writeable only by associated `restaurantAdmins` or `platformAdmins`.",
+          "params": [
+            {
+              "name": "restaurantId",
+              "description": "Unique identifier for the restaurant."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/menuItems/{menuItemId}",
+        "definition": {
+          "entityName": "MenuItem",
+          "schema": {
+            "$ref": "#/backend/entities/MenuItem"
+          },
+          "description": "Stores individual menu items belonging to a specific restaurant. Publicly readable for customers. Writeable only by associated `restaurantAdmins` or `platformAdmins`. The document includes denormalized `restaurantId` for authorization independence.",
+          "params": [
+            {
+              "name": "restaurantId",
+              "description": "The ID of the restaurant offering this menu item."
+            },
+            {
+              "name": "menuItemId",
+              "description": "Unique identifier for the menu item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}",
+        "definition": {
+          "entityName": "Order",
+          "schema": {
+            "$ref": "#/backend/entities/Order"
+          },
+          "description": "Stores customer orders. Each order includes denormalized `customerId` and `restaurantId` for authorization independence, enabling customers to view their own orders and restaurant admins to view orders for their assigned restaurant without complex hierarchical rule lookups.",
+          "params": [
+            {
+              "name": "orderId",
+              "description": "Unique identifier for the order."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/orders/{orderId}/orderItems/{orderItemId}",
+        "definition": {
+          "entityName": "OrderItem",
+          "schema": {
+            "$ref": "#/backend/entities/OrderItem"
+          },
+          "description": "Stores individual items within an order. Each order item explicitly includes denormalized `customerId` and `restaurantId` (copied from the parent Order) to ensure authorization independence for all operations.",
+          "params": [
+            {
+              "name": "orderId",
+              "description": "The ID of the parent order this item belongs to."
+            },
+            {
+              "name": "orderItemId",
+              "description": "Unique identifier for the order item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/reviews/{reviewId}",
+        "definition": {
+          "entityName": "Review",
+          "schema": {
+            "$ref": "#/backend/entities/Review"
+          },
+          "description": "Stores customer reviews and ratings. Documents include denormalized `customerId` (for author-specific access) and `restaurantId` (for public display and admin viewing) for authorization independence.",
+          "params": [
+            {
+              "name": "reviewId",
+              "description": "Unique identifier for the review."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/platformAdmins/{userId}",
+        "definition": {
+          "entityName": "PlatformAdmin",
+          "schema": {
+            "$ref": "#/backend/entities/CustomerProfile"
+          },
+          "description": "A dedicated collection for platform-wide Super Admin roles. The existence of a document here (where `userId` is `request.auth.uid`) grants global administrative access, following DBAC principles. No custom claims are used.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user with Super Admin privileges."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/restaurants/{restaurantId}/adminUsers/{userId}",
+        "definition": {
+          "entityName": "RestaurantAdminAssignment",
+          "schema": {
+            "$ref": "#/backend/entities/CustomerProfile"
+          },
+          "description": "Defines users who are administrators for a specific restaurant. The existence of a document here (where `userId` is `request.auth.uid`) grants administrative access to the `{restaurantId}` specified in the path, following DBAC principles. No custom claims are used.",
+          "params": [
+            {
+              "name": "restaurantId",
+              "description": "The ID of the restaurant this user is an admin for."
+            },
+            {
+              "name": "userId",
+              "description": "The Firebase Authentication UID of the user assigned as an admin for this restaurant."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed to adhere strictly to the core design principles: Authorization Independence, Structural Segregation, DBAC (No Custom Claims), QAPs, and Invariants. This ensures a secure, scalable, and debuggable system.\n\n1.  **Authorization Independence (via Denormalization):**\n    *   For `CustomerProfile` and its subcollections (`addresses`), ownership is path-based (`/customerProfiles/{customerId}`). The `customerId` in the path directly corresponds to `request.auth.uid`, eliminating `get()` calls for basic customer data access.\n    *   For `Order` and `Review`, which have dual ownership (customer and restaurant), the documents themselves explicitly store `customerId` and `restaurantId` fields. This is a critical denormalization. Security rules for these collections can directly check `resource.data.customerId == request.auth.uid` or `isRestaurantAdmin(resource.data.restaurantId)`, avoiding `get()` calls on parent documents or other data documents for authorization.\n    *   For `OrderItem`, which is a subcollection of `Order`, the `OrderItem` document will *also* denormalize `customerId` and `restaurantId` from its parent `Order` document. This allows atomic creation of an order with its items, and ensures rules for individual order items are authorization-independent.\n    *   Restaurant-specific data (`MenuItem`) is structured under `/restaurants/{restaurantId}/menuItems/{menuItemId}`. The `restaurantId` is in the path, and denormalized into the `MenuItem` document, allowing rules to directly verify access without external `get()` calls on the parent `Restaurant` document.\n\n2.  **QAPs (Rules are not Filters) & Structural Segregation:**\n    *   **Customer-Owned Data**: `/customerProfiles/{customerId}` and its subcollections like `/customerProfiles/{customerId}/addresses` ensure that `list` operations for a customer's private data are inherently secure. The query must match the authenticated user's ID in the path or document field, which rules can efficiently verify.\n    *   **Publicly Accessible Data**: Collections like `/restaurants` and `/restaurants/{restaurantId}/menuItems` are structured to allow public read access for customers browsing menus. Access for writing or specific management is restricted by roles.\n    *   **Shared/Collaborative Data (`Order`, `Review`)**: These are top-level collections (`/orders`, `/reviews`). While not strictly path-based for both `customerId` and `restaurantId`, their internal denormalized fields (`customerId`, `restaurantId`) enable robust QAPs. For instance, a customer can query `orders.where('customerId', '==', request.auth.uid)`, and a restaurant admin can query `orders.where('restaurantId', '==', adminRestaurantId)`. The security rules will enforce these filters by checking `resource.data.customerId` or `resource.data.restaurantId` respectively.\n    *   **DBAC for Roles**: Separate collections are used for role assignments: `/platformAdmins/{userId}` for global super admins and `/restaurants/{restaurantId}/adminUsers/{userId}` for specific restaurant admins. This structural segregation makes authorization roles explicit and easily verifiable via `exists()` checks in security rules, supporting efficient `list` operations for role assignments and preventing arbitrary role modifications.\n\nThis architecture minimizes rule complexity, prevents common security pitfalls related to hierarchical data dependencies, and scales efficiently for global multi-tenant operations while supporting complex access patterns for different user personas."
   }
 }

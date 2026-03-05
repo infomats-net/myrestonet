@@ -44,16 +44,8 @@ export function useDoc<T = any>(
   type StateDataType = WithId<T> | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  // Initialize isLoading to true if we have a target to fetch, preventing UI flicker
-  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedDocRef);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-
-  // Sync loading state if the ref changes before the effect runs
-  const [prevRef, setPrevRef] = useState(memoizedDocRef);
-  if (memoizedDocRef !== prevRef) {
-    setPrevRef(memoizedDocRef);
-    setIsLoading(!!memoizedDocRef);
-  }
 
   useEffect(() => {
     if (!memoizedDocRef) {
@@ -64,6 +56,8 @@ export function useDoc<T = any>(
     }
 
     setIsLoading(true);
+    setError(null);
+    // Optional: setData(null); // Clear previous data instantly
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,

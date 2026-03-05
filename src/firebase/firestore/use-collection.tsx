@@ -58,16 +58,8 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  // Initialize isLoading to true if we have a target to fetch, preventing UI flicker
-  const [isLoading, setIsLoading] = useState<boolean>(!!memoizedTargetRefOrQuery);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
-
-  // Sync loading state if the query changes before the effect runs
-  const [prevTarget, setPrevTarget] = useState(memoizedTargetRefOrQuery);
-  if (memoizedTargetRefOrQuery !== prevTarget) {
-    setPrevTarget(memoizedTargetRefOrQuery);
-    setIsLoading(!!memoizedTargetRefOrQuery);
-  }
 
   useEffect(() => {
     if (!memoizedTargetRefOrQuery) {

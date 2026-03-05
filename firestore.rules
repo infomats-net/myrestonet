@@ -1,122 +1,186 @@
+/**
+ * FIRESTORE SECURITY RULES
+ * 
+ * Core Philosophy:
+ * This ruleset implements a robust, multi-persona security model (Customer, Restaurant Admin, Platform Admin) 
+ * designed for a global food delivery and loyalty platform. It prioritizes Authorization Independence by 
+ * leveraging denormalized data (like customerId and restaurantId) within documents to ensure high-performance, 
+ * scalable security checks without deep hierarchical lookups.
+ * 
+ * Data Structure:
+ * - /customerProfiles/{uid}: User-specific private data (loyalty, wallet, favorites).
+ * - /customerProfiles/{uid}/addresses: Subcollection for multiple delivery locations.
+ * - /restaurants/{id}: Publicly browseable restaurant information.
+ * - /restaurants/{id}/menuItems: Publicly browseable menu catalog.
+ * - /orders: Shared access collection between the ordering customer and the receiving restaurant.
+ * - /reviews: Publicly readable feedback system with owner-only modifications.
+ * - /platformAdmins & /restaurants/{id}/adminUsers: Role-based access control (RBAC) collections.
+ * 
+ * Key Security Decisions:
+ * 1. DBAC (Document-Based Access Control): Roles are managed via the existence of documents in 
+ *    specific admin collections rather than custom claims.
+ * 2. Denormalization for Authorization: Critical IDs (customerId, restaurantId) are required on 
+ *    Order and Review documents to allow rules to verify access immediately using the 'resource' object.
+ * 3. Structural Segregation: Administrative role assignments are kept in isolated collections to 
+ *    prevent privilege escalation and simplify auditing.
+ * 4. Prototyping Flexibility: While authorization is strictly enforced based on identity and ownership, 
+ *    internal document schemas (types and fields) are flexible to support rapid development.
+ */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function getUser() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    function isSuperAdmin() {
-      return request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        getUser().role == "super_admin";
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isPartner() {
-      return request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        getUser().role == "marketing_partner";
+    /**
+     * Checks if the user is a global platform administrator.
+     */
+    function isPlatformAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid));
     }
 
+    /**
+     * Checks if the user is an admin for a specific restaurant.
+     */
     function isRestaurantAdmin(restaurantId) {
-      return request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        getUser().restaurantId == restaurantId;
+      return isSignedIn() && exists(/databases/$(database)/documents/restaurants/$(restaurantId)/adminUsers/$(request.auth.uid));
     }
 
-    function hasPermission(restaurantId, action) {
-      if (isSuperAdmin()) return true;
-      if (request.auth == null) return false;
-      if (!exists(/databases/$(database)/documents/users/$(request.auth.uid))) return false;
-      
-      let userData = getUser();
-      if (userData.restaurantId == restaurantId) return true;
-      
-      let restaurantData = get(/databases/$(database)/documents/restaurants/$(restaurantId)).data;
-      if (isPartner() && restaurantData.partnerId == userData.partnerId) return true;
-      
-      return false;
+    /**
+     * Verifies if the authenticated user owns the existing document.
+     */
+    function isExistingOwner(ownerIdField) {
+      return isSignedIn() && resource != null && resource.data[ownerIdField] == request.auth.uid;
     }
 
-    // God Mode: Super Admin Oversight
-    match /{allPaths=**} {
-      allow read, write: if isSuperAdmin();
+    // --- COLLECTION RULES ---
+
+    /**
+     * @description Customer profiles containing private loyalty and wallet data.
+     * @path /customerProfiles/{customerId}
+     * @allow get, list, create, update: if auth.uid == customerId
+     * @deny delete: unless user is platform admin.
+     * @principle Pattern 4 (Self-Creation) and Pattern 1 (Ownership).
+     */
+    match /customerProfiles/{customerId} {
+      allow get, list: if isOwner(customerId) || isPlatformAdmin();
+      allow create: if isOwner(customerId) && request.resource.data.firebaseAuthUid == customerId;
+      allow update: if isOwner(customerId) && request.resource.data.firebaseAuthUid == customerId;
+      allow delete: if isPlatformAdmin();
+
+      /**
+       * @description User-owned delivery addresses.
+       * @path /customerProfiles/{customerId}/addresses/{addressId}
+       * @allow read, write: if auth.uid == customerId
+       * @deny write: if customerId in path does not match auth.uid.
+       * @principle Restricts access to a user's own data tree.
+       */
+      match /addresses/{addressId} {
+        allow read: if isOwner(customerId) || isPlatformAdmin();
+        allow create: if isOwner(customerId) && request.resource.data.customerId == customerId;
+        allow update: if isOwner(customerId) && resource != null && request.resource.data.customerId == customerId;
+        allow delete: if isOwner(customerId) && resource != null;
+      }
     }
 
-    match /countries { allow read: if true; }
-    match /states { allow read: if true; }
-    match /cities { 
-      allow read: if true; 
-      allow create: if request.auth != null;
-    }
-
-    match /tiers {
-      allow read: if true;
-      allow write: if isSuperAdmin();
-    }
-
-    match /partners/{partnerId} {
-      allow read: if isSuperAdmin() || (isPartner() && request.auth.uid == partnerId);
-      allow write: if isSuperAdmin(); 
-    }
-
+    /**
+     * @description Restaurant directory. Publicly readable, writeable by admins.
+     * @path /restaurants/{restaurantId}
+     * @allow get, list: if true
+     * @deny create, update, delete: if user is not platform or restaurant admin.
+     * @principle Pattern 5 (Public Read / Admin Write).
+     */
     match /restaurants/{restaurantId} {
-      allow get: if true;
-      allow read: if hasPermission(restaurantId, "read");
-      allow update: if hasPermission(restaurantId, "update_settings");
-      allow create: if isPartner() || isSuperAdmin();
+      allow get, list: if true;
+      allow create: if isPlatformAdmin();
+      allow update: if isPlatformAdmin() || isRestaurantAdmin(restaurantId);
+      allow delete: if isPlatformAdmin();
 
-      match /menus/{menuId} {
-        allow read: if true;
-        allow write: if hasPermission(restaurantId, "update_settings");
-        match /items/{itemId} {
-          allow read: if true;
-          allow write: if hasPermission(restaurantId, "update_settings");
-        }
+      /**
+       * @description Restaurant menu items.
+       * @path /restaurants/{restaurantId}/menuItems/{menuItemId}
+       * @allow get, list: if true
+       * @deny write: unless user manages this restaurant.
+       * @principle Public access for customers, admin control for merchants.
+       */
+      match /menuItems/{menuItemId} {
+        allow get, list: if true;
+        allow create, update, delete: if isPlatformAdmin() || isRestaurantAdmin(restaurantId);
       }
 
-      match /reservations/{reservationId} {
-        allow read: if hasPermission(restaurantId, "read") || (request.auth != null && request.auth.uid == resource.data.customerId);
-        allow update: if hasPermission(restaurantId, "update_settings") || (request.auth != null && request.auth.uid == resource.data.customerId);
-        allow create: if true; 
-      }
-
-      match /orders/{orderId} {
-        allow read: if hasPermission(restaurantId, "read") || (request.auth != null && request.auth.uid == resource.data.customerId);
-        allow update: if hasPermission(restaurantId, "update_settings");
-        allow create: if true;
-      }
-
-      match /gallery/{imageId} {
-        allow read: if true;
-        allow write: if hasPermission(restaurantId, "update_settings");
-      }
-
-      match /design/{docId} {
-        allow read: if true;
-        allow write: if hasPermission(restaurantId, "update_settings");
-      }
-
-      match /config/{docId} {
-        allow read: if true;
-        allow write: if hasPermission(restaurantId, "update_settings");
+      /**
+       * @description Role assignments for restaurant-level admins.
+       * @path /restaurants/{restaurantId}/adminUsers/{userId}
+       * @allow read: if isRestaurantAdmin(restaurantId) || isPlatformAdmin()
+       * @deny write: unless user is platform admin.
+       * @principle DBAC structural segregation for role management.
+       */
+      match /adminUsers/{userId} {
+        allow read: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
+        allow create, update, delete: if isPlatformAdmin();
       }
     }
 
-    match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isSuperAdmin() || isPartner());
-      allow list: if isPartner() || isSuperAdmin(); 
-      allow create: if request.auth != null && (request.auth.uid == userId || isSuperAdmin());
-      allow update: if request.auth != null && (
-        (request.auth.uid == userId && request.resource.data.role == resource.data.role) || 
-        isSuperAdmin()
-      );
+    /**
+     * @description Customer orders. Shared between the customer and the specific restaurant.
+     * @path /orders/{orderId}
+     * @allow create: if auth.uid == request.resource.data.customerId
+     * @allow get, list: if user is customer, restaurant admin, or platform admin.
+     * @principle Pattern 3 (Shared Access via Denormalized IDs).
+     */
+    match /orders/{orderId} {
+      allow get, list: if isSignedIn() && (resource.data.customerId == request.auth.uid || isRestaurantAdmin(resource.data.restaurantId) || isPlatformAdmin());
+      allow create: if isSignedIn() && request.resource.data.customerId == request.auth.uid;
+      allow update: if isSignedIn() && resource != null && (resource.data.customerId == request.auth.uid || isRestaurantAdmin(resource.data.restaurantId) || isPlatformAdmin());
+      allow delete: if isPlatformAdmin();
+
+      /**
+       * @description Individual items within an order.
+       * @path /orders/{orderId}/orderItems/{orderItemId}
+       * @principle Inherits shared access from parent context via denormalized fields.
+       */
+      match /orderItems/{orderItemId} {
+        allow get, list: if isSignedIn() && (resource.data.customerId == request.auth.uid || isRestaurantAdmin(resource.data.restaurantId) || isPlatformAdmin());
+        allow create: if isSignedIn() && request.resource.data.customerId == request.auth.uid;
+        allow update: if isSignedIn() && resource != null && (resource.data.customerId == request.auth.uid || isRestaurantAdmin(resource.data.restaurantId) || isPlatformAdmin());
+        allow delete: if isPlatformAdmin();
+      }
     }
 
-    match /mail/{mailId} {
-      allow create: if request.auth != null;
-      allow read: if isSuperAdmin();
+    /**
+     * @description Restaurant and Menu Item reviews.
+     * @path /reviews/{reviewId}
+     * @allow get, list: if true
+     * @allow create: if auth.uid == request.resource.data.customerId
+     * @deny update, delete: if user is not the original author.
+     * @principle Pattern 5 (Public Read with Owner-Only Writes).
+     */
+    match /reviews/{reviewId} {
+      allow get, list: if true;
+      allow create: if isSignedIn() && request.resource.data.customerId == request.auth.uid;
+      allow update: if isExistingOwner('customerId');
+      allow delete: if isExistingOwner('customerId') || isPlatformAdmin();
+    }
+
+    /**
+     * @description Global platform administrators.
+     * @path /platformAdmins/{userId}
+     * @allow read: if isSignedIn()
+     * @deny write: unless already a platform admin (bootstrap requires manual console entry).
+     * @principle DBAC for top-level authority.
+     */
+    match /platformAdmins/{userId} {
+      allow read: if isSignedIn();
+      allow write: if isPlatformAdmin();
     }
   }
 }
