@@ -84,8 +84,10 @@
         "subscriptionStatus": { "type": "string", "enum": ["active", "suspended", "trial"] },
         "tierId": { "type": "string" },
         "baseCurrency": { "type": "string", "default": "USD" },
-        "stripeAccountId": { "type": "string", "description": "Connected Stripe Connect account ID." },
+        "stripeAccountId": { "type": "string" },
         "paymentsEnabled": { "type": "boolean", "default": false },
+        "reservationDepositEnabled": { "type": "boolean", "default": false },
+        "reservationDepositAmount": { "type": "number", "default": 0 },
         "tables": {
           "type": "array",
           "items": {
@@ -103,40 +105,36 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       }
     },
-    "SubscriptionTier": {
-      "title": "SubscriptionTier",
-      "description": "A pricing plan for the platform.",
+    "Reservation": {
+      "title": "Reservation",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "name": { "type": "string" },
-        "price": { "type": "string" },
-        "period": { "type": "string" },
-        "features": { "type": "array", "items": { "type": "string" } },
-        "popular": { "type": "boolean" },
-        "activeTenants": { "type": "number" },
-        "color": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "name", "price"]
+        "customerId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "tableIds": { "type": "array", "items": { "type": "string" } },
+        "dateTime": { "type": "string", "format": "date-time" },
+        "partySize": { "type": "number" },
+        "specialRequests": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "attended", "cancelled", "no_show"] },
+        "waitlist": { "type": "boolean" },
+        "depositStatus": { "type": "string", "enum": ["none", "pending", "paid", "refunded"] },
+        "depositAmount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     },
     "Order": {
       "title": "Order",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "orderNumber": { "type": "string", "description": "Numeric order ID for easy staff reference." },
+        "orderNumber": { "type": "string" },
         "customerId": { "type": "string" },
         "customerName": { "type": "string" },
-        "customerEmail": { "type": "string" },
-        "customerPhone": { "type": "string" },
-        "deliveryAddress": { "type": "string" },
-        "items": { "type": "array", "items": { "type": "object" } },
         "totalAmount": { "type": "number" },
-        "currency": { "type": "string" },
-        "paymentMethod": { "type": "string", "enum": ["cod", "stripe", "paypal"] },
-        "paymentStatus": { "type": "string", "enum": ["pending", "paid", "refunded"] },
-        "stripePaymentIntentId": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "preparing", "delivered", "cancelled"] },
         "createdAt": { "type": "string", "format": "date-time" }
       }
@@ -152,6 +150,7 @@
     "/restaurants/{restaurantId}/orders/{orderId}": { "schema": { "$ref": "#/backend/entities/Order" } },
     "/restaurants/{restaurantId}/tickets/{ticketId}": { "schema": { "$ref": "#/backend/entities/Ticket" } },
     "/restaurants/{restaurantId}/tickets/{ticketId}/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/TicketMessage" } },
+    "/restaurants/{restaurantId}/reservations/{reservationId}": { "schema": { "$ref": "#/backend/entities/Reservation" } },
     "/tiers/{tierId}": { "schema": { "$ref": "#/backend/entities/SubscriptionTier" } }
   }
 }

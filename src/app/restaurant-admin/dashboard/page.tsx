@@ -47,6 +47,7 @@ import { PaymentsManager } from '@/components/payments-manager';
 import { StoreSettingsManager } from '@/components/store-settings-manager';
 import { InventoryManager } from '@/components/inventory-manager';
 import { SupportTicketingSystem } from '@/components/support-ticketing-system';
+import { ReservationManager } from '@/components/reservation-manager';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -147,16 +148,6 @@ function DashboardContent() {
     }
   };
 
-  const updateReservationStatus = async (resId: string, status: string) => {
-    if (!firestore || !effectiveRestaurantId) return;
-    try {
-      await updateDoc(doc(firestore, 'restaurants', effectiveRestaurantId, 'reservations', resId), { status });
-      toast({ title: "Reservation Updated" });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Error" });
-    }
-  };
-
   if (authLoading) return <LoadingScreen message="Checking authentication..." />;
   if (!authUser) return null; 
   if (loadingProfile) return <LoadingScreen message="Loading user profile..." />;
@@ -189,11 +180,12 @@ function DashboardContent() {
   return (
     <div className="p-8 space-y-8 w-full animate-in fade-in duration-500">
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6 w-full bg-black p-8 md:p-12 rounded-[3rem] shadow-2xl">
-        <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full max-w-4xl mx-auto flex gap-1 overflow-x-auto no-scrollbar">
+        <TabsList className="bg-white/10 border-none p-1 rounded-2xl h-14 w-full max-w-5xl mx-auto flex gap-1 overflow-x-auto no-scrollbar">
           <TabsTrigger value="overview" className={tabTriggerStyle}><LayoutDashboard className="h-4 w-4" /> <span className="hidden lg:inline">Dashboard</span></TabsTrigger>
           <TabsTrigger value="orders" className={tabTriggerStyle}><ShoppingBag className="h-4 w-4" /> <span className="hidden lg:inline">Orders</span></TabsTrigger>
           <TabsTrigger value="inventory" className={tabTriggerStyle}><Package className="h-4 w-4" /> <span className="hidden lg:inline">Inventory</span></TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}><CalendarDays className="h-4 w-4" /> <span className="hidden lg:inline">Reservations</span></TabsTrigger>
+          <TabsTrigger value="menu" className={tabTriggerStyle}><Utensils className="h-4 w-4" /> <span className="hidden lg:inline">Catalog</span></TabsTrigger>
           <TabsTrigger value="support" className={tabTriggerStyle}><LifeBuoy className="h-4 w-4" /> <span className="hidden lg:inline">Support</span></TabsTrigger>
         </TabsList>
 
@@ -286,80 +278,8 @@ function DashboardContent() {
           <InventoryManager restaurantId={effectiveRestaurantId!} />
         </TabsContent>
 
-        <TabsContent value="reservations" className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-black text-white">Live Reservations</h2>
-            <Button onClick={() => setIsResDialogOpen(true)} className="rounded-2xl h-12 shadow-xl bg-primary hover:bg-primary/90 text-white font-black">
-              <Plus className="mr-2" /> New Reservation
-            </Button>
-          </div>
-
-          <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
-            <CardHeader className="bg-slate-50/50 border-b p-10 flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-xl font-black">Active Bookings</CardTitle>
-                <CardDescription>Manage your guest list and table allocations.</CardDescription>
-              </div>
-              <Badge variant="outline" className="h-8 rounded-full border-primary/20 bg-primary/5 text-primary font-bold">
-                {reservations?.length || 0} Total
-              </Badge>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 border-b">
-                    <tr>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Customer</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Date & Time</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Party</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {reservations?.map(res => (
-                      <tr key={res.id} className={cn("hover:bg-slate-50/50 transition-colors", res.waitlist && "bg-amber-50/30")}>
-                        <td className="p-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-500">
-                              {res.customerName?.[0] || 'G'}
-                            </div>
-                            <div>
-                              <p className="font-bold text-slate-900">{res.customerName}</p>
-                              <p className="text-[10px] text-slate-400 font-medium">{res.customerEmail}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-6">
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <Clock className="h-3.5 w-3.5 text-primary" />
-                            <span className="text-sm font-bold">{format(new Date(res.dateTime), 'MMM d, h:mm a')}</span>
-                          </div>
-                        </td>
-                        <td className="p-6 text-sm font-black text-slate-900">{res.partySize} Guests</td>
-                        <td className="p-6">
-                          <Badge className={cn(
-                            res.status === 'confirmed' ? 'bg-emerald-500' : 
-                            res.status === 'pending' ? 'bg-amber-500' : 'bg-slate-400'
-                          )}>
-                            {res.status}
-                          </Badge>
-                        </td>
-                        <td className="p-6">
-                          <div className="flex gap-2">
-                            {res.status === 'pending' && (
-                              <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" onClick={() => updateReservationStatus(res.id, 'confirmed')}><CheckCircle2 className="h-4 w-4" /></Button>
-                            )}
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => updateReservationStatus(res.id, 'cancelled')}><XCircle className="h-4 w-4" /></Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="reservations">
+          <ReservationManager restaurantId={effectiveRestaurantId!} />
         </TabsContent>
 
         <TabsContent value="support">

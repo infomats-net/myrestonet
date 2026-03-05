@@ -85,8 +85,8 @@ service cloud.firestore {
       }
 
       match /reservations/{reservationId} {
-        allow read: if hasPermission(restaurantId, "read");
-        allow write: if hasPermission(restaurantId, "update_settings");
+        allow read: if hasPermission(restaurantId, "read") || (request.auth != null && request.auth.uid == resource.data.customerId);
+        allow update: if hasPermission(restaurantId, "update_settings") || (request.auth != null && request.auth.uid == resource.data.customerId);
         allow create: if true; 
       }
 

@@ -2,8 +2,8 @@
 "use client";
 
 import { use, useState, useEffect } from 'react';
-import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth } from '@/firebase';
-import { doc, collection, addDoc, getDocs, query, where, Timestamp } from 'firebase/firestore';
+import { useFirestore, useDoc, useMemoFirebase, useAuth } from '@/firebase';
+import { doc, collection, addDoc, getDocs, query, where, Timestamp, orderBy } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { 
   Loader2, 
@@ -13,13 +13,17 @@ import {
   CheckCircle2, 
   ChevronRight,
   UtensilsCrossed,
-  AlertCircle
+  AlertCircle,
+  MessageSquare,
+  CreditCard,
+  ShieldCheck
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format, addHours, startOfHour, setHours, setMinutes } from 'date-fns';
@@ -41,9 +45,12 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
   const [partySize, setPartySize] = useState("2");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [specialRequests, setSpecialRequests] = useState("");
   const [isSubmitting, setIsSaving] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [waitlist, setWaitlist] = useState(false);
+  const [lastBookingId, setLastBookingId] = useState<string | null>(null);
 
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
@@ -52,7 +59,7 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
 
   useEffect(() => {
-    if (auth) signInAnonymously(auth);
+    if (auth && !auth.currentUser) signInAnonymously(auth);
   }, [auth]);
 
   const handleBooking = async () => {
@@ -63,10 +70,11 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
       const [h, m] = time.split(':');
       reservationDateTime.setHours(parseInt(h), parseInt(m), 0, 0);
 
-      // AI Allocation Simulation
+      // --- Smart Table Allocation Logic ---
       const tables = restaurant?.tables || [];
       const activeTables = tables.filter((t: any) => t.isActive);
       
+      // Query bookings for this exact slot
       const resQuery = query(
         collection(firestore, 'restaurants', restaurantId, 'reservations'),
         where('dateTime', '==', reservationDateTime.toISOString()),
@@ -80,6 +88,7 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
       let assignedTableIds: string[] = [];
       const sizeNeeded = parseInt(partySize);
       
+      // Find smallest table that fits the party
       const perfectFit = availableTables
         .filter((t: any) => t.size >= sizeNeeded)
         .sort((a: any, b: any) => a.size - b.size)[0];
@@ -94,48 +103,39 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
         customerId: auth.currentUser.uid,
         customerName: name,
         customerEmail: email,
+        customerPhone: phone,
+        specialRequests,
         tableIds: assignedTableIds,
         dateTime: reservationDateTime.toISOString(),
         partySize: sizeNeeded,
         status: assignedTableIds.length > 0 ? 'confirmed' : 'pending',
         waitlist: assignedTableIds.length === 0,
+        depositStatus: restaurant?.reservationDepositEnabled ? 'pending' : 'none',
+        depositAmount: restaurant?.reservationDepositEnabled ? (restaurant.reservationDepositAmount || 0) : 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
       const resRef = collection(firestore, 'restaurants', restaurantId, 'reservations');
-      addDoc(resRef, reservationData)
-        .then(async () => {
-          // Trigger AI Email Generation
-          const emailContent = await generateEmailContent({
-            type: 'reservation_confirmed',
-            recipientName: name,
-            restaurantName: restaurant?.name,
-            details: `Time: ${format(reservationDateTime, 'PPP p')}, Party: ${sizeNeeded} guests. ${assignedTableIds.length > 0 ? 'Table confirmed.' : 'Added to priority waitlist.'}`
-          });
+      const docRef = await addDoc(resRef, reservationData);
+      setLastBookingId(docRef.id);
 
-          addDoc(collection(firestore, 'mail'), {
-            to: [email],
-            message: emailContent,
-            createdAt: new Date().toISOString()
-          }).catch(async (err) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: 'mail',
-              operation: 'create',
-              requestResourceData: { to: [email] }
-            }));
-          });
-        })
-        .catch(async (e) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: resRef.path,
-            operation: 'create',
-            requestResourceData: reservationData
-          }));
-        });
+      // Trigger AI Email Generation
+      const emailContent = await generateEmailContent({
+        type: 'reservation_confirmed',
+        recipientName: name,
+        restaurantName: restaurant?.name,
+        details: `Time: ${format(reservationDateTime, 'PPP p')}, Party: ${sizeNeeded} guests. ${assignedTableIds.length > 0 ? 'Table confirmed.' : 'Added to priority waitlist.'} Manage your booking: https://myrestonet.app/customer/${restaurantId}/booking/${docRef.id}`
+      });
+
+      await addDoc(collection(firestore, 'mail'), {
+        to: [email],
+        message: emailContent,
+        createdAt: new Date().toISOString()
+      });
 
       setBookingSuccess(true);
-      toast({ title: waitlist ? "Joined Waitlist" : "Table Reserved!", description: "AI confirmation email sent." });
+      toast({ title: waitlist ? "Joined Waitlist" : "Table Reserved!", description: "Check your email for the dining pass." });
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error", description: "Failed to book table." });
     } finally {
@@ -155,7 +155,7 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
           <div className="space-y-2">
             <h1 className="text-3xl font-black text-slate-900">{waitlist ? "Waitlist Confirmed" : "Booking Confirmed!"}</h1>
             <p className="text-slate-500 font-medium">
-              Check your inbox for your AI-generated reservation pass.
+              We've sent your digital dining pass to <strong>{email}</strong>.
             </p>
           </div>
           <div className="bg-slate-50 p-6 rounded-3xl border text-left space-y-3">
@@ -172,7 +172,12 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
               <span className="font-black text-slate-900">{partySize} People</span>
             </div>
           </div>
-          <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={() => window.location.reload()}>Book Another</Button>
+          <div className="flex flex-col gap-3">
+            <Button className="w-full h-14 rounded-2xl font-black text-lg" variant="outline" asChild>
+              <a href={`/customer/${restaurantId}/booking/${lastBookingId}`}>Manage Booking</a>
+            </Button>
+            <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={() => window.location.reload()}>Book Another</Button>
+          </div>
         </Card>
       </div>
     );
@@ -186,20 +191,21 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
             <CalendarIcon className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Smart Reservation</h1>
-            <p className="text-slate-500 font-medium">{restaurant?.name} • {restaurant?.city}</p>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight">Fine Dining Registry</h1>
+            <p className="text-slate-500 font-medium">{restaurant?.name} • Smart Availability</p>
           </div>
         </header>
 
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
           <CardHeader className="bg-slate-50/50 p-10 border-b">
-            <CardTitle className="text-xl font-black">Booking Details</CardTitle>
-            <CardDescription>Instant confirmation via AI-driven table management.</CardDescription>
+            <CardTitle className="text-xl font-black">Secure Your Table</CardTitle>
+            <CardDescription>Real-time matching with Michelin-standard seating.</CardDescription>
           </CardHeader>
-          <CardContent className="p-10 space-y-8">
+          <CardContent className="p-10 space-y-10">
+            {/* Step 1: Party & Date */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Date</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date of Visit</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full h-14 justify-start text-left font-bold rounded-2xl bg-slate-50 border-slate-100">
@@ -214,7 +220,7 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Guests</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Number of Guests</Label>
                 <div className="relative">
                   <Users className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input 
@@ -223,14 +229,15 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
                     max="20" 
                     value={partySize} 
                     onChange={e => setPartySize(e.target.value)}
-                    className="h-14 pl-12 rounded-2xl bg-slate-50 border-slate-100 font-bold"
+                    className="h-14 pl-12 rounded-2xl bg-slate-50 border-slate-100 font-bold text-lg"
                   />
                 </div>
               </div>
             </div>
 
+            {/* Step 2: Time Slots */}
             <div className="space-y-4">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Available Times</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Preferred Time Slot</Label>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
                 {["17:00", "17:30", "18:00", "18:30", "19:00", "19:30", "20:00", "20:30", "21:00", "21:30"].map(t => (
                   <button
@@ -247,10 +254,11 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
               </div>
             </div>
 
+            {/* Step 3: Contact & Requests */}
             <div className="space-y-6 pt-6 border-t">
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="font-bold text-slate-700">Your Name</Label>
+                  <Label className="font-bold text-slate-700">Full Name</Label>
                   <Input placeholder="John Doe" className="h-12 rounded-xl" value={name} onChange={e => setName(e.target.value)} />
                 </div>
                 <div className="space-y-2">
@@ -258,20 +266,51 @@ export default function CustomerReservationPage({ params }: { params: Promise<{ 
                   <Input type="email" placeholder="john@example.com" className="h-12 rounded-xl" value={email} onChange={e => setEmail(e.target.value)} />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label className="font-bold text-slate-700">Phone Number (Optional)</Label>
+                <Input type="tel" placeholder="+1..." className="h-12 rounded-xl" value={phone} onChange={e => setPhone(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <MessageSquare className="h-3 w-3 text-slate-400" />
+                  <Label className="font-bold text-slate-700">Special Requests / Allergies</Label>
+                </div>
+                <Textarea 
+                  placeholder="e.g. Birthday celebration, gluten-free required..." 
+                  className="rounded-xl min-h-[100px] bg-slate-50 border-slate-100" 
+                  value={specialRequests}
+                  onChange={e => setSpecialRequests(e.target.value)}
+                />
+              </div>
+
+              {restaurant?.reservationDepositEnabled && (
+                <div className="bg-emerald-50 p-6 rounded-[2rem] border border-emerald-100 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5 text-emerald-600" />
+                      <span className="font-black text-emerald-900">Secure Deposit Required</span>
+                    </div>
+                    <Badge className="bg-emerald-600 text-white font-black">${restaurant.reservationDepositAmount}</Badge>
+                  </div>
+                  <p className="text-xs text-emerald-700 leading-relaxed font-medium">
+                    This restaurant requires a small deposit to prevent no-shows. The amount will be deducted from your final bill.
+                  </p>
+                </div>
+              )}
 
               <div className="bg-blue-50 p-4 rounded-2xl flex items-start gap-3 border border-blue-100">
-                <AlertCircle className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                <ShieldCheck className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
                 <p className="text-xs text-blue-700 leading-relaxed">
-                  Confirmation and sensory dining pass will be generated by <strong>AI Communications</strong> and sent to your email.
+                  Your privacy is our priority. Your data is isolated and used only for managing your dining experience.
                 </p>
               </div>
 
               <Button 
-                className="w-full h-16 rounded-2xl text-xl font-black shadow-xl" 
+                className="w-full h-20 rounded-3xl text-2xl font-black shadow-2xl shadow-primary/20" 
                 disabled={isSubmitting || !name || !email}
                 onClick={handleBooking}
               >
-                {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : "Confirm Reservation"}
+                {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : waitlist ? "Join Priority Waitlist" : "Confirm Reservation"}
               </Button>
             </div>
           </CardContent>
