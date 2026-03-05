@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
@@ -25,7 +26,15 @@ import {
   Menu as MenuIcon,
   X,
   Maximize2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Search,
+  Filter,
+  Leaf,
+  Flame,
+  WheatOff,
+  ShieldCheck,
+  Zap,
+  Sparkles
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -62,6 +71,14 @@ type CartItem = {
 
 const DEFAULT_SECTION_ORDER = ['navbar', 'siteBanner', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
 
+const DIETARY_FILTERS = [
+  { id: 'veg', label: 'Vegetarian', icon: Leaf },
+  { id: 'vegan', label: 'Vegan', icon: Leaf },
+  { id: 'gf', label: 'Gluten Free', icon: WheatOff },
+  { id: 'halal', label: 'Halal', icon: ShieldCheck },
+  { id: 'spicy', label: 'Spicy', icon: Flame },
+];
+
 export default function CustomerStorefront({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = use(params);
   const restaurantId = resolvedParams.restaurantId;
@@ -76,6 +93,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [lastOrderNumber, setLastOrderNumber] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeDietaryFilters, setActiveDietaryFilters] = useState<string[]>([]);
+
   // Lightbox state
   const [selectedImage, setSelectedImage] = useState<any>(null);
 
@@ -149,19 +170,46 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     fetchAllItems();
   }, [firestore, restaurantId, menus]);
 
+  const filteredItems = useMemo(() => {
+    return allMenuItems.filter(item => {
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           item.description?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesDietary = activeDietaryFilters.length === 0 || 
+                            activeDietaryFilters.every(f => item.dietary?.includes(f));
+
+      return matchesSearch && matchesDietary;
+    });
+  }, [allMenuItems, searchTerm, activeDietaryFilters]);
+
+  const popularItems = useMemo(() => {
+    return filteredItems.filter(i => i.isPopular && !i.isOutOfStock);
+  }, [filteredItems]);
+
   const addToCart = (item: any) => {
+    if (item.isOutOfStock) {
+      toast({ variant: "destructive", title: "Out of Stock", description: "This item is currently unavailable." });
+      return;
+    }
+    const finalPrice = item.specialPrice || item.price;
     setCart(prev => {
       const existing = prev.find(i => i.id === item.id);
       if (existing) {
         return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      return [...prev, { id: item.id, name: item.name, price: item.price, quantity: 1 }];
+      return [...prev, { id: item.id, name: item.name, price: finalPrice, quantity: 1 }];
     });
     toast({ title: "Added to cart" });
   };
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const total = subtotal;
+
+  const toggleDietaryFilter = (id: string) => {
+    setActiveDietaryFilters(prev => 
+      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
+    );
+  };
 
   const handleCheckout = async () => {
     if (!auth || !firestore || !restaurantId) return;
@@ -180,7 +228,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         user = userCredential.user;
       }
 
-      // Generate a numeric-only order ID (6 digits)
       const orderNumber = Math.floor(100000 + Math.random() * 900000).toString();
 
       const orderData = {
@@ -243,20 +290,13 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   };
 
   const sectionOrder = useMemo(() => {
-    // If no order is saved, use the default
     if (!designSettings?.sectionOrder) return DEFAULT_SECTION_ORDER;
-
-    // Merge logic: ensure all default sections are present, maintaining merchant order
     const merged = [...designSettings.sectionOrder];
-    
     DEFAULT_SECTION_ORDER.forEach((key, index) => {
       if (!merged.includes(key)) {
-        // Try to insert it at its intended default position
         merged.splice(index, 0, key);
       }
     });
-
-    // Clean duplicates and ensure navbar is first
     const clean = Array.from(new Set(merged)).filter(k => k !== 'navbar');
     return ['navbar', ...clean];
   }, [designSettings?.sectionOrder]);
@@ -267,13 +307,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const theme = designSettings?.theme || { primary: '#22c55e', background: '#ffffff', text: '#0f172a' };
   const currencySymbol = restaurant?.baseCurrency === 'USD' ? '$' : restaurant?.baseCurrency || '$';
 
-  // Dynamic Section Rendering Engine
   const renderSection = (key: string) => {
     const config = designSettings?.sections?.[key];
-    // IMPORTANT: Default to VISIBLE if the config for this section doesn't exist yet
     const isVisible = config?.visible !== false;
 
-    // navbar and menuList are special, but we handle toggle for others.
     if (!isVisible && key !== 'menuList' && key !== 'navbar') return null; 
 
     switch (key) {
@@ -290,22 +327,22 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 <span className="text-xl font-black hidden sm:inline" style={{ color: theme.text }}>{restaurant.name}</span>
               </Link>
 
-              {/* Navigation Links Bar */}
               <div className="hidden md:flex items-center gap-8 mx-auto">
                 <a href="#hero" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Home</a>
                 <a href="#menu-list" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Menu</a>
                 {designSettings?.sections?.about?.visible !== false && <a href="#about" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>About</a>}
                 {designSettings?.sections?.gallery?.visible !== false && <a href="#gallery" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Gallery</a>}
-                {designSettings?.sections?.contact?.visible !== false && <a href="#contact" className="text-sm font-bold hover:opacity-70 transition-opacity" style={{ color: theme.text }}>Contact</a>}
                 <Link href={`/customer/${restaurantId}/reserve`} className="text-sm font-black px-4 py-2 rounded-full text-white shadow-md transition-transform hover:scale-105" style={{ backgroundColor: theme.primary }}>Book Table</Link>
               </div>
 
-              <button className="relative p-2 shrink-0" onClick={() => setIsCheckoutOpen(true)}>
-                <ShoppingBag className="h-6 w-6" style={{ color: theme.text }} />
-                {cart.length > 0 && (
-                  <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black" style={{ backgroundColor: theme.primary }}>{cart.length}</span>
-                )}
-              </button>
+              <div className="flex items-center gap-4">
+                <button className="relative p-2 shrink-0" onClick={() => setIsCheckoutOpen(true)}>
+                  <ShoppingBag className="h-6 w-6" style={{ color: theme.text }} />
+                  {cart.length > 0 && (
+                    <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black" style={{ backgroundColor: theme.primary }}>{cart.length}</span>
+                  )}
+                </button>
+              </div>
             </div>
           </nav>
         );
@@ -401,35 +438,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           </div>
         );
 
-      case 'about':
-        return (
-          <section key={key} id="about" className="max-w-6xl mx-auto px-6 py-20 grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-              <Badge variant="outline" className="px-4 py-1 rounded-full text-primary border-primary/20 font-black text-[10px] uppercase tracking-[0.2em]" style={{ color: theme.primary }}>Our Heritage</Badge>
-              <h2 className="text-5xl font-black tracking-tight" style={{ color: theme.text }}>Crafting culinary stories since 2024.</h2>
-              <p className="text-lg text-slate-500 leading-relaxed font-medium italic">
-                "We believe that great food is more than just ingredients—it's a sensory journey. At {restaurant.name}, every dish is a masterpiece designed to delight and inspire."
-              </p>
-              <div className="flex items-center gap-4 pt-4">
-                <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center"><User className="text-slate-400" /></div>
-                <div>
-                  <p className="font-bold" style={{ color: theme.text }}>Alex Rivers</p>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Executive Chef</p>
-                </div>
-              </div>
-            </div>
-            <div className="aspect-square rounded-[3rem] overflow-hidden shadow-2xl relative">
-              <img src={`https://picsum.photos/seed/chef-${restaurantId}/800/800`} alt="Chef" className="w-full h-full object-cover" />
-              <div className="absolute bottom-10 left-10 right-10 bg-white/90 backdrop-blur-md p-8 rounded-3xl shadow-xl">
-                <div className="flex items-center gap-4">
-                  <div className="bg-primary p-2 rounded-lg" style={{ backgroundColor: theme.primary }}><UtensilsCrossed className="text-white h-4 w-4" /></div>
-                  <p className="font-black text-slate-900 uppercase text-xs tracking-widest">Michelin Standard Quality</p>
-                </div>
-              </div>
-            </div>
-          </section>
-        );
-
       case 'menuList':
         const layoutStyle = designSettings?.menuLayout || 'style1';
         const LayoutComponent = {
@@ -440,10 +448,71 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         }[layoutStyle as keyof typeof MenuStyle1] || MenuStyle1;
 
         return (
-          <div key={key} id="menu-list">
+          <div key={key} id="menu-list" className="space-y-12 py-20">
+            <div className="max-w-6xl mx-auto px-6 space-y-8">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="relative flex-1 w-full">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                  <Input 
+                    placeholder="Search for dishes, ingredients..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="h-14 pl-12 rounded-2xl bg-white border-slate-100 shadow-xl font-bold text-lg"
+                  />
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
+                  {DIETARY_FILTERS.map(f => (
+                    <Button
+                      key={f.id}
+                      variant="outline"
+                      onClick={() => toggleDietaryFilter(f.id)}
+                      className={cn(
+                        "rounded-full h-10 px-4 font-black text-[10px] uppercase tracking-widest transition-all gap-2",
+                        activeDietaryFilters.includes(f.id) 
+                          ? "bg-primary text-white border-primary shadow-lg" 
+                          : "bg-white text-slate-400 border-slate-100 hover:bg-slate-50"
+                      )}
+                      style={activeDietaryFilters.includes(f.id) ? { backgroundColor: theme.primary, borderColor: theme.primary } : {}}
+                    >
+                      <f.icon className="h-3 w-3" />
+                      {f.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {popularItems.length > 0 && searchTerm === '' && (
+                <div className="space-y-6">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-amber-500 fill-current" />
+                    <h3 className="text-xl font-black text-slate-900 tracking-tight">Chef's Specials</h3>
+                  </div>
+                  <div className="flex gap-6 overflow-x-auto no-scrollbar pb-6 px-2 -mx-2">
+                    {popularItems.map(item => (
+                      <Card key={item.id} className="min-w-[280px] rounded-[2rem] border-none shadow-xl overflow-hidden flex flex-col group cursor-pointer" onClick={() => addToCart(item)}>
+                        <div className="h-40 relative">
+                          <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/300`} className="w-full h-full object-cover" alt={item.name} />
+                          <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full font-black text-sm">
+                            {currencySymbol}{item.specialPrice || item.price}
+                          </div>
+                        </div>
+                        <CardContent className="p-5 flex-1 flex flex-col justify-between">
+                          <div>
+                            <h4 className="font-bold text-slate-900 leading-tight">{item.name}</h4>
+                            <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">{item.category}</p>
+                          </div>
+                          <Button variant="ghost" size="sm" className="w-full mt-4 h-9 rounded-xl font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/5" style={{ color: theme.primary }}>Add To Order</Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <LayoutComponent 
               menus={menus || []}
-              allMenuItems={allMenuItems}
+              allMenuItems={filteredItems}
               currencySymbol={currencySymbol}
               theme={theme}
               addToCart={addToCart}
@@ -580,7 +649,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     <div className="min-h-screen pb-24 scroll-smooth" style={{ backgroundColor: theme.background }}>
       {sectionOrder.map(renderSection)}
 
-      {/* Cart Navigation (Floating) */}
       {cart.length > 0 && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-sm px-6">
           <Button 
@@ -599,7 +667,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         </div>
       )}
 
-      {/* Gallery Lightbox */}
       <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 overflow-hidden border-none bg-black/90 rounded-[3rem]">
           <DialogTitle className="sr-only">Full Image View</DialogTitle>
