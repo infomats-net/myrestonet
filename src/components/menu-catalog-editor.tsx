@@ -83,6 +83,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     dietary: [] as string[]
   });
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [newCustomTag, setNewCustomTag] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [replacingItemId, setReplacingItemId] = useState<string | null>(null);
@@ -95,6 +96,14 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   }, [firestore, restaurantId]);
   const { data: categoriesDoc } = useDoc(categoriesRef);
   const savedCategories = categoriesDoc?.list || [];
+
+  // --- Custom Tag Persistence ---
+  const dietaryTagsRef = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags');
+  }, [firestore, restaurantId]);
+  const { data: customTagsDoc } = useDoc(dietaryTagsRef);
+  const savedCustomTags = customTagsDoc?.list || [];
 
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
@@ -240,6 +249,39 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     }
   };
 
+  const handleAddCustomTag = async () => {
+    if (!newCustomTag.trim() || !firestore || !restaurantId) return;
+    const tag = newCustomTag.trim();
+    try {
+      const tagRef = doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags');
+      await setDoc(tagRef, {
+        list: arrayUnion(tag),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      setNewCustomTag('');
+      toast({ title: "Custom Tag Added" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error Adding Tag" });
+    }
+  };
+
+  const handleDeleteCustomTag = async (tag: string) => {
+    if (!firestore || !restaurantId || !window.confirm(`Delete tag "${tag}" permanently?`)) return;
+    try {
+      const tagRef = doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags');
+      await updateDoc(tagRef, {
+        list: arrayRemove(tag),
+        updatedAt: serverTimestamp()
+      });
+      if (itemForm.dietary.includes(tag)) {
+        toggleDietary(tag);
+      }
+      toast({ title: "Tag Removed" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error Removing Tag" });
+    }
+  };
+
   const handleSaveMenu = async () => {
     if (!firestore || !restaurantId || !menuForm.name) return;
     setLoading(true);
@@ -341,7 +383,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                             <p className="font-black text-slate-900">{item.name}</p>
                             <div className="flex gap-1 mt-1">
                               {item.category && <Badge variant="secondary" className="text-[8px] uppercase px-1 bg-slate-100 text-slate-500 border-none">{item.category}</Badge>}
-                              {item.dietary?.map((d: string) => <Badge key={d} variant="outline" className="text-[8px] uppercase px-1">{d}</Badge>)}
+                              {item.dietary?.map((d: string) => <Badge key={d} variant="outline" className="text-[8px] uppercase px-1">{d}</Badge>}
                             </div>
                           </div>
                         </div>
@@ -441,16 +483,53 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                 <div className="space-y-2"><Label>Base Price</Label><Input type="number" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} className="rounded-xl" /></div>
                 <div className="space-y-2"><Label>Special Price (Optional)</Label><Input type="number" value={itemForm.specialPrice} onChange={e => setItemForm({...itemForm, specialPrice: e.target.value})} className="rounded-xl" /></div>
               </div>
+
               <div className="space-y-4">
                 <Label>Dietary Tags</Label>
                 <div className="flex flex-wrap gap-2">
                   {DIETARY_OPTIONS.map(opt => (
-                    <Button key={opt.id} variant="outline" size="sm" onClick={() => toggleDietary(opt.id)} className={cn("rounded-full gap-2", itemForm.dietary.includes(opt.id) && "bg-primary/10 border-primary text-primary")}>
+                    <Button 
+                      key={opt.id} 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => toggleDietary(opt.id)} 
+                      className={cn("rounded-full gap-2", itemForm.dietary.includes(opt.id) && "bg-primary/10 border-primary text-primary")}
+                    >
                       <opt.icon className="h-3 w-3" /> {opt.label}
                     </Button>
                   ))}
+                  {savedCustomTags.map((tag: string) => (
+                    <div key={tag} className="relative group">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => toggleDietary(tag)} 
+                        className={cn("rounded-full pr-8", itemForm.dietary.includes(tag) && "bg-primary/10 border-primary text-primary")}
+                      >
+                        {tag}
+                      </Button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDeleteCustomTag(tag); }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="flex gap-2 pt-2">
+                  <Input 
+                    value={newCustomTag} 
+                    onChange={e => setNewCustomTag(e.target.value)} 
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleAddCustomTag())}
+                    placeholder="Add custom tag (e.g. Keto)..." 
+                    className="h-9 text-xs rounded-xl"
+                  />
+                  <Button variant="ghost" size="sm" onClick={handleAddCustomTag} className="h-9 px-3 rounded-xl border border-dashed text-[10px] font-black uppercase">Add</Button>
                 </div>
               </div>
+
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label>Description</Label>

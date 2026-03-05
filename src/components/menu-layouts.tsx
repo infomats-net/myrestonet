@@ -37,14 +37,20 @@ const getItemQuantity = (cart: any[], itemId: string) => {
 
 const DietaryBadges = ({ item }: { item: any }) => {
   if (!item.dietary || item.dietary.length === 0) return null;
+  const known = ['veg', 'vegan', 'gf', 'spicy', 'halal'];
   
   return (
-    <div className="flex flex-wrap gap-1 mt-2">
+    <div className="flex flex-wrap gap-1 mt-2 items-center">
       {item.dietary.includes('veg') && <Leaf className="h-3 w-3 text-emerald-500" title="Vegetarian" />}
       {item.dietary.includes('vegan') && <div className="flex gap-0.5"><Leaf className="h-3 w-3 text-emerald-500" title="Vegan" /><Leaf className="h-3 w-3 text-emerald-500" /></div>}
       {item.dietary.includes('gf') && <WheatOff className="h-3 w-3 text-amber-600" title="Gluten Free" />}
       {item.dietary.includes('spicy') && <Flame className="h-3 w-3 text-rose-500" title="Spicy" />}
       {item.dietary.includes('halal') && <ShieldCheck className="h-3 w-3 text-blue-500" title="Halal" />}
+      {item.dietary.filter((d: string) => !known.includes(d)).map((d: string) => (
+        <Badge key={d} variant="outline" className="text-[7px] px-1 py-0 h-3 border-slate-200 text-slate-400 uppercase font-black">
+          {d}
+        </Badge>
+      ))}
     </div>
   );
 };

@@ -34,7 +34,8 @@ import {
   ShieldCheck,
   Zap,
   Sparkles,
-  AlertTriangle
+  AlertTriangle,
+  Tag
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -81,13 +82,20 @@ const DIETARY_FILTERS = [
 
 const DietaryIcons = ({ dietary }: { dietary?: string[] }) => {
   if (!dietary || dietary.length === 0) return null;
+  const known = ['veg', 'vegan', 'gf', 'spicy', 'halal'];
+  
   return (
-    <div className="flex gap-1.5">
+    <div className="flex flex-wrap gap-1.5 items-center">
       {dietary.includes('veg') && <Leaf className="h-3 w-3 text-emerald-500" />}
       {dietary.includes('vegan') && <div className="flex gap-0.5"><Leaf className="h-3 w-3 text-emerald-500" /><Leaf className="h-3 w-3 text-emerald-500" /></div>}
       {dietary.includes('gf') && <WheatOff className="h-3 w-3 text-amber-600" />}
       {dietary.includes('spicy') && <Flame className="h-3 w-3 text-rose-500" />}
       {dietary.includes('halal') && <ShieldCheck className="h-3 w-3 text-blue-500" />}
+      {dietary.filter(d => !known.includes(d)).map(d => (
+        <Badge key={d} variant="outline" className="text-[7px] px-1 py-0 h-3 border-slate-200 text-slate-400 uppercase font-black">
+          {d}
+        </Badge>
+      ))}
     </div>
   );
 };
@@ -138,6 +146,23 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     return doc(firestore, 'restaurants', restaurantId, 'config', 'operatingHours');
   }, [firestore, restaurantId]);
   const { data: operatingHours } = useDoc(hoursRef);
+
+  // Custom Dietary Tags
+  const dietaryTagsRef = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags');
+  }, [firestore, restaurantId]);
+  const { data: customDietaryTagsDoc } = useDoc(dietaryTagsRef);
+  const customDietaryTags = customDietaryTagsDoc?.list || [];
+
+  const allDietaryFilters = useMemo(() => {
+    const customFilters = customDietaryTags.map((tag: string) => ({
+      id: tag,
+      label: tag.charAt(0).toUpperCase() + tag.slice(1),
+      icon: Tag
+    }));
+    return [...DIETARY_FILTERS, ...customFilters];
+  }, [customDietaryTags]);
 
   const menusQuery = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
@@ -474,13 +499,13 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                   />
                 </div>
                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2 md:pb-0">
-                  {DIETARY_FILTERS.map(f => (
+                  {allDietaryFilters.map(f => (
                     <Button
                       key={f.id}
                       variant="outline"
                       onClick={() => toggleDietaryFilter(f.id)}
                       className={cn(
-                        "rounded-full h-10 px-4 font-black text-[10px] uppercase tracking-widest transition-all gap-2",
+                        "rounded-full h-10 px-4 font-black text-[10px] uppercase tracking-widest transition-all gap-2 shrink-0",
                         activeDietaryFilters.includes(f.id) 
                           ? "bg-primary text-white border-primary shadow-lg" 
                           : "bg-white text-slate-400 border-slate-100 hover:bg-slate-50"
