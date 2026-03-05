@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -20,7 +21,8 @@ import {
   Sparkles,
   DollarSign,
   Tag,
-  Utensils
+  Utensils,
+  X
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -65,8 +67,11 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
     category: 'Main',
     imageUrl: '',
     inventory: '0',
-    menuId: ''
+    menuId: '',
+    addOns: [] as { name: string, price: number }[]
   });
+
+  const [newAddOn, setNewAddOn] = useState({ name: '', price: '' });
 
   // Stabilize the upload path to prevent issues during item creation/editing
   const uploadPath = useMemo(() => {
@@ -131,6 +136,22 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
     }
   };
 
+  const addAddOn = () => {
+    if (!newAddOn.name || !newAddOn.price) return;
+    setItemForm(prev => ({
+      ...prev,
+      addOns: [...(prev.addOns || []), { name: newAddOn.name, price: parseFloat(newAddOn.price) }]
+    }));
+    setNewAddOn({ name: '', price: '' });
+  };
+
+  const removeAddOn = (idx: number) => {
+    setItemForm(prev => ({
+      ...prev,
+      addOns: prev.addOns.filter((_, i) => i !== idx)
+    }));
+  };
+
   const handleSaveItem = async () => {
     if (!firestore || !restaurantId || !itemForm.menuId || !itemForm.name) {
       toast({ variant: "destructive", title: "Missing Information", description: "Name and Menu Selection are required." });
@@ -145,6 +166,7 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
         category: itemForm.category,
         imageUrl: itemForm.imageUrl,
         inventory: parseInt(itemForm.inventory) || 0,
+        addOns: itemForm.addOns || [],
         updatedAt: serverTimestamp()
       };
 
@@ -202,7 +224,8 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
       category: 'Main',
       imageUrl: '',
       inventory: '0',
-      menuId: menus?.[0]?.id || ''
+      menuId: menus?.[0]?.id || '',
+      addOns: []
     });
     setEditingItemId(null);
   };
@@ -216,7 +239,8 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
       category: item.category || 'Main',
       imageUrl: item.imageUrl || '',
       inventory: item.inventory?.toString() || '0',
-      menuId: item.menuId
+      menuId: item.menuId,
+      addOns: item.addOns || []
     });
     setIsItemDialogOpen(true);
   };
@@ -445,6 +469,46 @@ export function InventoryManager({ restaurantId }: { restaurantId: string }) {
                   onChange={e => setItemForm({...itemForm, category: e.target.value})} 
                   className="h-12 rounded-xl"
                 />
+              </div>
+
+              <div className="space-y-4 border-t pt-6">
+                <Label className="flex items-center gap-2">
+                  <Plus className="h-3 w-3" /> Add-ons & Options
+                </Label>
+                <div className="space-y-2">
+                  {itemForm.addOns?.map((addon, idx) => (
+                    <div key={idx} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-bold text-sm">{addon.name}</span>
+                        <span className="text-[10px] text-slate-400 font-mono">+${addon.price}</span>
+                      </div>
+                      <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-300 hover:text-rose-500" onClick={() => removeAddOn(idx)}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Input 
+                    placeholder="Option Name" 
+                    value={newAddOn.name} 
+                    onChange={e => setNewAddOn({...newAddOn, name: e.target.value})}
+                    className="h-9 text-xs"
+                  />
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                      <Input 
+                        placeholder="Price" 
+                        type="number"
+                        value={newAddOn.price}
+                        onChange={e => setNewAddOn({...newAddOn, price: e.target.value})}
+                        className="h-9 text-xs pl-6"
+                      />
+                    </div>
+                    <Button variant="outline" size="sm" onClick={addAddOn} className="h-9 font-black uppercase text-[9px]">Add</Button>
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">

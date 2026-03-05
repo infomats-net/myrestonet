@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -17,7 +18,8 @@ import {
   Star,
   Zap,
   Clock,
-  XCircle
+  XCircle,
+  Settings2
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -32,7 +34,7 @@ interface MenuLayoutProps {
 }
 
 const getItemQuantity = (cart: any[], itemId: string) => {
-  return cart.find(i => i.id === itemId)?.quantity || 0;
+  return cart.filter(i => i.id === itemId).reduce((sum, i) => sum + i.quantity, 0);
 };
 
 const DietaryBadges = ({ item }: { item: any }) => {
@@ -76,6 +78,7 @@ export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCa
                 const quantity = getItemQuantity(cart, item.id);
                 const isOutOfStock = item.isOutOfStock;
                 const hasSpecialPrice = !!item.specialPrice;
+                const hasAddons = item.addOns && item.addOns.length > 0;
 
                 return (
                   <Card key={item.id} className={cn(
@@ -108,6 +111,12 @@ export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCa
                         </div>
                       )}
 
+                      {hasAddons && (
+                        <div className="absolute bottom-4 right-4 bg-white/80 backdrop-blur-md px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-600 shadow-sm border">
+                          Customizable
+                        </div>
+                      )}
+
                       {isOutOfStock && (
                         <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
                           <Badge className="bg-white text-black font-black uppercase px-6 py-2 rounded-xl text-sm">Out of Stock</Badge>
@@ -116,7 +125,7 @@ export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCa
 
                       {quantity > 0 && !isOutOfStock && (
                         <div className="absolute bottom-4 left-4 bg-primary text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5" style={{ backgroundColor: theme.primary }}>
-                          <CheckCircle2 className="h-3 w-3" /> Added ({quantity})
+                          <CheckCircle2 className="h-3 w-3" /> In Order ({quantity})
                         </div>
                       )}
                     </div>
@@ -134,7 +143,7 @@ export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCa
                         onClick={() => addToCart(item)}
                         disabled={isOutOfStock}
                       >
-                        {isOutOfStock ? "Unavailable" : (quantity > 0 ? `Add Another (${quantity})` : "Add to Selection")} 
+                        {isOutOfStock ? "Unavailable" : (hasAddons ? "Customize & Add" : (quantity > 0 ? `Add Another (${quantity})` : "Add to Order"))} 
                         {!isOutOfStock && <ChevronRight className="ml-2 h-4 w-4" />}
                       </Button>
                     </CardContent>
@@ -172,6 +181,7 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
               {menuItems.map(item => {
                 const quantity = getItemQuantity(cart, item.id);
                 const isOutOfStock = item.isOutOfStock;
+                const hasAddons = item.addOns && item.addOns.length > 0;
                 
                 return (
                   <Card key={item.id} className={cn(
@@ -190,6 +200,12 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
                       {item.isCombo && (
                         <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase shadow-lg flex items-center gap-1">
                           <Zap className="h-2 w-2 fill-current" /> Combo
+                        </div>
+                      )}
+
+                      {hasAddons && (
+                        <div className="absolute top-10 right-2 bg-white/90 px-1.5 py-0.5 rounded text-[7px] font-black uppercase text-slate-500 shadow-sm border">
+                          Custom
                         </div>
                       )}
 
@@ -214,7 +230,7 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
                           onClick={() => addToCart(item)}
                           disabled={isOutOfStock}
                         >
-                          {isOutOfStock ? <XCircle className="h-4 w-4" /> : (quantity > 0 ? <span className="text-[10px] font-black">+{quantity}</span> : <ChevronRight className="h-4 w-4" />)}
+                          {isOutOfStock ? <XCircle className="h-4 w-4" /> : (hasAddons ? <Settings2 className="h-4 w-4" /> : (quantity > 0 ? <span className="text-[10px] font-black">+{quantity}</span> : <ChevronRight className="h-4 w-4" />))}
                         </Button>
                       </div>
                     </div>
@@ -273,6 +289,7 @@ export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCa
                 {menuItems.map(item => {
                   const quantity = getItemQuantity(cart, item.id);
                   const isOutOfStock = item.isOutOfStock;
+                  const hasAddons = item.addOns && item.addOns.length > 0;
 
                   return (
                     <div key={item.id} className={cn(
@@ -305,11 +322,11 @@ export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCa
                           disabled={isOutOfStock}
                           style={{ color: theme.primary }}
                         >
-                          {isOutOfStock ? "Out of Stock" : (quantity > 0 ? (
+                          {isOutOfStock ? "Out of Stock" : (hasAddons ? <><Settings2 className="h-4 w-4" /> Customize</> : (quantity > 0 ? (
                             <><CheckCircle2 className="h-4 w-4" /> Added ({quantity})</>
                           ) : (
                             <><LayoutGrid className="h-4 w-4" /> Add To Order</>
-                          ))}
+                          )))}
                         </Button>
                       </div>
                     </div>
@@ -350,6 +367,7 @@ export function MenuStyle4({ menus, allMenuItems, currencySymbol, theme, addToCa
               {menuItems.map(item => {
                 const quantity = getItemQuantity(cart, item.id);
                 const isOutOfStock = item.isOutOfStock;
+                const hasAddons = item.addOns && item.addOns.length > 0;
 
                 return (
                   <div key={item.id} className={cn(
@@ -368,7 +386,7 @@ export function MenuStyle4({ menus, allMenuItems, currencySymbol, theme, addToCa
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-3">
                             <h4 className="text-3xl font-bold tracking-tight" style={{ color: theme.text }}>{item.name}</h4>
-                            {quantity > 0 && <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] font-black" style={{ color: theme.primary }}>{quantity} in Cart</Badge>}
+                            {quantity > 0 && <Badge variant="secondary" className="bg-primary/10 text-primary text-[10px] font-black" style={{ color: theme.primary }}>{quantity} in Order</Badge>}
                           </div>
                           <DietaryBadges item={item} />
                         </div>
@@ -387,7 +405,7 @@ export function MenuStyle4({ menus, allMenuItems, currencySymbol, theme, addToCa
                         disabled={isOutOfStock}
                         style={{ backgroundColor: theme.primary }}
                       >
-                        {isOutOfStock ? "Sold Out" : (quantity > 0 ? `Added (${quantity})` : "Select Item")}
+                        {isOutOfStock ? "Sold Out" : (hasAddons ? "Customize" : (quantity > 0 ? `Add More (${quantity})` : "Select Item"))}
                       </Button>
                     </div>
                   </div>

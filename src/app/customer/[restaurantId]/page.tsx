@@ -1,3 +1,4 @@
+
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
@@ -35,7 +36,9 @@ import {
   Zap,
   Sparkles,
   AlertTriangle,
-  Tag
+  Tag,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -51,9 +54,10 @@ import {
   SheetFooter,
   SheetDescription 
 } from '@/components/ui/sheet';
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -63,11 +67,18 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import { MenuStyle1, MenuStyle2, MenuStyle3, MenuStyle4 } from '@/components/menu-layouts';
 
+type AddOn = {
+  name: string;
+  price: number;
+};
+
 type CartItem = {
   id: string;
+  uniqueId: string; // To handle same item with different addons
   name: string;
   price: number;
   quantity: number;
+  selectedAddOns: AddOn[];
 };
 
 const DEFAULT_SECTION_ORDER = ['navbar', 'siteBanner', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
@@ -120,6 +131,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   // Lightbox state
   const [selectedImage, setSelectedImage] = useState<any>(null);
+
+  // Customization Modal state
+  const [customizingItem, setCustomizingItem] = useState<any>(null);
+  const [activeAddOns, setActiveAddOns] = useState<AddOn[]>([]);
 
   // Customer Delivery Info
   const [customerInfo, setCustomerInfo] = useState({
@@ -179,7 +194,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [allMenuItems, setAllMenuItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
 
-  // Handle Hydration Safe "Open" status
   useEffect(() => {
     if (operatingHours !== undefined) {
       setIsOpen(checkIsRestaurantOpen(operatingHours));
@@ -229,14 +243,41 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       toast({ variant: "destructive", title: "Out of Stock", description: "This item is currently unavailable." });
       return;
     }
-    const finalPrice = item.specialPrice || item.price;
+
+    // If item has add-ons, open customization dialog
+    if (item.addOns && item.addOns.length > 0) {
+      setCustomizingItem(item);
+      setActiveAddOns([]);
+      return;
+    }
+
+    performAddToCart(item, []);
+  };
+
+  const performAddToCart = (item: any, selectedAddOns: AddOn[]) => {
+    const basePrice = item.specialPrice || item.price;
+    const addOnsTotal = selectedAddOns.reduce((sum, a) => sum + (a.price || 0), 0);
+    const finalPrice = basePrice + addOnsTotal;
+
+    // Create a unique key for the item + its specific add-ons
+    const uniqueId = `${item.id}-${selectedAddOns.map(a => a.name).sort().join('|')}`;
+
     setCart(prev => {
-      const existing = prev.find(i => i.id === item.id);
+      const existing = prev.find(i => i.uniqueId === uniqueId);
       if (existing) {
-        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+        return prev.map(i => i.uniqueId === uniqueId ? { ...i, quantity: i.quantity + 1 } : i);
       }
-      return [...prev, { id: item.id, name: item.name, price: finalPrice, quantity: 1 }];
+      return [...prev, { 
+        id: item.id, 
+        uniqueId, 
+        name: item.name, 
+        price: finalPrice, 
+        quantity: 1,
+        selectedAddOns
+      }];
     });
+    
+    setCustomizingItem(null);
     toast({ title: "Added to cart" });
   };
 
@@ -377,7 +418,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 <button className="relative p-2 shrink-0" onClick={() => setIsCheckoutOpen(true)}>
                   <ShoppingBag className="h-6 w-6" style={{ color: theme.text }} />
                   {cart.length > 0 && (
-                    <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black" style={{ backgroundColor: theme.primary }}>{cart.length}</span>
+                    <span className="absolute top-0 right-0 bg-primary text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black" style={{ backgroundColor: theme.primary }}>{cart.reduce((sum, i) => sum + i.quantity, 0)}</span>
                   )}
                 </button>
               </div>
@@ -526,57 +567,66 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                     <h3 className="text-xl font-black text-slate-900 tracking-tight">Chef's Specials</h3>
                   </div>
                   <div className="flex gap-6 overflow-x-auto no-scrollbar pb-6 px-2 -mx-2">
-                    {popularItems.map(item => (
-                      <Card key={item.id} className={cn(
-                        "min-w-[280px] rounded-[2rem] border-none shadow-xl overflow-hidden flex flex-col group cursor-pointer relative",
-                        item.isOutOfStock && "opacity-60"
-                      )} onClick={() => !item.isOutOfStock && addToCart(item)}>
-                        <div className="h-40 relative">
-                          <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/300`} className="w-full h-full object-cover" alt={item.name} />
-                          
-                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full font-black text-sm shadow-md">
-                            {item.specialPrice ? (
-                              <div className="flex flex-col items-end">
-                                <span className="text-[8px] line-through text-slate-400">{currencySymbol}{item.price}</span>
-                                <span className="text-rose-600">{currencySymbol}{item.specialPrice}</span>
+                    {popularItems.map(item => {
+                      const hasAddons = item.addOns && item.addOns.length > 0;
+                      return (
+                        <Card key={item.id} className={cn(
+                          "min-w-[280px] rounded-[2rem] border-none shadow-xl overflow-hidden flex flex-col group cursor-pointer relative",
+                          item.isOutOfStock && "opacity-60"
+                        )} onClick={() => !item.isOutOfStock && addToCart(item)}>
+                          <div className="h-40 relative">
+                            <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/300`} className="w-full h-full object-cover" alt={item.name} />
+                            
+                            <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full font-black text-sm shadow-md">
+                              {item.specialPrice ? (
+                                <div className="flex flex-col items-end">
+                                  <span className="text-[8px] line-through text-slate-400">{currencySymbol}{item.price}</span>
+                                  <span className="text-rose-600">{currencySymbol}{item.specialPrice}</span>
+                                </div>
+                              ) : (
+                                <span>{currencySymbol}{item.price}</span>
+                              )}
+                            </div>
+
+                            {item.isCombo && (
+                              <div className="absolute top-3 left-3 bg-blue-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
+                                <Zap className="h-2 w-2 fill-current" /> Combo
                               </div>
-                            ) : (
-                              <span>{currencySymbol}{item.price}</span>
+                            )}
+
+                            {hasAddons && (
+                              <div className="absolute bottom-3 right-3 bg-white/80 backdrop-blur-md px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest text-slate-600 shadow-sm">
+                                Customizable
+                              </div>
+                            )}
+
+                            {item.isOutOfStock && (
+                              <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
+                                <Badge className="bg-white text-black font-black uppercase text-[10px] px-4 py-1 rounded-lg">Sold Out</Badge>
+                              </div>
                             )}
                           </div>
-
-                          {item.isCombo && (
-                            <div className="absolute top-3 left-3 bg-blue-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
-                              <Zap className="h-2 w-2 fill-current" /> Combo
+                          <CardContent className="p-5 flex-1 flex flex-col justify-between">
+                            <div>
+                              <div className="flex justify-between items-start gap-2">
+                                <h4 className="font-bold text-slate-900 leading-tight line-clamp-1">{item.name}</h4>
+                                <DietaryIcons dietary={item.dietary} />
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">{item.category}</p>
                             </div>
-                          )}
-
-                          {item.isOutOfStock && (
-                            <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
-                              <Badge className="bg-white text-black font-black uppercase text-[10px] px-4 py-1 rounded-lg">Sold Out</Badge>
-                            </div>
-                          )}
-                        </div>
-                        <CardContent className="p-5 flex-1 flex flex-col justify-between">
-                          <div>
-                            <div className="flex justify-between items-start gap-2">
-                              <h4 className="font-bold text-slate-900 leading-tight line-clamp-1">{item.name}</h4>
-                              <DietaryIcons dietary={item.dietary} />
-                            </div>
-                            <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">{item.category}</p>
-                          </div>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            disabled={item.isOutOfStock}
-                            className="w-full mt-4 h-9 rounded-xl font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/5" 
-                            style={{ color: theme.primary }}
-                          >
-                            {item.isOutOfStock ? "Unavailable" : "Add To Order"}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              disabled={item.isOutOfStock}
+                              className="w-full mt-4 h-9 rounded-xl font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/5" 
+                              style={{ color: theme.primary }}
+                            >
+                              {item.isOutOfStock ? "Unavailable" : (hasAddons ? "Customize" : "Add To Order")}
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -739,6 +789,63 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         </div>
       )}
 
+      {/* Customization Dialog */}
+      <Dialog open={!!customizingItem} onOpenChange={() => setCustomizingItem(null)}>
+        <DialogContent className="rounded-[2.5rem] max-w-md p-0 overflow-hidden">
+          <div className="h-48 relative">
+            <img src={customizingItem?.imageUrl || `https://picsum.photos/seed/${customizingItem?.id}/600/400`} className="w-full h-full object-cover" alt="" />
+            <button onClick={() => setCustomizingItem(null)} className="absolute top-4 right-4 bg-white/80 p-2 rounded-full shadow-lg"><X className="h-4 w-4" /></button>
+          </div>
+          <div className="p-8 space-y-6">
+            <DialogHeader>
+              <div className="flex justify-between items-start">
+                <DialogTitle className="text-2xl font-black">{customizingItem?.name}</DialogTitle>
+                <span className="font-black text-xl text-primary" style={{ color: theme.primary }}>{currencySymbol}{customizingItem?.specialPrice || customizingItem?.price}</span>
+              </div>
+              <DialogDescription className="text-slate-500 font-medium">{customizingItem?.description}</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Add-ons & Options</h4>
+              <div className="space-y-2">
+                {customizingItem?.addOns?.map((addon: AddOn, idx: number) => {
+                  const isSelected = activeAddOns.some(a => a.name === addon.name);
+                  return (
+                    <div 
+                      key={idx} 
+                      className={cn(
+                        "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer",
+                        isSelected ? "border-primary bg-primary/5" : "border-slate-50 hover:border-slate-100"
+                      )}
+                      onClick={() => {
+                        setActiveAddOns(prev => 
+                          isSelected ? prev.filter(a => a.name !== addon.name) : [...prev, addon]
+                        );
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Checkbox checked={isSelected} className="rounded-md" />
+                        <span className="font-bold text-slate-700">{addon.name}</span>
+                      </div>
+                      <span className="text-sm font-black text-slate-400">+{currencySymbol}{addon.price}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="p-8 pt-0">
+            <Button 
+              className="w-full h-14 rounded-2xl font-black text-lg shadow-xl" 
+              style={{ backgroundColor: theme.primary }}
+              onClick={() => performAddToCart(customizingItem, activeAddOns)}
+            >
+              Add to Order • {currencySymbol}{( (customizingItem?.specialPrice || customizingItem?.price || 0) + activeAddOns.reduce((s, a) => s + (a.price || 0), 0) ).toFixed(2)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0 overflow-hidden border-none bg-black/90 rounded-[3rem]">
           <DialogTitle className="sr-only">Full Image View</DialogTitle>
@@ -773,12 +880,19 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           <div className="flex-1 overflow-y-auto p-8 space-y-8">
             <div className="space-y-4">
               {cart.map(item => (
-                <div key={item.id} className="flex justify-between items-center">
-                  <div>
-                    <p className="font-bold text-slate-900">{item.name}</p>
-                    <p className="text-xs text-slate-400">{item.quantity} x {currencySymbol}{item.price}</p>
+                <div key={item.uniqueId} className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-slate-900">{item.name}</p>
+                      <p className="text-xs text-slate-400">{item.quantity} x {currencySymbol}{item.price}</p>
+                    </div>
+                    <span className="font-black">{currencySymbol}{(item.price * item.quantity).toFixed(2)}</span>
                   </div>
-                  <span className="font-black">{currencySymbol}{(item.price * item.quantity).toFixed(2)}</span>
+                  {item.selectedAddOns?.length > 0 && (
+                    <p className="text-[10px] text-slate-400 pl-2 border-l-2 italic">
+                      + {item.selectedAddOns.map(a => a.name).join(', ')}
+                    </p>
+                  )}
                 </div>
               ))}
               {cart.length === 0 && <p className="text-center text-slate-400 py-10 italic">Cart is empty</p>}
