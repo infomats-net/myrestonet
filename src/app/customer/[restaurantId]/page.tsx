@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
-import { useFirestore, useDoc, useCollection, useMemoFirebase, useFirebase } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, useFirebase } from '@/firebase';
 import { doc, collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 import { 
@@ -9,9 +9,6 @@ import {
   UtensilsCrossed, 
   MapPin, 
   ShoppingBag, 
-  CreditCard, 
-  Truck, 
-  Phone, 
   Clock, 
   Star, 
   Info, 
@@ -110,17 +107,14 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [lastOrderNumber, setLastOrderNumber] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState<boolean | null>(null);
   
-  // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDietaryFilters, setActiveDietaryFilters] = useState<string[]>([]);
 
-  // Customization & Smart Selling state
   const [customizingItem, setCustomizingItem] = useState<any>(null);
   const [activeAddOns, setActiveAddOns] = useState<AddOn[]>([]);
   const [aiRecs, setAiRecs] = useState<any[]>([]);
   const [loadingAI, setLoadingAI] = useState(false);
 
-  // Customer Info
   const [customerInfo, setCustomerInfo] = useState({ name: '', email: '', phone: '', address: '' });
 
   const restaurantRef = useMemoFirebase(() => {
@@ -135,11 +129,22 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   }, [firestore, restaurantId]);
   const { data: designSettings } = useDoc(designRef);
 
-  const hoursRef = useMemoFirebase(() => {
+  const dietaryTagsRef = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
-    return doc(firestore, 'restaurants', restaurantId, 'config', 'operatingHours');
+    return doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags');
   }, [firestore, restaurantId]);
-  const { data: operatingHours } = useDoc(hoursRef);
+  const { data: customTagsDoc } = useDoc(dietaryTagsRef);
+  const customTags = customTagsDoc?.list || [];
+
+  const ALL_DIETARY = useMemo(() => {
+    const list = [...DIETARY_FILTERS];
+    customTags.forEach((tag: string) => {
+      if (!list.some(f => f.id === tag.toLowerCase())) {
+        list.push({ id: tag.toLowerCase(), label: tag, icon: Sparkles });
+      }
+    });
+    return list;
+  }, [customTags]);
 
   const [allMenuItems, setAllMenuItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -161,7 +166,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   }, [firestore, restaurantId]);
 
   const bestSellerIds = useMemo(() => {
-    // Simulated logic for Best Seller based on internal data
     return new Set(allMenuItems.filter(i => i.isPopular).map(i => i.id));
   }, [allMenuItems]);
 
@@ -173,7 +177,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     });
   }, [allMenuItems, searchTerm, activeDietaryFilters]);
 
-  // AI Recommendation Trigger
   useEffect(() => {
     if (customizingItem?.enableAIRecommendations && cart.length > 0) {
       setLoadingAI(true);
@@ -190,7 +193,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const addToCart = (item: any, quantity = 1) => {
     if (item.isOutOfStock) return;
 
-    // Check for quantity discounts
     let unitPrice = item.specialPrice || item.price;
     if (item.quantityDiscounts) {
       const applicable = item.quantityDiscounts
@@ -223,7 +225,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
   return (
     <div className="min-h-screen pb-24 scroll-smooth" style={{ backgroundColor: designSettings?.theme?.background || '#fff' }}>
-      {/* Navigation and Sections Omitted for Brevity - using existing logic */}
       <nav className="sticky top-0 z-[100] w-full border-b backdrop-blur-lg h-20 flex items-center bg-white/95 px-6">
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <h1 className="text-xl font-black">{restaurant?.name}</h1>
@@ -236,8 +237,8 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       <div id="menu-list" className="py-20 max-w-6xl mx-auto px-6">
         <div className="mb-12 flex gap-4 overflow-x-auto no-scrollbar pb-2">
-          {DIETARY_FILTERS.map(f => (
-            <Button key={f.id} variant="outline" className="rounded-full gap-2 shrink-0 h-10 px-6 font-bold" onClick={() => setActiveDietaryFilters(prev => prev.includes(f.id) ? prev.filter(x => x !== f.id) : [...prev, f.id])}>
+          {ALL_DIETARY.map(f => (
+            <Button key={f.id} variant="outline" className={cn("rounded-full gap-2 shrink-0 h-10 px-6 font-bold transition-all", activeDietaryFilters.includes(f.label) && "bg-primary text-white border-primary shadow-lg")} onClick={() => setActiveDietaryFilters(prev => prev.includes(f.label) ? prev.filter(x => x !== f.label) : [...prev, f.label])}>
               <f.icon className="h-4 w-4" /> {f.label}
             </Button>
           ))}
@@ -254,7 +255,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         />
       </div>
 
-      {/* Customization & Smart Selling Dialog */}
       <Dialog open={!!customizingItem} onOpenChange={() => setCustomizingItem(null)}>
         <DialogContent className="rounded-[2.5rem] max-w-2xl overflow-hidden p-0">
           <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
@@ -279,7 +279,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
             <div className="w-full md:w-1/2 p-8 flex flex-col justify-between overflow-y-auto no-scrollbar">
               <div className="space-y-8">
-                {/* Upsells */}
                 {customizingItem?.upsellIds?.length > 0 && (
                   <div className="space-y-4 animate-in slide-in-from-right duration-500">
                     <h3 className="font-black text-xs uppercase tracking-widest text-primary flex items-center gap-2">
@@ -297,7 +296,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                   </div>
                 )}
 
-                {/* AI Suggestions */}
                 {loadingAI ? (
                   <div className="flex items-center gap-2 text-slate-400 text-xs font-bold animate-pulse"><Loader2 className="h-3 w-3 animate-spin" /> AI is thinking...</div>
                 ) : aiRecs.length > 0 && (

@@ -17,7 +17,6 @@ import {
   Loader2, 
   ChevronRight, 
   ChevronLeft,
-  RefreshCw,
   Edit3,
   Star,
   Zap,
@@ -29,7 +28,6 @@ import {
   X,
   Tag,
   DollarSign,
-  Sparkle,
   TrendingUp,
   Package,
   Calendar,
@@ -53,7 +51,6 @@ import {
 } from "@/components/ui/select";
 import { useFirebase, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, setDoc, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
 import { ImageUploader } from '@/components/image-uploader';
@@ -69,7 +66,7 @@ const DIETARY_OPTIONS = [
 ];
 
 export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
-  const { storage, firestore } = useFirebase();
+  const { firestore } = useFirebase();
   const { toast } = useToast();
 
   const [selectedMenuId, setSelectedMenuId] = useState<string | null>(null);
@@ -90,7 +87,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     specialPrice: '',
     dietary: [] as string[],
     addOns: [] as { name: string, price: number }[],
-    // Smart Selling Fields
     upsellIds: [] as string[],
     crossSellIds: [] as string[],
     isLTO: false,
@@ -100,15 +96,10 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
   });
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [newCustomTag, setNewCustomTag] = useState('');
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [replacingItemId, setReplacingItemId] = useState<string | null>(null);
-  const [activeReplaceItem, setActiveReplaceItem] = useState<any>(null);
-
   const [newAddOn, setNewAddOn] = useState({ name: '', price: '' });
   const [newQtyDiscount, setNewQtyDiscount] = useState({ minQty: '', price: '' });
 
-  // --- Category & Tag Persistence ---
+  // --- Persistent Configs ---
   const categoriesRef = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return doc(firestore, 'restaurants', restaurantId, 'config', 'menuCategories');
@@ -133,9 +124,8 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     if (!firestore || !restaurantId || !selectedMenuId) return null;
     return collection(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items');
   }, [firestore, restaurantId, selectedMenuId]);
-  const { data: items, isLoading: loadingItems } = useCollection(itemsQuery);
+  const { data: items } = useCollection(itemsQuery);
 
-  // All items across all menus for linking (upsells/cross-sells)
   const [allStoreItems, setAllStoreItems] = useState<any[]>([]);
   useMemo(() => {
     if (!menus || !firestore) return;
@@ -150,50 +140,60 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
     fetchAll();
   }, [menus, firestore, restaurantId]);
 
-  const convertToWebP = async (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) { reject(new Error('Canvas Error')); return; }
-          ctx.drawImage(img, 0, 0);
-          canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Blob Error')), 'image/webp', 0.8);
-        };
-        img.src = e.target?.result as string;
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleQuickReplaceImage = async (file: File) => {
-    if (!storage || !firestore || !restaurantId || !selectedMenuId || !activeReplaceItem) return;
-    setReplacingItemId(activeReplaceItem.id);
+  const handleSaveMenu = async () => {
+    if (!firestore || !restaurantId || !menuForm.name) return;
+    setLoading(true);
     try {
-      const webpBlob = await convertToWebP(file);
-      const storageRef = ref(storage, `restaurants/${restaurantId}/items/${activeReplaceItem.id}.webp`);
-      await uploadBytes(storageRef, webpBlob, { contentType: 'image/webp' });
-      const downloadURL = await getDownloadURL(storageRef);
-      await updateDoc(doc(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items', activeReplaceItem.id), {
-        imageUrl: downloadURL,
+      await addDoc(collection(firestore, 'restaurants', restaurantId, 'menus'), {
+        ...menuForm,
+        createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      toast({ title: "Visual Updated" });
+      setIsMenuDialogOpen(false);
+      setMenuForm({ name: '', description: '' });
+      toast({ title: "Menu Created" });
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Replace Failed" });
+      toast({ variant: "destructive", title: "Error" });
     } finally {
-      setReplacingItemId(null);
-      setActiveReplaceItem(null);
+      setLoading(false);
     }
+  };
+
+  const handleDeleteCategory = async (cat: string) => {
+    if (!firestore || !restaurantId) return;
+    try {
+      await updateDoc(doc(firestore, 'restaurants', restaurantId, 'config', 'menuCategories'), {
+        list: arrayRemove(cat)
+      });
+      toast({ title: "Category Removed" });
+    } catch (e) {}
+  };
+
+  const handleAddCustomTag = async () => {
+    if (!newCustomTag.trim() || !firestore || !restaurantId) return;
+    try {
+      await setDoc(doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags'), {
+        list: arrayUnion(newCustomTag.trim()),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      setNewCustomTag('');
+      toast({ title: "Tag Added" });
+    } catch (e) {}
+  };
+
+  const handleDeleteTag = async (tag: string) => {
+    if (!firestore || !restaurantId) return;
+    try {
+      await updateDoc(doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags'), {
+        list: arrayRemove(tag)
+      });
+      toast({ title: "Tag Removed" });
+    } catch (e) {}
   };
 
   const handleAiDescription = async () => {
     if (!itemForm.name) {
-      toast({ variant: "destructive", title: "Name required", description: "Please enter an item name first." });
+      toast({ variant: "destructive", title: "Name required" });
       return;
     }
     setLoading(true);
@@ -202,7 +202,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
       setItemForm(prev => ({ ...prev, description }));
       toast({ title: "AI Description Generated" });
     } catch (e) {
-      toast({ variant: "destructive", title: "AI Error", description: "Could not generate description." });
+      toast({ variant: "destructive", title: "AI Error" });
     } finally {
       setLoading(false);
     }
@@ -298,22 +298,20 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
             <div className="flex items-center gap-3">
               <MenuScanner restaurantId={restaurantId} menuId={selectedMenuId} onSuccess={() => {}} />
               <Button onClick={() => { resetItemForm(); setIsItemDialogOpen(true); }} className="rounded-2xl h-12 px-6 shadow-xl font-black bg-primary hover:bg-primary/90">
-                <Plus className="mr-2 h-4 w-4" /> Add Manual Item
+                <Plus className="mr-2 h-4 w-4" /> Add Item
               </Button>
             </div>
           </div>
 
           <Card className="rounded-[2.5rem] border-none shadow-xl overflow-hidden bg-white">
-            <CardHeader className="p-10 border-b bg-slate-50/50 flex justify-between items-center">
+            <CardHeader className="p-10 border-b bg-slate-50/50">
               <div><CardTitle className="text-3xl font-black">Item Catalog</CardTitle></div>
-              <Badge className="bg-emerald-50 text-emerald-600 font-black">{items?.length || 0} Items</Badge>
             </CardHeader>
             <CardContent className="p-0">
               <table className="w-full text-left">
                 <thead className="bg-slate-50 border-b">
                   <tr>
                     <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Item Details</th>
-                    <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Smart Features</th>
                     <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Price</th>
                     <th className="p-6 text-right text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
                   </tr>
@@ -323,28 +321,17 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                     <tr key={item.id} className={cn("hover:bg-slate-50 group", item.isOutOfStock && "opacity-50")}>
                       <td className="p-6">
                         <div className="flex items-center gap-4">
-                          <div className="relative w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border group/thumb">
-                            <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-full h-full object-cover" alt={item.name} />
-                          </div>
+                          <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-16 h-16 rounded-2xl object-cover border" alt={item.name} />
                           <div>
                             <p className="font-black text-slate-900">{item.name}</p>
                             <div className="flex flex-wrap gap-1 mt-1">
-                              {item.isLTO && <Badge className="text-[8px] bg-rose-100 text-rose-600 border-none">LTO</Badge>}
-                              {item.upsellIds?.length > 0 && <Badge className="text-[8px] bg-emerald-100 text-emerald-600 border-none">Upsells</Badge>}
+                              {item.category && <Badge variant="secondary" className="text-[8px] uppercase px-1 bg-slate-100 text-slate-500 border-none">{item.category}</Badge>}
+                              {item.dietary?.map((d: string) => <Badge key={d} variant="outline" className="text-[8px] uppercase px-1">{d}</Badge>)}
                             </div>
                           </div>
                         </div>
                       </td>
-                      <td className="p-6">
-                        <div className="flex gap-2">
-                          {item.isPopular && <Star className="h-4 w-4 text-amber-400 fill-current" />}
-                          {item.isCombo && <Zap className="h-4 w-4 text-blue-500 fill-current" />}
-                          {item.quantityDiscounts?.length > 0 && <TrendingUp className="h-4 w-4 text-emerald-500" />}
-                        </div>
-                      </td>
-                      <td className="p-6">
-                        {item.specialPrice ? <div className="flex flex-col"><span className="text-rose-600 font-black">${item.specialPrice}</span></div> : <span className="font-black">${item.price}</span>}
-                      </td>
+                      <td className="p-6 font-black">${item.specialPrice || item.price}</td>
                       <td className="p-6 text-right">
                         <div className="flex justify-end gap-2">
                           <Button variant="ghost" size="icon" onClick={() => { setEditingItemId(item.id); setItemForm({ ...item, price: item.price.toString(), specialPrice: item.specialPrice?.toString() || '' }); setIsItemDialogOpen(true); }}><Edit3 className="h-4 w-4" /></Button>
@@ -366,28 +353,71 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
             <div className="p-8 border-b bg-slate-50/50 flex items-center justify-between">
               <div>
                 <DialogTitle className="text-2xl font-black">Item Configuration</DialogTitle>
-                <DialogDescription>Define behavior and smart selling logic for this dish.</DialogDescription>
+                <DialogDescription>Configure details, dietary tags and smart selling.</DialogDescription>
               </div>
               <TabsList className="bg-white border rounded-xl p-1">
-                <TabsTrigger value="basic" className="rounded-lg font-bold">Basic Info</TabsTrigger>
-                <TabsTrigger value="smart" className="rounded-lg font-bold gap-2"><ArrowUpCircle className="h-4 w-4 text-primary" /> Smart Selling</TabsTrigger>
+                <TabsTrigger value="basic" className="rounded-lg font-bold">Details</TabsTrigger>
+                <TabsTrigger value="smart" className="rounded-lg font-bold gap-2"><ArrowUpCircle className="h-4 w-4" /> Smart Selling</TabsTrigger>
                 <TabsTrigger value="media" className="rounded-lg font-bold">Media</TabsTrigger>
               </TabsList>
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
-              <TabsContent value="basic" className="space-y-6 mt-0">
+              <TabsContent value="basic" className="space-y-8 mt-0">
                 <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2"><Label>Item Name</Label><Input value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="h-12 rounded-xl" /></div>
-                  <div className="space-y-2"><Label>Category</Label><Input value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})} className="h-12 rounded-xl" /></div>
+                  <div className="space-y-2">
+                    <Label>Item Name</Label>
+                    <Input value={itemForm.name} onChange={e => setItemForm({...itemForm, name: e.target.value})} className="h-12 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Input value={itemForm.category} onChange={e => setItemForm({...itemForm, category: e.target.value})} className="h-12 rounded-xl" />
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {savedCategories.map((cat: string) => (
+                        <Badge key={cat} variant="secondary" className="cursor-pointer hover:bg-primary hover:text-white gap-1 pr-1" onClick={() => setItemForm({...itemForm, category: cat})}>
+                          {cat}
+                          <button onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat); }}><X className="h-2 w-2" /></button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+
+                <div className="space-y-4">
+                  <Label>Dietary Tags</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {[...DIETARY_OPTIONS.map(o => o.label), ...savedCustomTags].map(tag => (
+                      <Badge 
+                        key={tag} 
+                        variant={itemForm.dietary?.includes(tag) ? "default" : "outline"} 
+                        className="cursor-pointer h-8 px-3 rounded-lg gap-2"
+                        onClick={() => setItemForm(prev => ({
+                          ...prev,
+                          dietary: prev.dietary?.includes(tag) ? prev.dietary.filter(t => t !== tag) : [...(prev.dietary || []), tag]
+                        }))}
+                      >
+                        {tag}
+                        {savedCustomTags.includes(tag) && <button onClick={(e) => { e.stopPropagation(); handleDeleteTag(tag); }}><X className="h-3 w-3" /></button>}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <Input placeholder="New custom tag (e.g. Keto)..." value={newCustomTag} onChange={e => setNewCustomTag(e.target.value)} className="h-10 rounded-xl" />
+                    <Button variant="outline" onClick={handleAddCustomTag} className="rounded-xl h-10 px-4 font-bold">Add Tag</Button>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2"><Label>Base Price</Label><Input type="number" value={itemForm.price} onChange={e => setItemForm({...itemForm, price: e.target.value})} className="h-12 rounded-xl" /></div>
                   <div className="space-y-2"><Label>Special Price</Label><Input type="number" value={itemForm.specialPrice} onChange={e => setItemForm({...itemForm, specialPrice: e.target.value})} className="h-12 rounded-xl" /></div>
                 </div>
+
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center"><Label>Description</Label><Button variant="link" size="sm" onClick={handleAiDescription} className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"><Sparkles className="h-3 w-3" /> AI Write</Button></div>
-                  <Textarea value={itemForm.description} onChange={e => setItemForm({...itemForm, description: e.target.value})} className="rounded-xl min-h-[120px]" />
+                  <div className="flex justify-between items-center">
+                    <Label>Description</Label>
+                    <Button variant="link" size="sm" onClick={handleAiDescription} className="h-auto p-0 text-[10px] font-black uppercase text-primary gap-1"><Sparkles className="h-3 w-3" /> AI Write</Button>
+                  </div>
+                  <Textarea value={itemForm.description} onChange={e => setItemForm({...itemForm, description: e.target.value})} className="rounded-xl min-h-[100px]" />
                 </div>
               </TabsContent>
 
@@ -478,6 +508,8 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl"><Label>Popular</Label><Switch checked={itemForm.isPopular} onCheckedChange={v => setItemForm({...itemForm, isPopular: v})} /></div>
                   <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl"><Label>Combo Deal</Label><Switch checked={itemForm.isCombo} onCheckedChange={v => setItemForm({...itemForm, isCombo: v})} /></div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl"><Label>New Item</Label><Switch checked={itemForm.isNew} onCheckedChange={v => setItemForm({...itemForm, isNew: v})} /></div>
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl"><Label>Out of Stock</Label><Switch checked={itemForm.isOutOfStock} onCheckedChange={v => setItemForm({...itemForm, isOutOfStock: v})} /></div>
                 </div>
               </TabsContent>
             </div>
