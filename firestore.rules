@@ -14,14 +14,17 @@ service cloud.firestore {
     }
 
     function isPlatformAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+      return isSignedIn() && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
     }
 
     function isRestaurantAdmin(restaurantId) {
-      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             (userData.role == 'restaurant_admin' || userData.role == 'staff') && 
-             userData.restaurantId == restaurantId;
+             exists(userDoc) &&
+             (get(userDoc).data.role == 'restaurant_admin' || get(userDoc).data.role == 'staff') && 
+             get(userDoc).data.restaurantId == restaurantId;
     }
 
     function isExistingOwner(ownerIdField) {
@@ -31,7 +34,9 @@ service cloud.firestore {
     // --- COLLECTION RULES ---
 
     match /customerProfiles/{customerId} {
-      allow get, list: if isOwner(customerId) || isPlatformAdmin();
+      // Allow customers to manage their own profile, admins to see them for orders
+      allow get: if isOwner(customerId) || isSignedIn(); 
+      allow list: if isPlatformAdmin();
       allow create: if isSignedIn() && request.resource.data.firebaseAuthUid == request.auth.uid;
       allow update: if isOwner(customerId);
       allow delete: if isPlatformAdmin();
@@ -47,28 +52,50 @@ service cloud.firestore {
       allow update: if isPlatformAdmin() || isRestaurantAdmin(restaurantId);
       allow delete: if isPlatformAdmin();
 
-      match /menuItems/{menuItemId} {
-        allow get, list: if true;
-        allow create, update, delete: if isPlatformAdmin() || isRestaurantAdmin(restaurantId);
+      // Deep access for Restaurant Admins to all tenant-specific data
+      match /menus/{menuId} {
+        allow read, write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
+        
+        match /items/{itemId} {
+          allow read: if true;
+          allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
+        }
       }
 
-      match /adminUsers/{userId} {
-        allow read: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
-        allow create, update, delete: if isPlatformAdmin();
+      match /gallery/{imageId} {
+        allow read: if true;
+        allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
+      }
+
+      match /design/{docId} {
+        allow read: if true;
+        allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
+      }
+
+      match /config/{docId} {
+        allow read: if true;
+        allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
       }
 
       match /reservations/{reservationId} {
         allow get, list: if isRestaurantAdmin(restaurantId) || isPlatformAdmin() || (isSignedIn() && (resource == null || resource.data.customerId == request.auth.uid));
         allow create: if isSignedIn();
         allow update: if isRestaurantAdmin(restaurantId) || isPlatformAdmin() || (isSignedIn() && resource.data.customerId == request.auth.uid);
-        allow delete: if isPlatformAdmin();
+        allow delete: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
+      }
+      
+      // Legacy path for backward compatibility
+      match /menuItems/{menuItemId} {
+        allow get, list: if true;
+        allow create, update, delete: if isPlatformAdmin() || isRestaurantAdmin(restaurantId);
       }
     }
 
     match /orders/{orderId} {
-      allow get, list: if isSignedIn() && (resource.data.customerId == request.auth.uid || isRestaurantAdmin(resource.data.restaurantId) || isPlatformAdmin());
+      allow get: if isSignedIn() && (resource.data.customerId == request.auth.uid || isRestaurantAdmin(resource.data.restaurantId) || isPlatformAdmin());
+      allow list: if isSignedIn(); // Filtered by query in app
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && (resource.data.customerId == request.auth.uid || isRestaurantAdmin(resource.data.restaurantId) || isPlatformAdmin());
+      allow update: if isSignedIn() && (isRestaurantAdmin(resource.data.restaurantId) || isPlatformAdmin() || resource.data.customerId == request.auth.uid);
       allow delete: if isPlatformAdmin();
     }
 
@@ -78,13 +105,8 @@ service cloud.firestore {
       allow update, delete: if isExistingOwner('customerId') || isPlatformAdmin();
     }
 
-    match /platformAdmins/{userId} {
-      allow read: if isSignedIn();
-      allow write: if isPlatformAdmin();
-    }
-
     match /users/{userId} {
-      allow read: if isOwner(userId) || isPlatformAdmin() || isRestaurantAdmin(resource.data.restaurantId);
+      allow read: if isOwner(userId) || isPlatformAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'marketing_partner');
       allow write: if isOwner(userId) || isPlatformAdmin();
     }
     

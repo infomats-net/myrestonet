@@ -2,99 +2,54 @@
 {
   "entities": {
     "CustomerProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "CustomerProfile",
       "type": "object",
-      "description": "Stores information specific to a customer account, linked to an external authentication system.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the CustomerProfile entity."
-        },
-        "firebaseAuthUid": {
-          "type": "string",
-          "description": "Unique identifier from Firebase Authentication."
-        },
-        "email": {
-          "type": "string",
-          "description": "The customer's primary email address.",
-          "format": "email"
-        },
-        "firstName": {
-          "type": "string",
-          "description": "The customer's first name."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "The customer's last name."
-        },
-        "phoneNumber": {
-          "type": "string",
-          "description": "The customer's primary phone number."
-        },
-        "profileImageUrl": {
-          "type": "string",
-          "description": "URL to the customer's profile image.",
-          "format": "uri"
-        },
-        "loyaltyPoints": {
-          "type": "number",
-          "description": "Current loyalty points accumulated."
-        },
-        "referralCode": {
-          "type": "string",
-          "description": "A unique code for referring new users."
-        },
-        "referredByCustomerId": {
-          "type": "string",
-          "description": "ID of the referring customer."
-        },
-        "walletBalance": {
-          "type": "number",
-          "description": "Current balance in the customer's in-app wallet."
-        },
-        "favoriteMenuItemIds": {
-          "type": "array",
-          "description": "Array of menu item IDs favorited by the customer.",
-          "items": {
-            "type": "string"
-          }
-        },
-        "createdAt": {
-          "type": "string",
-          "description": "Timestamp when the customer profile was created.",
-          "format": "date-time"
-        },
-        "updatedAt": {
-          "type": "string",
-          "description": "Timestamp when the customer profile was last updated.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "firebaseAuthUid",
-        "email",
-        "loyaltyPoints",
-        "walletBalance",
-        "createdAt",
-        "updatedAt"
-      ]
-    },
-    "Reservation": {
-      "title": "Reservation",
-      "type": "object",
-      "description": "Stores table reservations for a restaurant.",
+      "description": "Stores information specific to a customer account.",
       "properties": {
         "id": { "type": "string" },
-        "customerId": { "type": "string" },
-        "customerName": { "type": "string" },
-        "customerEmail": { "type": "string" },
-        "restaurantId": { "type": "string" },
-        "dateTime": { "type": "string", "format": "date-time" },
-        "partySize": { "type": "number" },
-        "status": { "type": "string", "enum": ["pending", "confirmed", "attended", "cancelled"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "firebaseAuthUid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "loyaltyPoints": { "type": "number" },
+        "walletBalance": { "type": "number" },
+        "referralCode": { "type": "string" },
+        "favoriteMenuItemIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Restaurant": {
+      "title": "Restaurant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "adminEmail": { "type": "string" },
+        "cuisine": { "type": "array", "items": { "type": "string" } },
+        "city": { "type": "string" },
+        "country": { "type": "string" },
+        "subscriptionStatus": { "type": "string" },
+        "tables": { "type": "array", "items": { "type": "object" } }
+      }
+    },
+    "MenuItem": {
+      "title": "MenuItem",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "specialPrice": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "inventory": { "type": "number" },
+        "isPopular": { "type": "boolean" },
+        "isNew": { "type": "boolean" },
+        "isOutOfStock": { "type": "boolean" },
+        "addOns": { "type": "array", "items": { "type": "object" } }
       }
     },
     "Order": {
@@ -106,56 +61,49 @@
         "customerId": { "type": "string" },
         "totalAmount": { "type": "number" },
         "status": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object" } },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
-    "Review": {
-      "title": "Review",
+    "Reservation": {
+      "title": "Reservation",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "customerId": { "type": "string" },
         "restaurantId": { "type": "string" },
-        "rating": { "type": "number" },
-        "comment": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "dateTime": { "type": "string", "format": "date-time" },
+        "partySize": { "type": "number" },
+        "status": { "type": "string" },
+        "tableIds": { "type": "array", "items": { "type": "string" } }
       }
     }
   },
   "auth": {
-    "providers": [
-      "password",
-      "anonymous",
-      "google.com",
-      "apple.com"
-    ]
+    "providers": ["password", "google.com", "apple.com", "anonymous"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/customerProfiles/{customerId}",
-        "definition": {
-          "entityName": "CustomerProfile",
-          "schema": { "$ref": "#/backend/entities/CustomerProfile" },
-          "description": "Global user profiles for customers."
-        }
+    "structure": {
+      "/customerProfiles/{customerId}": {
+        "schema": "#/backend/entities/CustomerProfile",
+        "description": "Registered customer profiles."
       },
-      {
-        "path": "/restaurants/{restaurantId}/reservations/{reservationId}",
-        "definition": {
-          "entityName": "Reservation",
-          "schema": { "$ref": "#/backend/entities/Reservation" },
-          "description": "Restaurant-specific table reservations."
-        }
+      "/restaurants/{restaurantId}": {
+        "schema": "#/backend/entities/Restaurant",
+        "description": "Restaurant tenant data."
       },
-      {
-        "path": "/orders/{orderId}",
-        "definition": {
-          "entityName": "Order",
-          "schema": { "$ref": "#/backend/entities/Order" },
-          "description": "Platform-wide orders."
-        }
+      "/restaurants/{restaurantId}/menus/{menuId}/items/{itemId}": {
+        "schema": "#/backend/entities/MenuItem",
+        "description": "Menu items within categories."
+      },
+      "/restaurants/{restaurantId}/reservations/{reservationId}": {
+        "schema": "#/backend/entities/Reservation",
+        "description": "Tenant-specific bookings."
+      },
+      "/orders/{orderId}": {
+        "schema": "#/backend/entities/Order",
+        "description": "Global orders collection."
       }
-    ]
+    }
   }
 }
