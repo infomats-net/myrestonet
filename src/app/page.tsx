@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from 'next/link';
@@ -12,10 +13,13 @@ import {
   ShoppingBag
 } from 'lucide-react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { useState, useEffect } from 'react';
 
 export default function Home() {
   const firestore = useFirestore();
+  const [restaurantsWithFeatures, setRestaurantsWithFeatures] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Fetch all active restaurants for the directory
   const restaurantsQuery = useMemoFirebase(() => {
@@ -23,7 +27,26 @@ export default function Home() {
     return query(collection(firestore, 'restaurants'), where('subscriptionStatus', '==', 'active'));
   }, [firestore]);
 
-  const { data: restaurants, isLoading } = useCollection(restaurantsQuery);
+  const { data: restaurants, isLoading: loadingRes } = useCollection(restaurantsQuery);
+
+  useEffect(() => {
+    if (!restaurants || !firestore) return;
+
+    const fetchFeatures = async () => {
+      setLoading(true);
+      const enriched = await Promise.all(restaurants.map(async (res) => {
+        const featSnap = await getDoc(doc(firestore, 'restaurants', res.id, 'features', 'settings'));
+        return {
+          ...res,
+          features: featSnap.exists() ? featSnap.data() : { tableReservations: true, onlineOrdering: true }
+        };
+      }));
+      setRestaurantsWithFeatures(enriched);
+      setLoading(false);
+    };
+
+    fetchFeatures();
+  }, [restaurants, firestore]);
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -77,14 +100,14 @@ export default function Home() {
               </div>
             </div>
 
-            {isLoading ? (
+            {loading || loadingRes ? (
               <div className="py-24 flex flex-col items-center justify-center gap-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 <p className="font-bold text-slate-400 uppercase tracking-widest text-xs">Loading local flavors...</p>
               </div>
-            ) : restaurants && restaurants.length > 0 ? (
+            ) : restaurantsWithFeatures.length > 0 ? (
               <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {restaurants.map((res) => (
+                {restaurantsWithFeatures.map((res) => (
                   <Card key={res.id} className="group border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white hover:scale-[1.03] transition-all duration-500">
                     <div className="relative h-48 bg-slate-100 overflow-hidden">
                       <img 
@@ -120,14 +143,16 @@ export default function Home() {
                       <div className="flex flex-col gap-2">
                         <Button asChild className="w-full rounded-2xl h-12 font-black shadow-lg shadow-primary/10">
                           <Link href={`/customer/${res.id}`}>
-                            Order Online <ArrowRight className="ml-2 h-4 w-4" />
+                            {res.features?.onlineOrdering !== false ? 'Order Online' : 'View Menu'} <ArrowRight className="ml-2 h-4 w-4" />
                           </Link>
                         </Button>
-                        <Button variant="ghost" asChild className="w-full rounded-2xl h-12 font-bold text-slate-500">
-                          <Link href={`/customer/${res.id}/reserve`}>
-                            Book a Table
-                          </Link>
-                        </Button>
+                        {res.features?.tableReservations !== false && (
+                          <Button variant="ghost" asChild className="w-full rounded-2xl h-12 font-bold text-slate-500">
+                            <Link href={`/customer/${res.id}/reserve`}>
+                              Book a Table
+                            </Link>
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

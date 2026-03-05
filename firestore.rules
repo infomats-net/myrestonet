@@ -88,6 +88,11 @@ service cloud.firestore {
         allow read, write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
       }
 
+      match /features/{docId} {
+        allow read: if true;
+        allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
+      }
+
       match /reservations/{reservationId} {
         allow get, list: if isRestaurantAdmin(restaurantId) || isPlatformAdmin() || (isSignedIn() && (resource == null || resource.data.customerId == request.auth.uid));
         allow create: if isSignedIn();

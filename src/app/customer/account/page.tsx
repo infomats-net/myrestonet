@@ -1,9 +1,9 @@
 
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, collectionGroup, query, where, orderBy, updateDoc, arrayRemove, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, collectionGroup, query, where, orderBy, updateDoc, arrayRemove, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { 
   User, 
   ShoppingBag, 
@@ -38,6 +38,7 @@ export default function CustomerAccountPage() {
   const { toast } = useToast();
   
   const [activeTab, setActiveTab] = useState('orders');
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(true);
 
   const profileRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -47,7 +48,6 @@ export default function CustomerAccountPage() {
 
   const ordersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    // Use collectionGroup to fetch orders across all restaurants for this customer
     return query(collectionGroup(firestore, 'orders'), where('customerId', '==', user.uid), orderBy('createdAt', 'desc'));
   }, [firestore, user?.uid]);
   const { data: orders, isLoading: loadingOrders } = useCollection(ordersQuery);
@@ -57,6 +57,20 @@ export default function CustomerAccountPage() {
     return collection(firestore, 'customerProfiles', user.uid, 'addresses');
   }, [firestore, user?.uid]);
   const { data: addresses } = useCollection(addressesRef);
+
+  // Check if loyalty is enabled globally/per restaurant - for simplicity in account page, we check recent order restaurant
+  useEffect(() => {
+    const checkLoyalty = async () => {
+      if (orders && orders.length > 0 && firestore) {
+        const lastOrder = orders[0];
+        const featSnap = await getDoc(doc(firestore, 'restaurants', lastOrder.restaurantId, 'features', 'settings'));
+        if (featSnap.exists()) {
+          setLoyaltyEnabled(featSnap.data().loyaltyProgram !== false);
+        }
+      }
+    };
+    checkLoyalty();
+  }, [orders, firestore]);
 
   const handleUpdateProfile = async (field: string, value: any) => {
     if (!profileRef) return;
@@ -88,9 +102,11 @@ export default function CustomerAccountPage() {
             <span className="font-black text-xl tracking-tight text-primary">MyRestoNet</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Badge className="bg-primary/10 text-primary border-none px-4 py-1.5 font-bold rounded-full">
-              {profile?.loyaltyPoints || 0} Points
-            </Badge>
+            {loyaltyEnabled && (
+              <Badge className="bg-primary/10 text-primary border-none px-4 py-1.5 font-bold rounded-full">
+                {profile?.loyaltyPoints || 0} Points
+              </Badge>
+            )}
             <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
               <img src={user.photoURL || `https://picsum.photos/seed/${user.uid}/100/100`} alt="" />
             </div>

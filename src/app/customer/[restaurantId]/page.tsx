@@ -15,7 +15,8 @@ import {
   Heart,
   UserCircle,
   Plus,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -79,6 +80,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     return doc(firestore, 'restaurants', restaurantId);
   }, [firestore, restaurantId]);
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
+
+  const featuresRef = useMemoFirebase(() => {
+    if (!firestore || !restaurantId) return null;
+    return doc(firestore, 'restaurants', restaurantId, 'features', 'settings');
+  }, [firestore, restaurantId]);
+  const { data: features } = useDoc(featuresRef);
 
   const profileRef = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
@@ -153,7 +160,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   };
 
   const addToCart = (item: any, quantity = 1, specificAddOns: AddOn[] = activeAddOns) => {
-    if (item.isOutOfStock) return;
+    if (item.isOutOfStock || features?.onlineOrdering === false) return;
     const uniqueId = `${item.id}-${specificAddOns.map(a => a.name).sort().join('|')}`;
     const addOnsTotal = specificAddOns.reduce((s, a) => s + a.price, 0);
     const finalPrice = (item.specialPrice || item.price) + addOnsTotal;
@@ -172,6 +179,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   };
 
   const updateQuantity = (itemId: string, delta: number) => {
+    if (features?.onlineOrdering === false) return;
     setCart(prev => {
       // Find the base version (no add-ons) first
       const idx = prev.findIndex(i => i.id === itemId && i.selectedAddOns.length === 0);
@@ -218,10 +226,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         updatedAt: new Date().toISOString()
       });
       
-      await updateDoc(profileRef!, {
-        loyaltyPoints: (profile?.loyaltyPoints || 0) + Math.floor(subtotal),
-        updatedAt: serverTimestamp()
-      });
+      if (features?.loyaltyProgram !== false) {
+        await updateDoc(profileRef!, {
+          loyaltyPoints: (profile?.loyaltyPoints || 0) + Math.floor(subtotal),
+          updatedAt: serverTimestamp()
+        });
+      }
 
       setCart([]);
       setIsCheckoutOpen(false);
@@ -241,8 +251,13 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
           <Link href={`/customer/${restaurantId}`} className="text-xl font-black">{restaurant?.name}</Link>
           <div className="flex items-center gap-4">
-            {user ? (
+            {features?.tableReservations !== false && (
               <Button variant="ghost" asChild className="rounded-full h-10 px-4 font-bold text-primary bg-primary/5">
+                <Link href={`/customer/${restaurantId}/reserve`}>Reservations</Link>
+              </Button>
+            )}
+            {user ? (
+              <Button variant="ghost" asChild className="rounded-full h-10 px-4 font-bold">
                 <Link href="/customer/account"><UserCircle className="mr-2 h-5 w-5" /> Account</Link>
               </Button>
             ) : (
@@ -250,15 +265,29 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                 <Link href="/auth/login">Sign In</Link>
               </Button>
             )}
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-slate-50" onClick={() => setIsCheckoutOpen(true)}>
-              <ShoppingBag className="h-5 w-5" />
-              {cart.length > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">{totalItems}</Badge>}
-            </Button>
+            {features?.onlineOrdering !== false && (
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-slate-50" onClick={() => setIsCheckoutOpen(true)}>
+                <ShoppingBag className="h-5 w-5" />
+                {cart.length > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">{totalItems}</Badge>}
+              </Button>
+            )}
           </div>
         </div>
       </nav>
 
       <div id="menu-list" className="py-20 max-w-6xl mx-auto px-6">
+        {features?.onlineOrdering === false && (
+          <div className="mb-12 bg-amber-50 p-6 rounded-3xl border border-amber-100 flex items-start gap-4">
+            <AlertCircle className="h-6 w-6 text-amber-600 shrink-0 mt-1" />
+            <div>
+              <h3 className="font-black text-amber-900 uppercase text-xs tracking-widest">Catalog Mode Only</h3>
+              <p className="text-sm text-amber-700 leading-relaxed font-medium">
+                Online ordering is currently unavailable for this location. Please visit us in-store to place your order.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="mb-12 flex gap-4 overflow-x-auto no-scrollbar pb-2">
           {DIETARY_FILTERS.map(f => (
             <Button key={f.id} variant="outline" className={cn("rounded-full gap-2 shrink-0 h-10 px-6 font-bold transition-all", activeDietaryFilters.includes(f.label) && "bg-primary text-white border-primary shadow-lg")} onClick={() => setActiveDietaryFilters(prev => prev.includes(f.label) ? prev.filter(x => x !== f.label) : [...prev, f.label])}>
@@ -272,7 +301,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
           allMenuItems={filteredItems} 
           currencySymbol="$" 
           theme={{ primary: designSettings?.theme?.primary || '#22c55e', text: '#000', background: '#fff' }} 
-          addToCart={(item) => setCustomizingItem(item)} 
+          addToCart={(item) => features?.onlineOrdering !== false && setCustomizingItem(item)} 
           updateQuantity={updateQuantity}
           cart={cart}
           bestSellerIds={bestSellerIds}
@@ -280,7 +309,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
       </div>
 
       {/* Sticky Checkout Bar */}
-      {cart.length > 0 && (
+      {features?.onlineOrdering !== false && cart.length > 0 && (
         <div className="fixed bottom-6 left-0 right-0 z-[110] px-6 animate-in slide-in-from-bottom duration-500">
           <div className="max-w-xl mx-auto bg-slate-900 text-white rounded-3xl p-4 shadow-2xl flex items-center justify-between border border-white/10 backdrop-blur-xl">
             <div className="flex items-center gap-4 pl-4">
@@ -319,18 +348,20 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
               <h2 className="text-2xl font-black mb-2">{customizingItem?.name}</h2>
               <p className="text-slate-500 text-sm mb-6">{customizingItem?.description}</p>
               
-              <div className="space-y-4">
-                <h3 className="font-black text-xs uppercase tracking-widest text-slate-400">Add-ons</h3>
-                {customizingItem?.addOns?.map((addon: any, i: number) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-white rounded-xl border cursor-pointer hover:border-primary transition-all" onClick={() => setActiveAddOns(prev => prev.some(x => x.name === addon.name) ? prev.filter(x => x.name !== addon.name) : [...prev, addon])}>
-                    <div className="flex items-center gap-3">
-                      <Checkbox checked={activeAddOns.some(x => x.name === addon.name)} />
-                      <span className="font-bold text-sm">{addon.name}</span>
+              {features?.menuCustomization !== false && customizingItem?.addOns?.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="font-black text-xs uppercase tracking-widest text-slate-400">Add-ons</h3>
+                  {customizingItem?.addOns?.map((addon: any, i: number) => (
+                    <div key={i} className="flex items-center justify-between p-4 bg-white rounded-xl border cursor-pointer hover:border-primary transition-all" onClick={() => setActiveAddOns(prev => prev.some(x => x.name === addon.name) ? prev.filter(x => x.name !== addon.name) : [...prev, addon])}>
+                      <div className="flex items-center gap-3">
+                        <Checkbox checked={activeAddOns.some(x => x.name === addon.name)} />
+                        <span className="font-bold text-sm">{addon.name}</span>
+                      </div>
+                      <span className="text-sm font-black text-slate-400">+${addon.price}</span>
                     </div>
-                    <span className="text-sm font-black text-slate-400">+${addon.price}</span>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="w-full md:w-1/2 p-8 flex flex-col justify-between overflow-y-auto no-scrollbar">
