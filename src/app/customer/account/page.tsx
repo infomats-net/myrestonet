@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from 'react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, orderBy, updateDoc, arrayRemove, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, collection, collectionGroup, query, where, orderBy, updateDoc, arrayRemove, addDoc, serverTimestamp } from 'firebase/firestore';
 import { 
   User, 
   ShoppingBag, 
@@ -47,7 +47,8 @@ export default function CustomerAccountPage() {
 
   const ordersQuery = useMemoFirebase(() => {
     if (!firestore || !user?.uid) return null;
-    return query(collection(firestore, 'orders'), where('customerId', '==', user.uid), orderBy('createdAt', 'desc'));
+    // Use collectionGroup to fetch orders across all restaurants for this customer
+    return query(collectionGroup(firestore, 'orders'), where('customerId', '==', user.uid), orderBy('createdAt', 'desc'));
   }, [firestore, user?.uid]);
   const { data: orders, isLoading: loadingOrders } = useCollection(ordersQuery);
 
@@ -163,7 +164,7 @@ export default function CustomerAccountPage() {
                           </div>
                           <div>
                             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Order #{order.id.slice(-6).toUpperCase()}</p>
-                            <h4 className="text-lg font-black text-slate-900">Delivered • {format(new Date(order.createdAt), 'MMM d, p')}</h4>
+                            <h4 className="text-lg font-black text-slate-900">{order.status === 'delivered' ? 'Delivered' : 'In Progress'} • {format(new Date(order.createdAt), 'MMM d, p')}</h4>
                             <p className="text-sm text-slate-500 font-medium mt-1">{order.items?.length || 0} Items • ${order.totalAmount?.toFixed(2)}</p>
                           </div>
                         </div>

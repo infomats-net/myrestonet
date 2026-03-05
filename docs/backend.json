@@ -100,9 +100,9 @@
         "schema": "#/backend/entities/Reservation",
         "description": "Tenant-specific bookings."
       },
-      "/orders/{orderId}": {
+      "/restaurants/{restaurantId}/orders/{orderId}": {
         "schema": "#/backend/entities/Order",
-        "description": "Global orders collection."
+        "description": "Tenant-specific orders."
       }
     }
   }

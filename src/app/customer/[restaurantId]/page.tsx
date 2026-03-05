@@ -166,7 +166,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     }
     setIsProcessing(true);
     try {
-      const orderRef = collection(firestore!, 'orders');
+      const orderRef = collection(firestore!, 'restaurants', restaurantId, 'orders');
       await addDoc(orderRef, {
         customerId: user.uid,
         customerName: profile?.firstName + " " + profile?.lastName,
