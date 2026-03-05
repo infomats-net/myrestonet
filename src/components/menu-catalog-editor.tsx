@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useRef, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useState, useMemo, useRef } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,14 +14,8 @@ import {
   Utensils, 
   Sparkles, 
   Loader2, 
-  Image as ImageIcon, 
   ChevronRight,
   ChevronLeft,
-  Search,
-  CheckCircle2,
-  DollarSign,
-  Tag,
-  Upload,
   RefreshCw,
   Edit3,
   Star,
@@ -31,8 +25,8 @@ import {
   WheatOff,
   ShieldCheck,
   AlertTriangle,
-  Camera,
-  X
+  X,
+  Tag
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -383,7 +377,9 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                             <p className="font-black text-slate-900">{item.name}</p>
                             <div className="flex gap-1 mt-1">
                               {item.category && <Badge variant="secondary" className="text-[8px] uppercase px-1 bg-slate-100 text-slate-500 border-none">{item.category}</Badge>}
-                              {item.dietary?.map((d: string) => <Badge key={d} variant="outline" className="text-[8px] uppercase px-1">{d}</Badge>}
+                              {item.dietary?.map((d: string) => (
+                                <Badge key={d} variant="outline" className="text-[8px] uppercase px-1">{d}</Badge>
+                              ))}
                             </div>
                           </div>
                         </div>
