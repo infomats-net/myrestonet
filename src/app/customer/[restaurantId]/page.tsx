@@ -24,7 +24,7 @@ import {
   SheetTrigger, 
   SheetFooter
 } from '@/components/ui/sheet';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -184,7 +184,6 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         updatedAt: new Date().toISOString()
       });
       
-      // Update loyalty points (1 point per dollar)
       await updateDoc(profileRef!, {
         loyaltyPoints: (profile?.loyaltyPoints || 0) + Math.floor(subtotal),
         updatedAt: serverTimestamp()
@@ -247,6 +246,9 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       <Dialog open={!!customizingItem} onOpenChange={() => setCustomizingItem(null)}>
         <DialogContent className="rounded-[2.5rem] max-w-2xl overflow-hidden p-0">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Customize {customizingItem?.name}</DialogTitle>
+          </DialogHeader>
           <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
             <div className="w-full md:w-1/2 bg-slate-50 border-r overflow-y-auto no-scrollbar p-8">
               <div className="relative">
@@ -287,7 +289,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
 
       <Sheet open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
         <SheetContent className="w-full sm:max-w-md rounded-l-[3rem] p-8 space-y-8 flex flex-col">
-          <SheetHeader><SheetTitle className="text-3xl font-black">Your Order</SheetTitle></SheetHeader>
+          <SheetHeader><SheetTitle className="text-3xl font-black">Your Cart</SheetTitle></SheetHeader>
           <div className="flex-1 overflow-y-auto no-scrollbar space-y-6">
             {cart.map(item => (
               <div key={item.uniqueId} className="flex justify-between items-start border-b pb-4">

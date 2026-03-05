@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -203,7 +202,45 @@ export default function PartnersPage() {
         <Dialog open={isNewDialogOpen} onOpenChange={setIsNewDialogOpen}>
           <DialogTrigger asChild><Button className="rounded-2xl h-12 shadow-xl"><Plus className="mr-2" /> Add Partner</Button></DialogTrigger>
           <DialogContent className="rounded-[2.5rem] p-10">
-            {/* Form Content Omitted - logic maintained but mock values removed */}
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-black">Add Marketing Partner</DialogTitle>
+              <DialogDescription>Create a new reseller account with specific regional commission rates.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-6 py-6">
+              <div className="space-y-2">
+                <Label>Partner Name</Label>
+                <Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="e.g. Asia Growth Partners" className="h-12 rounded-xl" />
+              </div>
+              <div className="space-y-2">
+                <Label>Primary Region (Country)</Label>
+                <Select value={form.country} onValueChange={v => setForm({...form, country: v})}>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {WORLD_COUNTRIES.map(c => <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Admin Email</Label>
+                  <Input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className={cn("h-12 rounded-xl", emailInUse && "border-destructive")} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Commission (%)</Label>
+                  <Input type="number" value={form.commissionRate} onChange={e => setForm({...form, commissionRate: e.target.value})} className="h-12 rounded-xl" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Temporary Password</Label>
+                <Input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} className="h-12 rounded-xl" />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleCreatePartner} disabled={loading || emailInUse}>
+                {loading ? <Loader2 className="animate-spin mr-2" /> : <Plus className="mr-2" />}
+                Register Partner
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -271,6 +308,42 @@ export default function PartnersPage() {
           </table>
         </div>
       </Card>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="rounded-[2.5rem] p-10">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black">Edit Partner Details</DialogTitle>
+            <DialogDescription>Update regional and commission information for this partner.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-6">
+            <div className="space-y-2">
+              <Label>Partner Name</Label>
+              <Input value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="h-12 rounded-xl" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Region</Label>
+                <Select value={editForm.country} onValueChange={v => setEditForm({...editForm, country: v})}>
+                  <SelectTrigger className="h-12 rounded-xl"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {WORLD_COUNTRIES.map(c => <SelectItem key={c.code} value={c.name}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Commission (%)</Label>
+                <Input type="number" value={editForm.commissionRate} onChange={e => setEditForm({...editForm, commissionRate: e.target.value})} className="h-12 rounded-xl" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="w-full h-14 rounded-2xl font-black text-lg" onClick={handleUpdatePartner} disabled={loading}>
+              {loading ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
