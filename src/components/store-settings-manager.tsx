@@ -66,6 +66,14 @@ export function StoreSettingsManager({ restaurantId }: { restaurantId: string })
     }
   };
 
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Value Copied",
+      description: "Text added to clipboard.",
+    });
+  };
+
   const handleGenerateSeo = async () => {
     if (!restaurant) return;
     setGeneratingSeo(true);
@@ -155,14 +163,20 @@ export function StoreSettingsManager({ restaurantId }: { restaurantId: string })
                         <div className="space-y-4">
                           <p className="text-xs font-bold text-primary uppercase tracking-[0.2em]">Step 1: Add A Records</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center group cursor-pointer hover:bg-white/10 transition-colors">
+                            <div 
+                              onClick={() => handleCopy('199.36.158.100')}
+                              className="p-4 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center group cursor-pointer hover:bg-white/10 transition-colors"
+                            >
                               <div className="space-y-1">
                                 <span className="text-[10px] opacity-40 uppercase font-black">Type: A</span>
                                 <p className="font-mono text-sm">199.36.158.100</p>
                               </div>
                               <Copy className="h-3.5 w-3.5 opacity-0 group-hover:opacity-40 transition-opacity" />
                             </div>
-                            <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center group cursor-pointer hover:bg-white/10 transition-colors">
+                            <div 
+                              onClick={() => handleCopy('199.36.158.95')}
+                              className="p-4 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center group cursor-pointer hover:bg-white/10 transition-colors"
+                            >
                               <div className="space-y-1">
                                 <span className="text-[10px] opacity-40 uppercase font-black">Type: A</span>
                                 <p className="font-mono text-sm">199.36.158.95</p>
@@ -174,7 +188,10 @@ export function StoreSettingsManager({ restaurantId }: { restaurantId: string })
 
                         <div className="space-y-4">
                           <p className="text-xs font-bold text-amber-400 uppercase tracking-[0.2em]">Step 2: Verification TXT Record</p>
-                          <div className="p-4 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center group cursor-pointer hover:bg-white/10 transition-colors">
+                          <div 
+                            onClick={() => handleCopy(`firebase-verification-v1-restaurant-${restaurantId}`)}
+                            className="p-4 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center group cursor-pointer hover:bg-white/10 transition-colors"
+                          >
                             <div className="space-y-1">
                               <span className="text-[10px] opacity-40 uppercase font-black">Type: TXT (Host: _firebase)</span>
                               <p className="font-mono text-xs truncate max-w-[250px]">firebase-verification-v1-restaurant-{restaurantId}</p>
