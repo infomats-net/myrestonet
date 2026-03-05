@@ -17,7 +17,8 @@ import {
   ShieldCheck, 
   Star,
   Zap,
-  Clock
+  Clock,
+  XCircle
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -41,7 +42,7 @@ const DietaryBadges = ({ item }: { item: any }) => {
   return (
     <div className="flex flex-wrap gap-1 mt-2">
       {item.dietary.includes('veg') && <Leaf className="h-3 w-3 text-emerald-500" title="Vegetarian" />}
-      {item.dietary.includes('vegan') && <div className="flex gap-0.5"><Leaf className="h-3 w-3 text-emerald-500" /><Leaf className="h-3 w-3 text-emerald-500" /></div>}
+      {item.dietary.includes('vegan') && <div className="flex gap-0.5"><Leaf className="h-3 w-3 text-emerald-500" title="Vegan" /><Leaf className="h-3 w-3 text-emerald-500" /></div>}
       {item.dietary.includes('gf') && <WheatOff className="h-3 w-3 text-amber-600" title="Gluten Free" />}
       {item.dietary.includes('spicy') && <Flame className="h-3 w-3 text-rose-500" title="Spicy" />}
       {item.dietary.includes('halal') && <ShieldCheck className="h-3 w-3 text-blue-500" title="Halal" />}
@@ -98,7 +99,7 @@ export function MenuStyle1({ menus, allMenuItems, currencySymbol, theme, addToCa
 
                       {item.isCombo && (
                         <div className="absolute top-14 left-4 bg-blue-500 text-white px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1.5">
-                          <Zap className="h-3 w-3 fill-current" /> Meal Deal
+                          <Zap className="h-3 w-2 fill-current" /> Combo
                         </div>
                       )}
 
@@ -181,6 +182,12 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
                         </div>
                       )}
 
+                      {item.isCombo && (
+                        <div className="absolute top-2 right-2 bg-blue-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase shadow-lg flex items-center gap-1">
+                          <Zap className="h-2 w-2 fill-current" /> Combo
+                        </div>
+                      )}
+
                       <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent flex justify-between items-end">
                         <div className="flex flex-col">
                           {quantity > 0 && <span className="text-[9px] text-primary font-black uppercase mb-1" style={{ color: theme.primary }}>Added ({quantity})</span>}
@@ -195,7 +202,7 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
                           onClick={() => addToCart(item)}
                           disabled={isOutOfStock}
                         >
-                          {isOutOfStock ? <XCircle /> : (quantity > 0 ? <span className="text-[10px] font-black">+{quantity}</span> : <ChevronRight />)}
+                          {isOutOfStock ? <XCircle className="h-4 w-4" /> : (quantity > 0 ? <span className="text-[10px] font-black">+{quantity}</span> : <ChevronRight className="h-4 w-4" />)}
                         </Button>
                       </div>
                     </div>
@@ -216,12 +223,6 @@ export function MenuStyle2({ menus, allMenuItems, currencySymbol, theme, addToCa
     </div>
   );
 }
-
-const XCircle = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-    <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
-  </svg>
-);
 
 /**
  * Style 3: Category Tabs
@@ -269,6 +270,7 @@ export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCa
                       <div className="w-32 h-32 rounded-2xl overflow-hidden shrink-0 shadow-lg relative">
                         <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/300/300`} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={item.name} />
                         {item.isPopular && <div className="absolute top-2 left-2 bg-amber-400 p-1 rounded-lg text-white"><Star className="h-3 w-3 fill-current" /></div>}
+                        {item.isCombo && <div className="absolute top-2 right-2 bg-blue-500 p-1 rounded-lg text-white"><Zap className="h-3 w-3 fill-current" /></div>}
                       </div>
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
@@ -294,7 +296,7 @@ export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCa
                           {isOutOfStock ? "Out of Stock" : (quantity > 0 ? (
                             <><CheckCircle2 className="h-4 w-4" /> Added ({quantity})</>
                           ) : (
-                            <><PlusCircle className="h-4 w-4" /> Add To Order</>
+                            <><LayoutGrid className="h-4 w-4" /> Add To Order</>
                           ))}
                         </Button>
                       </div>
@@ -311,14 +313,6 @@ export function MenuStyle3({ menus, allMenuItems, currencySymbol, theme, addToCa
   );
 }
 
-function PlusCircle({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
-    </svg>
-  );
-}
-
 /**
  * Style 4: Modern Minimal
  */
@@ -327,7 +321,7 @@ export function MenuStyle4({ menus, allMenuItems, currencySymbol, theme, addToCa
     <div className="max-w-4xl mx-auto px-6 py-10 space-y-24">
       <div className="text-center">
         <Badge variant="outline" className="px-4 py-1 rounded-full mb-4 border-slate-200 font-bold uppercase text-[9px] tracking-[0.3em]">Signature Selection</Badge>
-        <h2 className="text-5xl font-light italic serif" style={{ color: theme.text, fontFamily: 'serif' }}>The Culinary Journey</h2>
+        <h2 className="text-5xl font-light italic" style={{ color: theme.text, fontFamily: 'serif' }}>The Culinary Journey</h2>
       </div>
 
       {menus?.map(menu => {
@@ -354,6 +348,7 @@ export function MenuStyle4({ menus, allMenuItems, currencySymbol, theme, addToCa
                       <div className="aspect-[4/5] rounded-lg overflow-hidden grayscale group-hover:grayscale-0 transition-all duration-700 relative">
                         <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/500`} className="w-full h-full object-cover" alt={item.name} />
                         {item.isPopular && <div className="absolute top-2 right-2 bg-white/80 p-1.5 rounded-lg"><Star className="h-3 w-3 text-amber-500 fill-current" /></div>}
+                        {item.isCombo && <div className="absolute bottom-2 left-2 bg-blue-500/90 text-white px-2 py-0.5 rounded text-[8px] font-black">COMBO</div>}
                       </div>
                     </div>
                     <div className="md:col-span-2 space-y-4">

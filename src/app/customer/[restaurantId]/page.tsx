@@ -34,7 +34,8 @@ import {
   WheatOff,
   ShieldCheck,
   Zap,
-  Sparkles
+  Sparkles,
+  AlertTriangle
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -78,6 +79,19 @@ const DIETARY_FILTERS = [
   { id: 'halal', label: 'Halal', icon: ShieldCheck },
   { id: 'spicy', label: 'Spicy', icon: Flame },
 ];
+
+const DietaryIcons = ({ dietary }: { dietary?: string[] }) => {
+  if (!dietary || dietary.length === 0) return null;
+  return (
+    <div className="flex gap-1.5">
+      {dietary.includes('veg') && <Leaf className="h-3 w-3 text-emerald-500" />}
+      {dietary.includes('vegan') && <div className="flex gap-0.5"><Leaf className="h-3 w-3 text-emerald-500" /><Leaf className="h-3 w-3 text-emerald-500" /></div>}
+      {dietary.includes('gf') && <WheatOff className="h-3 w-3 text-amber-600" />}
+      {dietary.includes('spicy') && <Flame className="h-3 w-3 text-rose-500" />}
+      {dietary.includes('halal') && <ShieldCheck className="h-3 w-3 text-blue-500" />}
+    </div>
+  );
+};
 
 export default function CustomerStorefront({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = use(params);
@@ -183,7 +197,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   }, [allMenuItems, searchTerm, activeDietaryFilters]);
 
   const popularItems = useMemo(() => {
-    return filteredItems.filter(i => i.isPopular && !i.isOutOfStock);
+    return filteredItems.filter(i => i.isPopular);
   }, [filteredItems]);
 
   const addToCart = (item: any) => {
@@ -489,19 +503,53 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
                   </div>
                   <div className="flex gap-6 overflow-x-auto no-scrollbar pb-6 px-2 -mx-2">
                     {popularItems.map(item => (
-                      <Card key={item.id} className="min-w-[280px] rounded-[2rem] border-none shadow-xl overflow-hidden flex flex-col group cursor-pointer" onClick={() => addToCart(item)}>
+                      <Card key={item.id} className={cn(
+                        "min-w-[280px] rounded-[2rem] border-none shadow-xl overflow-hidden flex flex-col group cursor-pointer relative",
+                        item.isOutOfStock && "opacity-60"
+                      )} onClick={() => !item.isOutOfStock && addToCart(item)}>
                         <div className="h-40 relative">
                           <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/400/300`} className="w-full h-full object-cover" alt={item.name} />
-                          <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full font-black text-sm">
-                            {currencySymbol}{item.specialPrice || item.price}
+                          
+                          <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full font-black text-sm shadow-md">
+                            {item.specialPrice ? (
+                              <div className="flex flex-col items-end">
+                                <span className="text-[8px] line-through text-slate-400">{currencySymbol}{item.price}</span>
+                                <span className="text-rose-600">{currencySymbol}{item.specialPrice}</span>
+                              </div>
+                            ) : (
+                              <span>{currencySymbol}{item.price}</span>
+                            )}
                           </div>
+
+                          {item.isCombo && (
+                            <div className="absolute top-3 left-3 bg-blue-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest flex items-center gap-1 shadow-lg">
+                              <Zap className="h-2 w-2 fill-current" /> Combo
+                            </div>
+                          )}
+
+                          {item.isOutOfStock && (
+                            <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px] flex items-center justify-center">
+                              <Badge className="bg-white text-black font-black uppercase text-[10px] px-4 py-1 rounded-lg">Sold Out</Badge>
+                            </div>
+                          )}
                         </div>
                         <CardContent className="p-5 flex-1 flex flex-col justify-between">
                           <div>
-                            <h4 className="font-bold text-slate-900 leading-tight">{item.name}</h4>
+                            <div className="flex justify-between items-start gap-2">
+                              <h4 className="font-bold text-slate-900 leading-tight line-clamp-1">{item.name}</h4>
+                              <DietaryIcons dietary={item.dietary} />
+                            </div>
                             <p className="text-[10px] text-slate-400 mt-1 uppercase font-black tracking-widest">{item.category}</p>
                           </div>
-                          <Button variant="ghost" size="sm" className="w-full mt-4 h-9 rounded-xl font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/5" style={{ color: theme.primary }}>Add To Order</Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            disabled={item.isOutOfStock}
+                            className="w-full mt-4 h-9 rounded-xl font-black text-[10px] uppercase tracking-widest text-primary hover:bg-primary/5" 
+                            style={{ color: theme.primary }}
+                          >
+                            {item.isOutOfStock ? "Unavailable" : "Add To Order"}
+                          </Button>
                         </CardContent>
                       </Card>
                     ))}
