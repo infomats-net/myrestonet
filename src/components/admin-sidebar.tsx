@@ -84,7 +84,7 @@ export function AdminSidebar() {
                     <MessageSquare className="text-blue-600" />
                     <span>Support Tickets</span>
                   </Link>
-                </SidebarMenuItem>
+                </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Partners" isActive={pathname === "/super-admin/partners"}>
