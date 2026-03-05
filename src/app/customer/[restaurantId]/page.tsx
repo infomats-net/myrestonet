@@ -1,72 +1,37 @@
+
 "use client";
 
 import { use, useState, useEffect, useMemo } from 'react';
 import { useFirestore, useDoc, useMemoFirebase, useFirebase } from '@/firebase';
-import { doc, collection, addDoc, getDocs, query, orderBy } from 'firebase/firestore';
-import { signInAnonymously } from 'firebase/auth';
+import { doc, collection, addDoc, getDocs, updateDoc, arrayUnion, arrayRemove, query, where, serverTimestamp } from 'firebase/firestore';
 import { 
   Loader2, 
-  UtensilsCrossed, 
-  MapPin, 
   ShoppingBag, 
-  Clock, 
-  Star, 
-  Info, 
-  ChevronRight, 
-  Quote, 
-  Mail, 
-  CheckCircle2,
-  User,
-  Map as MapIcon,
-  CalendarDays,
-  Menu as MenuIcon,
-  X,
-  Maximize2,
-  Image as ImageIcon,
-  Search,
-  Filter,
-  Leaf,
-  Flame,
-  WheatOff,
-  ShieldCheck,
-  Zap,
+  Leaf, 
+  Flame, 
+  WheatOff, 
+  ShieldCheck, 
   Sparkles,
-  AlertTriangle,
-  Tag,
-  Plus,
-  Minus,
-  Sparkle,
-  ArrowUpCircle,
-  TrendingUp,
-  History
+  Heart,
+  UserCircle
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   Sheet, 
   SheetContent, 
   SheetHeader, 
   SheetTitle, 
   SheetTrigger, 
-  SheetFooter,
-  SheetDescription 
+  SheetFooter
 } from '@/components/ui/sheet';
-import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogHeader, DialogFooter } from '@/components/ui/dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { checkIsRestaurantOpen } from '@/lib/operating-hours';
-import { generateEmailContent } from '@/ai/flows/generate-email-content';
 import { getSmartRecommendations } from '@/ai/flows/smart-recommendations';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
-import { MenuStyle1, MenuStyle2, MenuStyle3, MenuStyle4 } from '@/components/menu-layouts';
+import { MenuStyle2 } from '@/components/menu-layouts';
 
 type AddOn = {
   name: string;
@@ -83,8 +48,6 @@ type CartItem = {
   discountedPrice?: number;
 };
 
-const DEFAULT_SECTION_ORDER = ['navbar', 'siteBanner', 'hero', 'welcomeCard', 'about', 'menuList', 'gallery', 'testimonials', 'map', 'contact', 'bookingCTA'];
-
 const DIETARY_FILTERS = [
   { id: 'veg', label: 'Vegetarian', icon: Leaf },
   { id: 'vegan', label: 'Vegan', icon: Leaf },
@@ -96,16 +59,12 @@ const DIETARY_FILTERS = [
 export default function CustomerStorefront({ params }: { params: Promise<{ restaurantId: string }> }) {
   const resolvedParams = use(params);
   const restaurantId = resolvedParams.restaurantId;
-  const { auth, firestore } = useFirebase();
+  const { auth, firestore, user } = useFirebase();
   const { toast } = useToast();
 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<string>('cod');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [orderComplete, setOrderComplete] = useState(false);
-  const [lastOrderNumber, setLastOrderNumber] = useState<string | null>(null);
-  const [isOpen, setIsOpen] = useState<boolean | null>(null);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [activeDietaryFilters, setActiveDietaryFilters] = useState<string[]>([]);
@@ -115,36 +74,23 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
   const [aiRecs, setAiRecs] = useState<any[]>([]);
   const [loadingAI, setLoadingAI] = useState(false);
 
-  const [customerInfo, setCustomerInfo] = useState({ name: '', email: '', phone: '', address: '' });
-
   const restaurantRef = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return doc(firestore, 'restaurants', restaurantId);
   }, [firestore, restaurantId]);
   const { data: restaurant, isLoading: loadingRes } = useDoc(restaurantRef);
 
+  const profileRef = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return doc(firestore, 'customerProfiles', user.uid);
+  }, [firestore, user?.uid]);
+  const { data: profile } = useDoc(profileRef);
+
   const designRef = useMemoFirebase(() => {
     if (!firestore || !restaurantId) return null;
     return doc(firestore, 'restaurants', restaurantId, 'design', 'settings');
   }, [firestore, restaurantId]);
   const { data: designSettings } = useDoc(designRef);
-
-  const dietaryTagsRef = useMemoFirebase(() => {
-    if (!firestore || !restaurantId) return null;
-    return doc(firestore, 'restaurants', restaurantId, 'config', 'dietaryTags');
-  }, [firestore, restaurantId]);
-  const { data: customTagsDoc } = useDoc(dietaryTagsRef);
-  const customTags = customTagsDoc?.list || [];
-
-  const ALL_DIETARY = useMemo(() => {
-    const list = [...DIETARY_FILTERS];
-    customTags.forEach((tag: string) => {
-      if (!list.some(f => f.id === tag.toLowerCase())) {
-        list.push({ id: tag.toLowerCase(), label: tag, icon: Sparkles });
-      }
-    });
-    return list;
-  }, [customTags]);
 
   const [allMenuItems, setAllMenuItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
@@ -177,33 +123,26 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     });
   }, [allMenuItems, searchTerm, activeDietaryFilters]);
 
-  useEffect(() => {
-    if (customizingItem?.enableAIRecommendations && cart.length > 0) {
-      setLoadingAI(true);
-      getSmartRecommendations({
-        cartItems: cart.map(i => i.name),
-        availableMenu: allMenuItems.map(i => ({ id: i.id, name: i.name, category: i.category, description: i.description })),
-      }).then(res => {
-        const items = allMenuItems.filter(i => res.recommendedIds.includes(i.id));
-        setAiRecs(items);
-      }).finally(() => setLoadingAI(false));
+  const toggleFavorite = async (itemId: string) => {
+    if (!user) {
+      toast({ title: "Account Required", description: "Please sign in to save favorites." });
+      return;
     }
-  }, [customizingItem, cart, allMenuItems]);
+    const isFav = profile?.favoriteMenuItemIds?.includes(itemId);
+    try {
+      await updateDoc(profileRef!, {
+        favoriteMenuItemIds: isFav ? arrayRemove(itemId) : arrayUnion(itemId),
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: isFav ? "Removed from favorites" : "Added to favorites" });
+    } catch (e) {}
+  };
 
   const addToCart = (item: any, quantity = 1) => {
     if (item.isOutOfStock) return;
-
-    let unitPrice = item.specialPrice || item.price;
-    if (item.quantityDiscounts) {
-      const applicable = item.quantityDiscounts
-        .filter((d: any) => quantity >= d.minQty)
-        .sort((a: any, b: any) => b.minQty - a.minQty)[0];
-      if (applicable) unitPrice = applicable.discountPrice;
-    }
-
     const uniqueId = `${item.id}-${activeAddOns.map(a => a.name).sort().join('|')}`;
     const addOnsTotal = activeAddOns.reduce((s, a) => s + a.price, 0);
-    const finalPrice = unitPrice + addOnsTotal;
+    const finalPrice = (item.specialPrice || item.price) + addOnsTotal;
 
     setCart(prev => {
       const existing = prev.find(i => i.uniqueId === uniqueId);
@@ -215,11 +154,46 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     
     setCustomizingItem(null);
     setActiveAddOns([]);
-    setAiRecs([]);
     toast({ title: "Added to Cart" });
   };
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+  const handleCheckout = async () => {
+    if (!user) {
+      toast({ title: "Account Required", description: "Sign in to complete your order." });
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const orderRef = collection(firestore!, 'orders');
+      await addDoc(orderRef, {
+        customerId: user.uid,
+        customerName: profile?.firstName + " " + profile?.lastName,
+        customerEmail: profile?.email,
+        restaurantId,
+        items: cart,
+        totalAmount: subtotal,
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      
+      // Update loyalty points (1 point per dollar)
+      await updateDoc(profileRef!, {
+        loyaltyPoints: (profile?.loyaltyPoints || 0) + Math.floor(subtotal),
+        updatedAt: serverTimestamp()
+      });
+
+      setCart([]);
+      setIsCheckoutOpen(false);
+      toast({ title: "Order Placed!", description: "Check your history for updates." });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Checkout failed" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   if (loadingRes || loadingItems) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
 
@@ -227,17 +201,28 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
     <div className="min-h-screen pb-24 scroll-smooth" style={{ backgroundColor: designSettings?.theme?.background || '#fff' }}>
       <nav className="sticky top-0 z-[100] w-full border-b backdrop-blur-lg h-20 flex items-center bg-white/95 px-6">
         <div className="max-w-7xl mx-auto w-full flex justify-between items-center">
-          <h1 className="text-xl font-black">{restaurant?.name}</h1>
-          <Button variant="ghost" className="relative" onClick={() => setIsCheckoutOpen(true)}>
-            <ShoppingBag className="h-6 w-6" />
-            {cart.length > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">{cart.length}</Badge>}
-          </Button>
+          <Link href={`/customer/${restaurantId}`} className="text-xl font-black">{restaurant?.name}</Link>
+          <div className="flex items-center gap-4">
+            {user ? (
+              <Button variant="ghost" asChild className="rounded-full h-10 px-4 font-bold text-primary bg-primary/5">
+                <Link href="/customer/account"><UserCircle className="mr-2 h-5 w-5" /> Account</Link>
+              </Button>
+            ) : (
+              <Button variant="ghost" asChild className="rounded-full h-10 px-4 font-bold">
+                <Link href="/auth/login">Sign In</Link>
+              </Button>
+            )}
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-slate-50" onClick={() => setIsCheckoutOpen(true)}>
+              <ShoppingBag className="h-5 w-5" />
+              {cart.length > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">{cart.length}</Badge>}
+            </Button>
+          </div>
         </div>
       </nav>
 
       <div id="menu-list" className="py-20 max-w-6xl mx-auto px-6">
         <div className="mb-12 flex gap-4 overflow-x-auto no-scrollbar pb-2">
-          {ALL_DIETARY.map(f => (
+          {DIETARY_FILTERS.map(f => (
             <Button key={f.id} variant="outline" className={cn("rounded-full gap-2 shrink-0 h-10 px-6 font-bold transition-all", activeDietaryFilters.includes(f.label) && "bg-primary text-white border-primary shadow-lg")} onClick={() => setActiveDietaryFilters(prev => prev.includes(f.label) ? prev.filter(x => x !== f.label) : [...prev, f.label])}>
               <f.icon className="h-4 w-4" /> {f.label}
             </Button>
@@ -259,7 +244,12 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
         <DialogContent className="rounded-[2.5rem] max-w-2xl overflow-hidden p-0">
           <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
             <div className="w-full md:w-1/2 bg-slate-50 border-r overflow-y-auto no-scrollbar p-8">
-              <img src={customizingItem?.imageUrl || `https://picsum.photos/seed/${customizingItem?.id}/400/400`} className="w-full aspect-square object-cover rounded-2xl shadow-lg mb-6" alt="" />
+              <div className="relative">
+                <img src={customizingItem?.imageUrl || `https://picsum.photos/seed/${customizingItem?.id}/400/400`} className="w-full aspect-square object-cover rounded-2xl shadow-lg mb-6" alt="" />
+                <Button variant="ghost" size="icon" className="absolute top-4 right-4 rounded-full bg-white/80 backdrop-blur-md shadow-md" onClick={() => toggleFavorite(customizingItem?.id)}>
+                  <Heart className={cn("h-5 w-5", profile?.favoriteMenuItemIds?.includes(customizingItem?.id) ? "text-rose-500 fill-current" : "text-slate-400")} />
+                </Button>
+              </div>
               <h2 className="text-2xl font-black mb-2">{customizingItem?.name}</h2>
               <p className="text-slate-500 text-sm mb-6">{customizingItem?.description}</p>
               
@@ -278,44 +268,7 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             </div>
 
             <div className="w-full md:w-1/2 p-8 flex flex-col justify-between overflow-y-auto no-scrollbar">
-              <div className="space-y-8">
-                {customizingItem?.upsellIds?.length > 0 && (
-                  <div className="space-y-4 animate-in slide-in-from-right duration-500">
-                    <h3 className="font-black text-xs uppercase tracking-widest text-primary flex items-center gap-2">
-                      <ArrowUpCircle className="h-4 w-4" /> Recommendation
-                    </h3>
-                    {allMenuItems.filter(i => customizingItem.upsellIds.includes(i.id)).map(item => (
-                      <div key={item.id} className="flex items-center justify-between p-4 bg-primary/5 rounded-2xl border border-primary/10">
-                        <div className="flex items-center gap-3">
-                          <img src={item.imageUrl} className="h-10 w-10 rounded-lg object-cover" alt="" />
-                          <span className="font-bold text-sm">{item.name}</span>
-                        </div>
-                        <Button variant="ghost" size="sm" className="font-black text-xs text-primary" onClick={() => addToCart(item)}>Add • ${item.price}</Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {loadingAI ? (
-                  <div className="flex items-center gap-2 text-slate-400 text-xs font-bold animate-pulse"><Loader2 className="h-3 w-3 animate-spin" /> AI is thinking...</div>
-                ) : aiRecs.length > 0 && (
-                  <div className="space-y-4 animate-in fade-in duration-700">
-                    <h3 className="font-black text-xs uppercase tracking-widest text-amber-600 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4" /> Frequently Paired
-                    </h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {aiRecs.map(item => (
-                        <div key={item.id} className="p-3 bg-slate-50 rounded-xl text-center border group cursor-pointer hover:border-primary transition-all" onClick={() => addToCart(item)}>
-                          <p className="font-bold text-[10px] mb-1 truncate">{item.name}</p>
-                          <span className="font-black text-xs text-primary">${item.price}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="pt-8 border-t mt-8 space-y-4">
+              <div className="pt-8 border-t mt-auto space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-400 font-bold uppercase text-[10px]">Total Price</span>
                   <span className="text-2xl font-black text-primary">${((customizingItem?.specialPrice || customizingItem?.price || 0) + activeAddOns.reduce((s, a) => s + a.price, 0)).toFixed(2)}</span>
@@ -342,9 +295,10 @@ export default function CustomerStorefront({ params }: { params: Promise<{ resta
             ))}
           </div>
           <div className="bg-slate-900 text-white rounded-3xl p-8 space-y-4 shadow-2xl">
-            <div className="flex justify-between text-sm opacity-60 font-bold"><span>Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
             <div className="flex justify-between text-2xl font-black border-t border-white/10 pt-4"><span>Total</span><span>${subtotal.toFixed(2)}</span></div>
-            <Button className="w-full h-16 rounded-2xl font-black text-xl mt-4" style={{ backgroundColor: designSettings?.theme?.primary }}>Checkout</Button>
+            <Button onClick={handleCheckout} disabled={isProcessing || cart.length === 0} className="w-full h-16 rounded-2xl font-black text-xl mt-4" style={{ backgroundColor: designSettings?.theme?.primary }}>
+              {isProcessing ? <Loader2 className="animate-spin" /> : "Complete Order"}
+            </Button>
           </div>
         </SheetContent>
       </Sheet>
