@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useRef, useEffect } from 'react';
@@ -32,7 +31,8 @@ import {
   WheatOff,
   ShieldCheck,
   AlertTriangle,
-  Camera
+  Camera,
+  X
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -43,7 +43,7 @@ import {
   DialogTitle 
 } from "@/components/ui/dialog";
 import { useFirebase, useFirestore, useCollection, useMemoFirebase, useDoc } from '@/firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, setDoc, arrayUnion } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, setDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useToast } from '@/hooks/use-toast';
 import { generateItemDescription } from '@/ai/flows/generate-item-description';
@@ -199,7 +199,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
         updatedAt: serverTimestamp()
       };
 
-      // 1. Persist the item
       if (editingItemId) {
         await updateDoc(doc(firestore, 'restaurants', restaurantId, 'menus', selectedMenuId, 'items', editingItemId), data);
       } else {
@@ -209,7 +208,6 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
         });
       }
 
-      // 2. Persist the category permanently for this restaurant
       if (itemForm.category.trim()) {
         const catRef = doc(firestore, 'restaurants', restaurantId, 'config', 'menuCategories');
         await setDoc(catRef, {
@@ -225,6 +223,20 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
       toast({ variant: "destructive", title: "Error" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteCategory = async (category: string) => {
+    if (!firestore || !restaurantId || !window.confirm(`Remove "${category}" from saved categories?`)) return;
+    try {
+      const catRef = doc(firestore, 'restaurants', restaurantId, 'config', 'menuCategories');
+      await updateDoc(catRef, {
+        list: arrayRemove(category),
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "Category Removed" });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error Removing Category" });
     }
   };
 
@@ -323,7 +335,7 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                           <div className="relative w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden border group/thumb">
                             {replacingItemId === item.id ? <div className="absolute inset-0 bg-white/80 flex items-center justify-center"><Loader2 className="animate-spin h-5 w-5" /></div> : 
                             <button className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center text-white" onClick={() => { setActiveReplaceItem(item); fileInputRef.current?.click(); }}><RefreshCw className="h-5 w-5" /></button>}
-                            <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-full h-full object-cover" />
+                            <img src={item.imageUrl || `https://picsum.photos/seed/${item.id}/100/100`} className="w-full h-full object-cover" alt={item.name} />
                           </div>
                           <div>
                             <p className="font-black text-slate-900">{item.name}</p>
@@ -403,12 +415,21 @@ export function MenuCatalogEditor({ restaurantId }: { restaurantId: string }) {
                           key={cat} 
                           variant="secondary" 
                           className={cn(
-                            "cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors text-[9px] font-bold uppercase py-1 px-2 border-none",
+                            "cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors text-[9px] font-bold uppercase py-1 px-2 border-none flex items-center gap-1.5",
                             itemForm.category === cat ? "bg-primary text-white" : "bg-slate-100 text-slate-500"
                           )}
                           onClick={() => setItemForm({...itemForm, category: cat})}
                         >
                           {cat}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCategory(cat);
+                            }}
+                            className="hover:text-rose-500 transition-colors"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
                         </Badge>
                       ))}
                     </div>
