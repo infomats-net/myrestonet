@@ -26,8 +26,7 @@ import {
   Palette,
   Settings as SettingsIcon,
   LayoutDashboard,
-  Package,
-  LifeBuoy
+  Package
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from '@/components/ui/input';
@@ -46,7 +45,6 @@ import { RestaurantBilling } from '@/components/restaurant-billing';
 import { PaymentsManager } from '@/components/payments-manager';
 import { StoreSettingsManager } from '@/components/store-settings-manager';
 import { InventoryManager } from '@/components/inventory-manager';
-import { SupportTicketingSystem } from '@/components/support-ticketing-system';
 import { ReservationManager } from '@/components/reservation-manager';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -186,7 +184,6 @@ function DashboardContent() {
           <TabsTrigger value="inventory" className={tabTriggerStyle}><Package className="h-4 w-4" /> <span className="hidden lg:inline">Inventory</span></TabsTrigger>
           <TabsTrigger value="reservations" className={tabTriggerStyle}><CalendarDays className="h-4 w-4" /> <span className="hidden lg:inline">Reservations</span></TabsTrigger>
           <TabsTrigger value="menu" className={tabTriggerStyle}><Utensils className="h-4 w-4" /> <span className="hidden lg:inline">Catalog</span></TabsTrigger>
-          <TabsTrigger value="support" className={tabTriggerStyle}><LifeBuoy className="h-4 w-4" /> <span className="hidden lg:inline">Support</span></TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-8">
@@ -280,10 +277,6 @@ function DashboardContent() {
 
         <TabsContent value="reservations">
           <ReservationManager restaurantId={effectiveRestaurantId!} />
-        </TabsContent>
-
-        <TabsContent value="support">
-          <SupportTicketingSystem restaurantId={effectiveRestaurantId!} />
         </TabsContent>
 
         <TabsContent value="menu">

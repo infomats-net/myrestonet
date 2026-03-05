@@ -44,14 +44,6 @@ service cloud.firestore {
       allow read, write: if isSuperAdmin();
     }
 
-    // Collection Group Access for Global Support Views
-    match /{path=**}/tickets/{ticketId} {
-      allow read, list: if isSuperAdmin();
-    }
-    match /{path=**}/messages/{messageId} {
-      allow read, write: if isSuperAdmin();
-    }
-
     match /countries { allow read: if true; }
     match /states { allow read: if true; }
     match /cities { 
@@ -94,13 +86,6 @@ service cloud.firestore {
         allow read: if hasPermission(restaurantId, "read") || (request.auth != null && request.auth.uid == resource.data.customerId);
         allow update: if hasPermission(restaurantId, "update_settings");
         allow create: if true;
-      }
-
-      match /tickets/{ticketId} {
-        allow read, write: if isRestaurantAdmin(restaurantId) || isSuperAdmin();
-        match /messages/{messageId} {
-          allow read, write: if isRestaurantAdmin(restaurantId) || isSuperAdmin();
-        }
       }
 
       match /gallery/{imageId} {

@@ -10,9 +10,7 @@ import {
   LogOut,
   Settings,
   Bell,
-  Briefcase,
-  LifeBuoy,
-  MessageSquare
+  Briefcase
 } from "lucide-react"
 import {
   Sidebar,
@@ -79,26 +77,10 @@ export function AdminSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Support Tickets" isActive={pathname === "/super-admin/support"}>
-                  <Link href="/super-admin/support">
-                    <MessageSquare className="text-blue-600" />
-                    <span>Support Tickets</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Partners" isActive={pathname === "/super-admin/partners"}>
                   <Link href="/super-admin/partners">
                     <Briefcase />
                     <span>Marketing Partners</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Support Staff" isActive={pathname === "/super-admin/support-staff"}>
-                  <Link href="/super-admin/support">
-                    <LifeBuoy />
-                    <span>Internal Staff</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
