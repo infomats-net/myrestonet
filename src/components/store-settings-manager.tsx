@@ -24,8 +24,7 @@ import {
   Twitter,
   Link as LinkIcon,
   TrendingUp,
-  ChevronRight,
-  Monitor
+  ChevronRight
 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
