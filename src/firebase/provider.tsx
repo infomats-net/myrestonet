@@ -62,8 +62,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const currentUser = auth?.currentUser || null;
     return {
       user: currentUser,
-      // If we have an auth instance, we wait for the first onAuthStateChanged event
-      // unless a user is already cached.
+      // Only set loading to true if we have an auth instance but no immediate current user
       isUserLoading: !currentUser && !!auth,
       userError: null,
     };

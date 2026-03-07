@@ -48,7 +48,7 @@ export function PwaManager() {
             }
           }
         } catch (error) {
-          // Suppress FCM credential errors in dev environment
+          // Suppress FCM credential errors in dev environment to prevent application crashes
           console.warn('PWA Manager: Notification setup skipped or failed.', error);
         }
       };
