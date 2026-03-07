@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from 'react';
@@ -32,9 +31,14 @@ export function PwaManager() {
         try {
           const permission = await Notification.requestPermission();
           if (permission === 'granted') {
-            const token = await getToken(messaging, {
-              vapidKey: 'BIsZ6_v_In... (Your Public VAPID Key here if applicable)'
-            });
+            const vapidKey = 'BIsZ6_v_In... (Your Public VAPID Key here if applicable)';
+            
+            // Skip registration if the VAPID key is still a placeholder
+            if (vapidKey.includes('...')) {
+              return;
+            }
+
+            const token = await getToken(messaging, { vapidKey });
             
             if (token) {
               await updateDoc(doc(firestore, 'users', user.uid), {
@@ -43,7 +47,8 @@ export function PwaManager() {
             }
           }
         } catch (error) {
-          console.error('An error occurred while retrieving token. ', error);
+          // Suppress FCM credential errors in dev environment
+          console.warn('PWA Manager: Notification setup skipped or failed.', error);
         }
       };
 

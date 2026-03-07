@@ -4,6 +4,9 @@ import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, value, ...props }, ref) => {
+    // Prevent React warning by ensuring readOnly if no onChange is provided with value
+    const isReadOnly = value !== undefined && !props.onChange && !props.readOnly;
+    
     return (
       <input
         type={type}
@@ -13,6 +16,7 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         )}
         ref={ref}
         value={value ?? ""}
+        readOnly={isReadOnly}
         {...props}
       />
     )

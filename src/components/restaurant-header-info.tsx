@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useSearchParams } from 'next/navigation';
@@ -6,8 +5,9 @@ import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Utensils, CalendarDays, ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 
 function HeaderContent() {
   const searchParams = useSearchParams();
@@ -15,6 +15,11 @@ function HeaderContent() {
   
   const firestore = useFirestore();
   const { user: authUser } = useUser();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !authUser?.uid) return null;
@@ -37,7 +42,7 @@ function HeaderContent() {
   }, [firestore, effectiveRestaurantId]);
   const { data: designSettings } = useDoc(designRef);
 
-  if (loadingRes) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+  if (!mounted || loadingRes) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
 
   return (
     <div className="flex items-center gap-4 flex-1">
@@ -51,9 +56,9 @@ function HeaderContent() {
         )}
         <div className="min-w-0">
           <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none truncate">
-            {restaurant?.name || 'Untitled'}
+            {restaurant?.name || 'Merchant Panel'}
           </h1>
-          <p className="text-muted-foreground text-[9px] font-bold uppercase tracking-wider mt-0.5">Merchant Dashboard</p>
+          <p className="text-muted-foreground text-[9px] font-bold uppercase tracking-wider mt-0.5">Admin Overview</p>
         </div>
       </div>
       

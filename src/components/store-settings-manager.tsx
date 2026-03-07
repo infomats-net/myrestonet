@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -26,7 +25,8 @@ import {
   Link as LinkIcon,
   TrendingUp,
   ChevronRight,
-  Monitor
+  Monitor,
+  Server as LucideServer
 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -237,14 +237,13 @@ export function StoreSettingsManager({ restaurantId }: { restaurantId: string })
                   </Button>
                 </CardHeader>
                 <CardContent className="p-10 space-y-10">
-                  {/* Google Preview Component */}
                   <div className="bg-slate-50 p-8 rounded-[2rem] border border-slate-100 space-y-2 shadow-inner">
                     <div className="flex items-center gap-2 mb-1">
                       <div className="bg-white w-6 h-6 rounded-full border flex items-center justify-center"><Globe className="h-3 w-3 text-slate-400" /></div>
                       <span className="text-[10px] text-slate-500">https://myrestonet.app › customer › {restaurantId}</span>
                     </div>
                     <h3 className="text-xl text-[#1a0dab] hover:underline cursor-pointer font-medium leading-tight">
-                      {seoForm.metaTitle || restaurant.name || "Restaurant Name"}
+                      {seoForm.metaTitle || restaurant?.name || "Restaurant Name"}
                     </h3>
                     <p className="text-sm text-[#4d5156] leading-relaxed line-clamp-2">
                       {seoForm.metaDescription || "Providing elite culinary experiences. View our menu and book a table online today..."}
@@ -283,7 +282,7 @@ export function StoreSettingsManager({ restaurantId }: { restaurantId: string })
                           placeholder="Add keyword + Enter" 
                           onKeyDown={e => {
                             if (e.key === 'Enter' && (e.target as HTMLInputElement).value) {
-                              setSeoForm({...seoForm, keywords: [...seoForm.keywords, (e.target as HTMLInputElement).value]});
+                              setSeoForm({...seoForm, keywords: [...(seoForm.keywords || []), (e.target as HTMLInputElement).value]});
                               (e.target as HTMLInputElement).value = '';
                             }
                           }}
@@ -334,22 +333,8 @@ export function StoreSettingsManager({ restaurantId }: { restaurantId: string })
                   <h4 className="font-black uppercase text-xs tracking-widest">Global Standards</h4>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed font-medium">
-                  We automatically inject <strong>JSON-LD Schema.org</strong> data into your storefront. This signals to Google that you are a verified <strong>LocalBusiness</strong>, making you eligible for map pins and localized search priority.
+                  We automatically inject <strong>JSON-LD Schema.org</strong> data into your storefront. This signals to Google that you are a verified <strong>LocalBusiness</strong>.
                 </p>
-              </Card>
-
-              <Card className="rounded-[2.5rem] border-none shadow-xl p-8 bg-blue-50 border border-blue-100">
-                <div className="flex items-center gap-3 mb-4">
-                  <Monitor className="h-6 w-6 text-blue-600" />
-                  <h4 className="font-black text-blue-900 uppercase text-xs tracking-widest">Local Ranking Tips</h4>
-                </div>
-                <ul className="space-y-3">
-                  {['Keep opening hours updated', 'Add high-quality gallery photos', 'Link all social media profiles'].map((tip, i) => (
-                    <li key={i} className="flex items-center gap-2 text-[11px] font-bold text-blue-700">
-                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> {tip}
-                    </li>
-                  ))}
-                </ul>
               </Card>
             </div>
           </div>

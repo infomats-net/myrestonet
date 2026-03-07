@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from 'next/link';
@@ -56,7 +55,7 @@ export default function Home() {
             <div className="bg-primary rounded-xl p-2">
               <ShoppingBag className="h-6 w-6 text-white" />
             </div>
-            <span className="text-2xl font-black font-headline tracking-tighter text-primary">MyRestoNet</span>
+            <span className="text-2xl font-black tracking-tighter text-primary">MyRestoNet</span>
           </Link>
           <nav className="flex gap-4 sm:gap-6">
             <Button variant="ghost" asChild className="font-bold text-slate-600">
@@ -75,7 +74,7 @@ export default function Home() {
           <div className="container px-4 md:px-6 mx-auto relative z-10">
             <div className="flex flex-col items-center space-y-8 text-center">
               <div className="space-y-4">
-                <h1 className="text-5xl font-black tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl font-headline leading-tight">
+                <h1 className="text-5xl font-black tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl leading-tight">
                   Taste the World <br/>
                   <span className="text-accent italic">One Order at a Time.</span>
                 </h1>
