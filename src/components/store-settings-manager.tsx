@@ -25,8 +25,7 @@ import {
   Link as LinkIcon,
   TrendingUp,
   ChevronRight,
-  Monitor,
-  Server as LucideServer
+  Monitor
 } from 'lucide-react';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
