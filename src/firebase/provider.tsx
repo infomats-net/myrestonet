@@ -58,10 +58,12 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   messaging,
 }) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>(() => {
-    // Initial state check: if we have a current user, we aren't "loading"
+    // Check for an immediate session if possible
     const currentUser = auth?.currentUser || null;
     return {
       user: currentUser,
+      // If we have an auth instance, we wait for the first onAuthStateChanged event
+      // unless a user is already cached.
       isUserLoading: !currentUser && !!auth,
       userError: null,
     };
