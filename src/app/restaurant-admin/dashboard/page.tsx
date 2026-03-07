@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, Suspense, useEffect } from 'react';
@@ -29,7 +28,7 @@ import {
   Package,
   Settings2
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/dialog";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -70,6 +69,11 @@ function DashboardContent() {
   const firestore = useFirestore();
   const { user: authUser, isUserLoading: authLoading } = useUser();
   const { toast } = useToast();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !authUser?.uid) return null;
@@ -111,10 +115,10 @@ function DashboardContent() {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !authUser) {
+    if (mounted && !authLoading && !authUser) {
       router.push('/auth/login');
     }
-  }, [authLoading, authUser, router]);
+  }, [mounted, authLoading, authUser, router]);
 
   const handleAddReservation = async () => {
     if (!firestore || !effectiveRestaurantId || !resForm.date) return;
@@ -148,7 +152,7 @@ function DashboardContent() {
     }
   };
 
-  if (authLoading) return <LoadingScreen message="Checking authentication..." />;
+  if (!mounted || authLoading) return <LoadingScreen message="Checking authentication..." />;
   if (!authUser) return null; 
   if (loadingProfile) return <LoadingScreen message="Loading user profile..." />;
   

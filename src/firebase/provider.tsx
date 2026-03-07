@@ -57,10 +57,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   auth,
   messaging,
 }) => {
-  const [userAuthState, setUserAuthState] = useState<UserAuthState>({
-    user: null,
-    isUserLoading: true,
-    userError: null,
+  const [userAuthState, setUserAuthState] = useState<UserAuthState>(() => {
+    // Initial state check: if we have a current user, we aren't "loading"
+    const currentUser = auth?.currentUser || null;
+    return {
+      user: currentUser,
+      isUserLoading: !currentUser && !!auth,
+      userError: null,
+    };
   });
 
   useEffect(() => {
@@ -69,8 +73,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       return;
     }
 
-    setUserAuthState({ user: null, isUserLoading: true, userError: null });
-
+    // Subscribe to auth changes
     const unsubscribe = onAuthStateChanged(
       auth,
       (firebaseUser) => {
@@ -112,7 +115,6 @@ export const useFirebase = (): FirebaseServicesAndUser => {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
   
-  // Return dummy fallback values during SSR to prevent crash
   if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth) {
     if (typeof window === 'undefined') {
       return {

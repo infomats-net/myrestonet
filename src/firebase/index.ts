@@ -1,4 +1,3 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -12,7 +11,8 @@ export function initializeFirebase() {
   
   if (!getApps().length) {
     try {
-      firebaseApp = initializeApp();
+      // In development/Studio, we prefer the explicit config to ensure accuracy
+      firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
       firebaseApp = initializeApp(firebaseConfig);
     }
