@@ -58,11 +58,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   messaging,
 }) => {
   const [userAuthState, setUserAuthState] = useState<UserAuthState>(() => {
-    // Check for an immediate session if possible
+    // Check for an immediate session if possible to prevent loading flicker
     const currentUser = auth?.currentUser || null;
     return {
       user: currentUser,
-      // Only set loading to true if we have an auth instance but no immediate current user
       isUserLoading: !currentUser && !!auth,
       userError: null,
     };

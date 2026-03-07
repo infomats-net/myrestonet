@@ -12,18 +12,25 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isPlatformAdmin() {
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+             getUserData().role == role;
+    }
+
+    function isPlatformAdmin() {
+      return hasRole('super_admin');
     }
 
     function isRestaurantAdmin(restaurantId) {
-      let userDoc = /databases/$(database)/documents/users/$(request.auth.uid);
       return isSignedIn() && 
-             exists(userDoc) &&
-             (get(userDoc).data.role == 'restaurant_admin' || get(userDoc).data.role == 'staff') && 
-             get(userDoc).data.restaurantId == restaurantId;
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             (getUserData().role == 'restaurant_admin' || getUserData().role == 'staff') && 
+             getUserData().restaurantId == restaurantId;
     }
 
     function isExistingOwner(ownerIdField) {
@@ -65,7 +72,6 @@ service cloud.firestore {
       }
 
       match /menus/{menuId} {
-        // Allow public read access to menu categories and their items
         allow read: if true;
         allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
         
@@ -110,8 +116,9 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isPlatformAdmin() || (isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'marketing_partner');
-      allow write: if isOwner(userId) || isPlatformAdmin();
+      // Simplified user rules to avoid potential recursion in helper functions
+      allow read: if isSignedIn() && (request.auth.uid == userId || isPlatformAdmin());
+      allow write: if isSignedIn() && (request.auth.uid == userId || isPlatformAdmin());
     }
     
     match /cities/{cityId} {

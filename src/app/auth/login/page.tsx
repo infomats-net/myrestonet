@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -10,10 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { ShoppingBag, Loader2, AlertCircle, Chrome } from 'lucide-react';
 import { useFirebase } from '@/firebase';
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, OAuthProvider, type User } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -37,7 +38,6 @@ export default function LoginPage() {
     } catch (error: any) {
       toast({ variant: "destructive", title: "Login failed", description: error.message });
       setError(error.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -53,51 +53,75 @@ export default function LoginPage() {
       await handleUserRedirect(result.user);
     } catch (error: any) {
       toast({ variant: "destructive", title: "Social Login failed", description: error.message });
-    } finally {
       setLoading(false);
     }
   };
 
-  const handleUserRedirect = async (user: any) => {
+  const handleUserRedirect = async (user: User) => {
     if (!firestore) return;
     const userDocRef = doc(firestore, 'users', user.uid);
-    const userDoc = await getDoc(userDocRef);
     
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      const role = userData.role?.toLowerCase();
+    try {
+      const userDoc = await getDoc(userDocRef);
       
-      toast({ title: "Welcome back", description: `Signed in as ${role?.replace('_', ' ')}.` });
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const role = userData.role?.toLowerCase();
+        
+        toast({ title: "Welcome back", description: `Signed in as ${role?.replace('_', ' ')}.` });
 
-      if (role === 'super_admin') router.push('/super-admin/dashboard');
-      else if (role === 'marketing_partner') router.push('/partner-admin/dashboard');
-      else if (role === 'restaurant_admin' || role === 'staff') router.push('/restaurant-admin/dashboard');
-      else router.push(`/customer/account`);
-    } else {
-      // Create a default customer profile if none exists
-      const customerData = {
-        id: user.uid,
-        email: user.email,
-        role: 'customer',
-        createdAt: serverTimestamp(),
-      };
-      await setDoc(userDocRef, customerData);
-      
-      const profileRef = doc(firestore, 'customerProfiles', user.uid);
-      await setDoc(profileRef, {
-        id: user.uid,
-        firebaseAuthUid: user.uid,
-        email: user.email,
-        firstName: user.displayName?.split(' ')[0] || 'User',
-        lastName: user.displayName?.split(' ')[1] || '',
-        loyaltyPoints: 0,
-        walletBalance: 0,
-        referralCode: Math.random().toString(36).substring(7).toUpperCase(),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+        if (role === 'super_admin') router.push('/super-admin/dashboard');
+        else if (role === 'marketing_partner') router.push('/partner-admin/dashboard');
+        else if (role === 'restaurant_admin' || role === 'staff') router.push('/restaurant-admin/dashboard');
+        else router.push(`/customer/account`);
+      } else {
+        // --- Non-blocking Initial Account Creation ---
+        const userProfileData = {
+          id: user.uid,
+          email: user.email,
+          role: 'customer',
+          createdAt: serverTimestamp(),
+        };
 
-      router.push('/customer/account');
+        const profileData = {
+          id: user.uid,
+          firebaseAuthUid: user.uid,
+          email: user.email,
+          firstName: user.displayName?.split(' ')[0] || 'User',
+          lastName: user.displayName?.split(' ')[1] || '',
+          loyaltyPoints: 0,
+          walletBalance: 0,
+          referralCode: Math.random().toString(36).substring(7).toUpperCase(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        // Fire and forget (handled by catch)
+        setDoc(userDocRef, userProfileData).catch(err => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'create',
+            requestResourceData: userProfileData
+          }));
+        });
+
+        const profileRef = doc(firestore, 'customerProfiles', user.uid);
+        setDoc(profileRef, profileData, { merge: true }).catch(err => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: profileRef.path,
+            operation: 'write',
+            requestResourceData: profileData
+          }));
+        });
+
+        router.push('/customer/account');
+      }
+    } catch (e: any) {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'get'
+      }));
+      setLoading(false);
     }
   };
 

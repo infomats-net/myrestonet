@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Utensils, CalendarDays, ExternalLink, Loader2, Globe } from 'lucide-react';
+import { Utensils, CalendarDays, ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
