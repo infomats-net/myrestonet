@@ -33,15 +33,20 @@ export default function Home() {
 
     const fetchFeatures = async () => {
       setLoading(true);
-      const enriched = await Promise.all(restaurants.map(async (res) => {
-        const featSnap = await getDoc(doc(firestore, 'restaurants', res.id, 'features', 'settings'));
-        return {
-          ...res,
-          features: featSnap.exists() ? featSnap.data() : { tableReservations: true, onlineOrdering: true }
-        };
-      }));
-      setRestaurantsWithFeatures(enriched);
-      setLoading(false);
+      try {
+        const enriched = await Promise.all(restaurants.map(async (res) => {
+          const featSnap = await getDoc(doc(firestore, 'restaurants', res.id, 'features', 'settings'));
+          return {
+            ...res,
+            features: featSnap.exists() ? featSnap.data() : { tableReservations: true, onlineOrdering: true }
+          };
+        }));
+        setRestaurantsWithFeatures(enriched);
+      } catch (err) {
+        console.warn("Failed to fetch restaurant features", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchFeatures();
@@ -69,14 +74,14 @@ export default function Home() {
         <section className="w-full py-20 md:py-32 bg-primary text-white overflow-hidden relative">
           <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-emerald-400 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
           </div>
           <div className="container px-4 md:px-6 mx-auto relative z-10">
             <div className="flex flex-col items-center space-y-8 text-center">
               <div className="space-y-4">
                 <h1 className="text-5xl font-black tracking-tighter sm:text-6xl md:text-7xl lg:text-8xl leading-tight">
                   Taste the World <br/>
-                  <span className="text-accent italic">One Order at a Time.</span>
+                  <span className="text-emerald-200 italic">One Order at a Time.</span>
                 </h1>
                 <p className="mx-auto max-w-[800px] text-primary-foreground/80 md:text-2xl font-medium leading-relaxed">
                   Discover top-rated local restaurants powered by the MyRestoNet global network. Seamless ordering, instant reservations.

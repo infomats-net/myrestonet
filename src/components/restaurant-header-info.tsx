@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useDoc, useFirestore, useUser, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { Utensils, CalendarDays, ExternalLink, Loader2 } from 'lucide-react';
+import { Utensils, CalendarDays, ExternalLink, Loader2, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -55,9 +55,16 @@ function HeaderContent() {
           </div>
         )}
         <div className="min-w-0">
-          <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none truncate">
-            {restaurant?.name || 'Merchant Panel'}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-sm font-black text-slate-900 tracking-tight leading-none truncate">
+              {restaurant?.name || 'Merchant Panel'}
+            </h1>
+            {restaurant?.customDomain && (
+              <Badge variant="outline" className="h-4 px-1.5 text-[8px] border-emerald-200 text-emerald-600 bg-emerald-50/50 uppercase font-black tracking-tighter">
+                Live
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground text-[9px] font-bold uppercase tracking-wider mt-0.5">Admin Overview</p>
         </div>
       </div>

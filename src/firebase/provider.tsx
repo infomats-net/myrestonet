@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -10,9 +9,9 @@ import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 interface FirebaseProviderProps {
   children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
+  firebaseApp: FirebaseApp | null;
+  firestore: Firestore | null;
+  auth: Auth | null;
   messaging?: Messaging;
 }
 
@@ -66,7 +65,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   useEffect(() => {
     if (!auth) {
-      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
+      setUserAuthState({ user: null, isUserLoading: false, userError: null });
       return;
     }
 
@@ -89,9 +88,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const servicesAvailable = !!(firebaseApp && firestore && auth);
     return {
       areServicesAvailable: servicesAvailable,
-      firebaseApp: servicesAvailable ? firebaseApp : null,
-      firestore: servicesAvailable ? firestore : null,
-      auth: servicesAvailable ? auth : null,
+      firebaseApp,
+      firestore,
+      auth,
       messaging: messaging || null,
       user: userAuthState.user,
       isUserLoading: userAuthState.isUserLoading,
@@ -112,9 +111,22 @@ export const useFirebase = (): FirebaseServicesAndUser => {
   if (context === undefined) {
     throw new Error('useFirebase must be used within a FirebaseProvider.');
   }
+  
+  // Return dummy fallback values during SSR to prevent crash
   if (!context.areServicesAvailable || !context.firebaseApp || !context.firestore || !context.auth) {
+    if (typeof window === 'undefined') {
+      return {
+        firebaseApp: {} as any,
+        firestore: {} as any,
+        auth: {} as any,
+        user: null,
+        isUserLoading: true,
+        userError: null
+      };
+    }
     throw new Error('Firebase core services not available. Check FirebaseProvider props.');
   }
+  
   return {
     firebaseApp: context.firebaseApp,
     firestore: context.firestore,

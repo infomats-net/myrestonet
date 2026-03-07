@@ -107,14 +107,14 @@ export function StoreSettingsManager({ restaurantId }: { restaurantId: string })
     setGeneratingSeo(true);
     try {
       const result = await localizedSeoContentGenerator({
-        restaurantName: restaurant.name,
+        restaurantName: restaurant.name || "My Restaurant",
         cuisineType: restaurant.cuisine?.join(', ') || 'Various',
-        location: `${restaurant.city}, ${restaurant.country}`,
+        location: `${restaurant.city || "Local"}, ${restaurant.country || "Global"}`,
         description: restaurant.description || "Premium dining experience focused on quality and atmosphere.",
         menuHighlights: "Signature chef specials and seasonal local ingredients.",
         websiteUrl: `https://myrestonet.app/customer/${restaurantId}`,
         phoneNumber: restaurant.contactPhone || 'Contact us via web',
-        address: restaurant.address || restaurant.city,
+        address: restaurant.address || restaurant.city || "Main St",
         locale: 'en-US',
         usps: seoForm.usps
       });

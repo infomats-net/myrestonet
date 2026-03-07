@@ -4,8 +4,9 @@ import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, value, ...props }, ref) => {
-    // Prevent React warning by ensuring readOnly if no onChange is provided with value
-    const isReadOnly = value !== undefined && !props.onChange && !props.readOnly;
+    // Automatically apply readOnly if value is provided without an onChange handler
+    // to satisfy React's controlled component requirement.
+    const isReadOnly = value !== undefined && !props.onChange && props.readOnly !== false;
     
     return (
       <input

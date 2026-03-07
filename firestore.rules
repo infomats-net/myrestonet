@@ -51,7 +51,7 @@ service cloud.firestore {
     }
 
     match /restaurants/{restaurantId} {
-      // Allow public discovery of restaurants
+      // Allow public discovery of restaurants and their settings for storefront rendering
       allow get, list: if true;
       allow create: if isPlatformAdmin();
       allow update: if isPlatformAdmin() || isRestaurantAdmin(restaurantId);
@@ -65,12 +65,11 @@ service cloud.firestore {
       }
 
       match /menus/{menuId} {
-        // Allow public read access to menu categories
+        // Allow public read access to menu categories and their items
         allow read: if true;
         allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
         
         match /items/{itemId} {
-          // Allow public read access to dishes
           allow read: if true;
           allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
         }
@@ -82,19 +81,16 @@ service cloud.firestore {
       }
 
       match /design/{docId} {
-        // Public access required for storefront theme rendering
         allow read: if true;
         allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
       }
 
       match /config/{docId} {
-        // Public access required for hours and dietary tags
         allow read: if true;
         allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
       }
 
       match /features/{docId} {
-        // Public access required to hide/show storefront modules
         allow read: if true;
         allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
       }

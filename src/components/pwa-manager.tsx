@@ -12,14 +12,14 @@ export function PwaManager() {
 
   useEffect(() => {
     // 1. Service Worker Registration
-    if ('serviceWorker' in navigator) {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').then(
           (registration) => {
             console.log('SW registered: ', registration);
           },
           (err) => {
-            console.log('SW registration failed: ', err);
+            console.warn('SW registration failed: ', err);
           }
         );
       });
@@ -34,7 +34,8 @@ export function PwaManager() {
             const vapidKey = 'BIsZ6_v_In... (Your Public VAPID Key here if applicable)';
             
             // Skip registration if the VAPID key is still a placeholder
-            if (vapidKey.includes('...')) {
+            if (!vapidKey || vapidKey.includes('...')) {
+              console.log('PWA Manager: VAPID key not configured, skipping registration.');
               return;
             }
 
