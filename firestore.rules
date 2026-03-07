@@ -12,14 +12,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function getUserData() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-    }
-
+    // Simplified non-recursive role check
     function hasRole(role) {
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-             getUserData().role == role;
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
 
     function isPlatformAdmin() {
@@ -27,20 +23,10 @@ service cloud.firestore {
     }
 
     function isRestaurantAdmin(restaurantId) {
+      let userData = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return isSignedIn() && 
-             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             (getUserData().role == 'restaurant_admin' || getUserData().role == 'staff') && 
-             getUserData().restaurantId == restaurantId;
-    }
-
-    function isExistingOwner(ownerIdField) {
-      return isSignedIn() && resource != null && resource.data[ownerIdField] == request.auth.uid;
-    }
-
-    // --- COLLECTION GROUP RULES ---
-    
-    match /{path=**}/orders/{orderId} {
-      allow read: if isSignedIn() && (resource.data.customerId == request.auth.uid || isPlatformAdmin());
+             (userData.role == 'restaurant_admin' || userData.role == 'staff') && 
+             userData.restaurantId == restaurantId;
     }
 
     // --- COLLECTION RULES ---
@@ -58,47 +44,24 @@ service cloud.firestore {
     }
 
     match /restaurants/{restaurantId} {
-      // Allow public discovery of restaurants and their settings for storefront rendering
+      // Public discovery
       allow get, list: if true;
       allow create: if isPlatformAdmin();
       allow update: if isPlatformAdmin() || isRestaurantAdmin(restaurantId);
       allow delete: if isPlatformAdmin();
+
+      // Shared settings sub-collections
+      match /menus/{menuId} { allow read: if true; allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin(); }
+      match /gallery/{imageId} { allow read: if true; allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin(); }
+      match /design/{docId} { allow read: if true; allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin(); }
+      match /config/{docId} { allow read: if true; allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin(); }
+      match /features/{docId} { allow read: if true; allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin(); }
 
       match /orders/{orderId} {
         allow read: if isSignedIn() && (resource.data.customerId == request.auth.uid || isRestaurantAdmin(restaurantId) || isPlatformAdmin());
         allow create: if isSignedIn();
         allow update: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
         allow delete: if isPlatformAdmin();
-      }
-
-      match /menus/{menuId} {
-        allow read: if true;
-        allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
-        
-        match /items/{itemId} {
-          allow read: if true;
-          allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
-        }
-      }
-
-      match /gallery/{imageId} {
-        allow read: if true;
-        allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
-      }
-
-      match /design/{docId} {
-        allow read: if true;
-        allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
-      }
-
-      match /config/{docId} {
-        allow read: if true;
-        allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
-      }
-
-      match /features/{docId} {
-        allow read: if true;
-        allow write: if isRestaurantAdmin(restaurantId) || isPlatformAdmin();
       }
 
       match /reservations/{reservationId} {
@@ -109,35 +72,15 @@ service cloud.firestore {
       }
     }
 
-    match /reviews/{reviewId} {
-      allow get, list: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isExistingOwner('customerId') || isPlatformAdmin();
-    }
-
     match /users/{userId} {
-      // Simplified user rules to avoid potential recursion in helper functions
-      allow read: if isSignedIn() && (request.auth.uid == userId || isPlatformAdmin());
-      allow write: if isSignedIn() && (request.auth.uid == userId || isPlatformAdmin());
+      // Removed complex helpers to avoid recursion
+      allow read: if isSignedIn() && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin');
+      allow write: if isSignedIn() && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin');
     }
     
-    match /cities/{cityId} {
-      allow read: if true;
-      allow create: if isSignedIn();
-    }
-    
-    match /tiers/{tierId} {
-      allow read: if true;
-      allow write: if isPlatformAdmin();
-    }
-    
-    match /partners/{partnerId} {
-      allow read: if isSignedIn();
-      allow write: if isPlatformAdmin();
-    }
-    
-    match /mail/{mailId} {
-      allow create: if isSignedIn();
-    }
+    match /cities/{cityId} { allow read: if true; allow create: if isSignedIn(); }
+    match /tiers/{tierId} { allow read: if true; allow write: if isPlatformAdmin(); }
+    match /partners/{partnerId} { allow read: if isSignedIn(); allow write: if isPlatformAdmin(); }
+    match /mail/{mailId} { allow create: if isSignedIn(); }
   }
 }
